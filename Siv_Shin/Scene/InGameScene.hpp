@@ -1,0 +1,346 @@
+﻿#pragma once
+#include "SceneManager.hpp"
+#include "StageData.hpp"  // 스테이지 데이터 포함
+#include "../Shader/Manager/ShaderManager.hpp"
+
+// 상자 색상
+enum class BoxColor
+{
+    // 1차 색상 (Primary)
+    Red,        // 빨강 (R)
+    Yellow,     // 노랑 (Y) 
+    Blue,       // 파랑 (B)
+    
+    // 2차 색상 (Secondary)
+    Orange,     // 주황 (O) = Red + Yellow
+    Green,      // 초록 (G) = Yellow + Blue
+    Violet,     // 보라 (V) = Blue + Red
+    
+    // 3차 색상 (Tertiary)
+    Black       // 검정 (K) = 2차+2차 또는 1차+2차
+};
+
+// 아이템 타입
+enum class ItemType
+{
+    None,       // 아이템 없음
+    RedItem,    // ㅃ - 빨강 아이템
+    OrangeItem, // ㅈ - 주황 아이템
+    YellowItem, // ㄴ - 노랑 아이템
+    GreenItem,  // ㅊ - 초록 아이템
+    BlueItem,   // ㅍ - 파랑 아이템
+    VioletItem  // ㅂ - 보라 아이템
+};
+
+// 아이템 정보
+struct GameItem
+{
+    Point pos;
+    ItemType type;
+};
+
+// 색상 등급
+enum class ColorTier
+{
+    Primary,    // 1차
+    Secondary,  // 2차
+    Tertiary    // 3차 (Black)
+};
+
+// 상자 정보
+struct ColorBox
+{
+    Point pos;
+    BoxColor color;
+    double creationTime = 0.0;  // 생성 시간 (검은색 블록용)
+	uint64 uid = 0;
+};
+
+
+
+// 게임 상태 저장 구조체 (Undo용)
+struct GameState
+{
+    Point playerPos;
+    Array<ColorBox> boxes;
+    Array<GameItem> items;  // 아이템 상태도 저장
+    ItemType playerHeldItem; // 플레이어가 가진 아이템도 저장
+    int32 moves;
+    int32 score;
+};
+
+class InGameScene : public GameScene
+{
+private:
+    // 게임 상수 - 11x11 그리드로 확장, 1024x1024 해상도에 맞춤
+    static constexpr int32 TILE_SIZE = 80;  // 타일 크기 증가 (1024/11 ≈ 93, 여백 고려하여 80)
+    static constexpr int32 MAP_WIDTH = 11;  // 11x11 맵
+    static constexpr int32 MAP_HEIGHT = 11;
+    static constexpr double BLACK_BOX_LIFETIME = 1.5;  // 검은색 블록 수명 (초)
+
+	uint64 nextBoxUID_ = 1;
+
+    // 소코반 타일 타입
+    enum class TileType
+    {
+        Empty,       // 빈 공간
+        Wall,        // 벽
+        RedGoal,     // r - 빨강 목표
+        YellowGoal,  // y - 노랑 목표
+        BlueGoal,    // b - 파랑 목표
+        OrangeGoal,  // o - 주황 목표
+        GreenGoal,   // g - 초록 목표
+        VioletGoal,  // v - 보라 목표
+        BlackGoal,   // k - 검정 목표
+        RedItem,     // ㅃ - 빨강 아이템
+        OrangeItem,  // ㅈ - 주황 아이템
+        YellowItem,  // ㄴ - 노랑 아이템
+        GreenItem,   // ㅊ - 초록 아이템
+        BlueItem,    // ㅍ - 파랑 아이템
+        VioletItem   // ㅂ - 보라 아이템
+    };
+    
+    // Taco 플레이어 방향
+    enum class TacoDirection
+    {
+        Down,
+        Side,
+        Up
+    };
+    
+    // 배경 이미지
+    Texture stageBackground_;
+    
+    // 플레이어 - 부드러운 이동 추가
+    Point playerPos_;           // 논리적 타일 위치
+    Vec2 playerPixelPos_;       // 실제 픽셀 위치 (부드러운 이동용)
+    Vec2 targetPixelPos_;       // 목표 픽셀 위치
+    double playerMoveSpeed_;    // 이동 속도 (픽셀/초)
+    bool isPlayerMoving_;       // 플레이어가 이동 중인지
+    double inputCooldown_;
+    double moveDelay_;
+    ColorF playerColor_;
+    
+    // 소코반 맵 데이터
+    int32 currentStage_;
+    Array<Array<TileType>> mapData_;  // 11x11 맵
+    Array<ColorBox> boxes_;           // 상자들 (색상 포함)
+    Array<GameItem> items_;           // 아이템들
+    ItemType playerHeldItem_;         // 플레이어가 가진 아이템
+    
+    // 각 색상별 목표 위치
+    Array<Point> redGoalPositions_;
+    Array<Point> yellowGoalPositions_;
+    Array<Point> blueGoalPositions_;
+    Array<Point> orangeGoalPositions_;
+    Array<Point> greenGoalPositions_;
+    Array<Point> violetGoalPositions_;
+    Array<Point> blackGoalPositions_;
+    
+    // Taco 애니메이션
+    Array<Texture> tacoDownFrames_;
+    Array<Texture> tacoSideFrames_;
+    Array<Texture> tacoUpFrames_;
+    TacoDirection tacoDirection_;
+    bool isFacingLeft_;
+    int32 tacoAnimFrame_;
+    double tacoAnimTimer_;
+    
+    // Taco Paint 애니메이션 (아이템 사용 시)
+    Array<Texture> tacoPaintFrames_;  // tacoPaint_0.png ~ tacoPaint_4.png (5장)
+    bool isPlayingPaintAnimation_;    // 페인트 애니메이션 재생 중인지
+    bool isPaintAnimMirrored_;        // 페인트 애니메이션 좌우반전 여부
+    double paintAnimTimer_;           // 페인트 애니메이션 타이머
+    int32 paintAnimFrame_;            // 현재 페인트 애니메이션 프레임
+    static constexpr double PAINT_ANIM_DURATION = 1.0;  // 1초 동안 재생
+    static constexpr int32 PAINT_ANIM_FRAME_COUNT = 5;  // 5개 프레임
+    
+    // 기존 플레이어 애니메이션 (fallback)
+    Array<Texture> playerFrames_;
+    double playerAnimTimer_;
+    int32 currentPlayerFrame_;
+    
+    // UI
+    Font gameFont_;
+    Font debugFont_;
+    Font pauseFont_;
+    Font clearFont_;  // 클리어 메시지용 폰트
+    Font buttonFont_; // 클리어 버튼용 폰트
+    
+    // 클리어 화면 버튼 구조체
+    struct ClearButton
+    {
+        Rect rect;
+        String text;
+        bool isHovered = false;
+        ColorF normalColor = ColorF{ 0.2, 0.4, 0.6 };
+        ColorF hoverColor = ColorF{ 0.3, 0.5, 0.7 };
+        ColorF textColor = Palette::White;
+        ColorF hoverTextColor = Palette::Yellow;
+    };
+    
+    // 게임 상태
+    bool isPaused_;
+    bool wasFocused_;  // 이전 프레임의 포커스 상태 추적
+    double gameTime_;
+    int32 score_;
+    int32 moves_;  // 이동 횟수
+    bool isCleared_;  // 클리어 여부
+    bool showClearButtons_;  // 클리어 버튼 표시 여부
+    bool showHelpScreen_;  // 조작법 도움말 화면 표시 여부
+    
+    // Undo 시스템
+    Array<GameState> gameStateHistory_;  // 게임 상태 기록
+    static constexpr int32 MAX_UNDO_STEPS = 9990;  // 최대 되돌리기 단계
+    double undoHoldTime_ = 0.0;  // Undo 키를 누르고 있는 시간
+    double undoCooldown_ = 0.0;  // Undo 쿨다운 타이머 (반복용)
+    static constexpr double UNDO_HOLD_THRESHOLD = 0.5;  // 반복 시작까지 필요한 홀드 시간 (초)
+    static constexpr double UNDO_REPEAT_DELAY = 0.1;  // Undo 반복 간격 (초)
+    
+    // 클리어 화면 버튼들
+    ClearButton retryButton_;      // 다시하기
+    ClearButton stageSelectButton_; // 스테이지 선택으로
+    ClearButton nextStageButton_;   // 다음 스테이지
+    
+    // 게임 데이터 참조
+    GameData* gameData_ = nullptr;
+
+	// PaintSpreadShader helper
+	struct MergePaintFX {
+		bool     active = false;
+		ColorF   baseColor;
+		ColorF   paintColor;
+		Vec2     originUV;         // 타일 로컬 UV (0~1)
+		uint64   targetUid = 0;    // ← 추가: 이펙트 대상 박스 UID
+		BoxColor finalColor;       // 완료 시 커밋할 논리색
+		bool     commitPending = false;
+	};
+	MergePaintFX mergeFX_;
+
+	ColorBox* getBoxByUid(uint64 uid);
+	void triggerMergePaintFX_Directional(Point tile, const ColorF& baseColor,
+										 const ColorF& resultColor, Point pushDir);
+	void updateMergePaintFX();
+	
+	// BombBox Shader helper (동시 다발 폭발용)
+	struct BombBoxInst {
+		uint64 uid = 0;          // 대상 박스 UID
+		double t = 0.0;        // 경과 시간
+		double dur = 1.5;        // 폭발까지 시간
+		uint32 seed = 0;         // 이펙트 랜덤 변주용(선택)
+	};
+
+	Array<BombBoxInst> bombFXs_;  // 동시 다발 폭발용 컨테이너
+	bool removeBoxByUid(uint64 uid);
+
+	// 발동/업데이트/드로우
+	void triggerBombBoxFXForBlack_Multi(uint64 uid, double durationSec = 1.5);
+	void updateBombBoxFX_Multi();
+	void drawBombBoxFX_Multi();
+
+public:
+    InGameScene();
+    InGameScene(int32 stageNumber);  // 스테이지 번호를 받는 생성자
+    InGameScene(int32 stageNumber, GameData* gameData);  // 게임 데이터도 받는 생성자
+    ~InGameScene() override = default;
+
+    void update() override;
+    void draw() override;
+    void onEnter() override;
+    void onExit() override;
+    
+    // 게임 데이터 설정
+    void setGameData(GameData* gameData) { gameData_ = gameData; }
+
+private:
+    void loadAssets();
+    void loadStage(int32 stageNumber);
+    void loadStageFromText(const Array<String>& mapText);  // 텍스트 맵 로더
+    
+    bool canMoveTo(Point pos) const;
+    ColorBox* getBoxAt(Point pos);
+    const ColorBox* getBoxAt(Point pos) const;
+    bool canPushBox(Point playerPos, Point boxPos, Point direction) const;
+    void pushBox(ColorBox* box, Point direction);
+    void checkBoxMerge(Point pos);
+    void updateBlackBoxes();  // 검은색 블록 업데이트
+    bool isGameClear() const;
+    ColorF getBoxColorF(BoxColor color) const;
+    ColorTier getColorTier(BoxColor color) const;
+    Optional<BoxColor> getMergedColor(BoxColor color1, BoxColor color2) const;
+    Array<Point>& getGoalPositionsForColor(BoxColor color);
+    const Array<Point>& getGoalPositionsForColor(BoxColor color) const;
+    
+    // 아이템 시스템
+    BoxColor itemTypeToBoxColor(ItemType item) const;
+    ItemType tileTypeToItemType(TileType tile) const;
+    ColorF getItemColorF(ItemType item) const;
+    GameItem* getItemAt(Point pos);
+    const GameItem* getItemAt(Point pos) const;
+    void collectItem(Point pos);
+    bool tryChangeBoxColor(Point pos, Point direction);
+    
+    // 페인트 애니메이션
+    void startPaintAnimation(bool mirrored);  // 페인트 애니메이션 시작
+    void updatePaintAnimation(); // 페인트 애니메이션 업데이트
+    void drawPaintAnimation();   // 페인트 애니메이션 그리기
+    
+    // 플레이어 이동 관련
+    Vec2 tileToPixel(Point tilePos) const;  // 타일 좌표를 픽셀 좌표로 변환
+    void movePlayerTo(Point newTilePos);    // 플레이어를 새 타일로 이동
+    
+    void updatePlayer();
+    void updateAnimations();
+    void drawBackground();
+    void drawMap();
+    void drawPlayer();
+    void drawUI();
+    void handleInput();
+    
+    // 조작법 도움말 관련
+    void drawHelpScreen();
+    
+    // Undo 시스템
+    void saveGameState();
+    void undoLastMove();
+    bool canUndo() const;
+    
+    // 클리어 화면 관련
+    void initializeClearButtons();
+    void updateClearButtons();
+    void drawClearButtons();
+    void updateClearButton(ClearButton& button);
+    void drawClearButton(const ClearButton& button);
+    
+    // 점수 시스템
+    int32 calculateStars(int32 moves) const;  // Move 횟수에 따른 별점 계산
+    void drawStars(int32 starCount, Vec2 centerPos) const;  // 별점 그리기
+    
+    // 점수 텍스처
+    Texture tacoScoreTexture_;  // 타코 점수 이미지 (온)
+    Texture tacoScoreOffTexture_;  // 타코 점수 이미지 (오프)
+    
+    // 배경음악
+    Audio bgm_;  // 배경음악
+    
+    // 클리어 이펙트
+    struct ClearParticle
+    {
+        Vec2 pos;
+        Vec2 velocity;
+        ColorF color;
+        double life;
+        double maxLife;
+        double size;
+        double rotation;
+        double rotationSpeed;
+    };
+    Array<ClearParticle> clearParticles_;
+    double clearEffectTimer_ = 0.0;
+    bool showClearEffect_ = false;
+    
+    // 클리어 이펙트 관련 메서드
+    void createClearEffect();
+    void updateClearEffect();
+    void drawClearEffect();
+};
