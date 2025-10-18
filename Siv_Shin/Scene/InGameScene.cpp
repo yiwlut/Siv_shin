@@ -91,7 +91,7 @@ void InGameScene::onEnter()
     // 배경음악 재생
     if (!bgm_.isEmpty())
     {
-        bgm_.setVolume(0.5);  // 볼륨 설정 (0.0 ~ 1.0)
+        bgm_.setVolume(0.2);  // 볼륨 설정 (0.05 * 4 = 0.2)
         bgm_.play();
     }
 }
@@ -141,6 +141,12 @@ void InGameScene::loadAssets()
     
     // 배경음악 로드
     bgm_ = Audio{ U"ArtResources/BGM/HappyOcean.mp3", Loop::Yes };
+    
+    // 블록 밀기 효과음 로드
+    noteC5_ = Audio{ U"ArtResources/SFX/C5.wav" };
+    noteE5_ = Audio{ U"ArtResources/SFX/E5.wav" };
+    noteG5_ = Audio{ U"ArtResources/SFX/G5.wav" };
+    noteC6_ = Audio{ U"ArtResources/SFX/C6.wav" };
 }
 
 void InGameScene::loadStage(int32 stageNumber)
@@ -507,6 +513,75 @@ bool InGameScene::canPushBox(Point playerPos, Point boxPos, Point direction) con
 void InGameScene::pushBox(ColorBox* box, Point direction)
 {
     box->pos = box->pos + direction;
+    
+    // 블록 밀기 효과음 재생
+    playBoxSound(box->color);
+}
+
+void InGameScene::playBoxSound(BoxColor color)
+{
+    // 볼륨 설정 (5배 증가: 0.6 * 5 = 3.0)
+    const double volume = 3.0;
+    
+    switch (color)
+    {
+    case BoxColor::Red:
+        // 빨강 = C5
+        if (!noteC5_.isEmpty())
+            noteC5_.playOneShot(volume);
+        break;
+        
+    case BoxColor::Yellow:
+        // 노랑 = E5
+        if (!noteE5_.isEmpty())
+            noteE5_.playOneShot(volume);
+        break;
+        
+    case BoxColor::Blue:
+        // 파랑 = G5
+        if (!noteG5_.isEmpty())
+            noteG5_.playOneShot(volume);
+        break;
+        
+    case BoxColor::Orange:
+        // 주황 = Red(C5) + Yellow(E5)
+        if (!noteC5_.isEmpty())
+            noteC5_.playOneShot(volume);
+        if (!noteE5_.isEmpty())
+            noteE5_.playOneShot(volume);
+        break;
+        
+    case BoxColor::Green:
+        // 초록 = Yellow(E5) + Blue(G5)
+        if (!noteE5_.isEmpty())
+            noteE5_.playOneShot(volume);
+        if (!noteG5_.isEmpty())
+            noteG5_.playOneShot(volume);
+        break;
+        
+    case BoxColor::Violet:
+        // 보라 = Blue(G5) + Red(C5)
+        if (!noteG5_.isEmpty())
+            noteG5_.playOneShot(volume);
+        if (!noteC5_.isEmpty())
+            noteC5_.playOneShot(volume);
+        break;
+        
+    case BoxColor::Black:
+        // 검정 = C5 + E5 + G5 + C6
+        if (!noteC5_.isEmpty())
+            noteC5_.playOneShot(volume);
+        if (!noteE5_.isEmpty())
+            noteE5_.playOneShot(volume);
+        if (!noteG5_.isEmpty())
+            noteG5_.playOneShot(volume);
+        if (!noteC6_.isEmpty())
+            noteC6_.playOneShot(volume);
+        break;
+        
+    default:
+        break;
+    }
 }
 
 void InGameScene::checkBoxMerge(Point pos)
@@ -906,6 +981,9 @@ void InGameScene::handleInput()
 				g_Shaders.paintSpread().setWaveStrength(0.4f);
 				g_Shaders.paintSpread().setSpreadSpeed(2.0f);  // 0.6 → 2.0 (더 빠르게)
 				g_Shaders.paintSpread().startAnimation();
+
+				// 합성된 블록의 효과음 재생
+				playBoxSound(*merged);
 
 				// 4) 점수/이동/저장
 				const ColorTier tier = getColorTier(*merged);

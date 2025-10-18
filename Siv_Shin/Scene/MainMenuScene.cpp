@@ -32,7 +32,7 @@ void MainMenuScene::onEnter()
     if (!bgm_.isEmpty())
     {
         bgm_.setLoop(true);     // 무한루프 설정
-        bgm_.setVolume(0.7);    // 볼륨 설정 (0.0 ~ 1.0)
+        bgm_.setVolume(0.28);    // 볼륨 설정 (0.07 * 4 = 0.28)
         bgm_.play();            // 재생 시작
     }
     

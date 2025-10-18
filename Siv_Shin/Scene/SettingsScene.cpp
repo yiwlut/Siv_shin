@@ -18,7 +18,7 @@ void SettingsScene::onEnter()
     // 배경음악 재생
     if (!bgm_.isEmpty())
     {
-        bgm_.setVolume(0.5);  // 볼륨 설정 (0.0 ~ 1.0)
+        bgm_.setVolume(0.2);  // 볼륨 설정 (0.05 * 4 = 0.2)
         bgm_.play();
     }
     

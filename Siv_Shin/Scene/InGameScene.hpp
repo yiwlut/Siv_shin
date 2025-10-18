@@ -323,6 +323,15 @@ private:
     // 배경음악
     Audio bgm_;  // 배경음악
     
+    // 블록 밀기 효과음
+    Audio noteC5_;  // 빨강 (C5)
+    Audio noteE5_;  // 노랑 (E5)
+    Audio noteG5_;  // 파랑 (G5)
+    Audio noteC6_;  // 검정의 최고음 (C6)
+    
+    // 블록 색상에 따라 음악 재생
+    void playBoxSound(BoxColor color);
+    
     // 클리어 이펙트
     struct ClearParticle
     {
