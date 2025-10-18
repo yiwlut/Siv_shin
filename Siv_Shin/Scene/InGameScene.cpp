@@ -151,31 +151,18 @@ void InGameScene::loadAssets()
 
 void InGameScene::loadStage(int32 stageNumber)
 {
-    currentStage_ = stageNumber;
-    // Print << U"Loading stage: {}"_fmt(stageNumber);
-    
-    // 맵 초기화
-    mapData_.clear();
-    mapData_.resize(MAP_HEIGHT);
-    for (auto& row : mapData_)
-    {
-        row.resize(MAP_WIDTH, TileType::Empty);
-    }
-    
-    boxes_.clear();
-    items_.clear();  // 아이템 초기화
-    redGoalPositions_.clear();
-    yellowGoalPositions_.clear();
-    blueGoalPositions_.clear();
-    orangeGoalPositions_.clear();
-    greenGoalPositions_.clear();
-    violetGoalPositions_.clear();
-    blackGoalPositions_.clear();
-    
-    // StageData에서 맵 데이터 로드
-    Array<String> mapText = StageData::getStageMap(stageNumber);
-    // Print << U"Map data loaded, lines: {}"_fmt(mapText.size());
-    loadStageFromText(mapText);
+	currentStage_ = stageNumber;
+
+	// StageData에서 맵 텍스트 획득
+	const Array<String> mapText = StageData::getStageMap(stageNumber);
+
+	// 가변 크기 파서 호출
+	loadStageFromText_VarSize(mapText);
+
+	// 맵 크기에 맞춘 고정 카메라 적용
+	onStageLoaded_FixedCamera();
+
+	// Print << U"Loaded stage {} with size {}x{}"_fmt(stageNumber, getMapWidth(), getMapHeight());
 }
 
 void InGameScene::loadStageFromText(const Array<String>& mapText)
@@ -183,7 +170,7 @@ void InGameScene::loadStageFromText(const Array<String>& mapText)
     // 맵 초기화
     for (auto& row : mapData_)
     {
-        row.assign(MAP_WIDTH, TileType::Empty);
+        row.assign(getMapWidth(), TileType::Empty);
     }
     
     boxes_.clear();
@@ -197,10 +184,10 @@ void InGameScene::loadStageFromText(const Array<String>& mapText)
     blackGoalPositions_.clear();
     
     // 텍스트 맵 파싱
-    for (int32 y = 0; y < Min((int32)mapText.size(), MAP_HEIGHT); y++)
+    for (int32 y = 0; y < Min((int32)mapText.size(), getMapHeight()); y++)
     {
         const String& line = mapText[y];
-        for (int32 x = 0; x < Min((int32)line.length(), MAP_WIDTH); x++)
+        for (int32 x = 0; x < Min((int32)line.length(), getMapWidth()); x++)
         {
             char32 ch = line[x];
             Point pos(x, y);
@@ -446,7 +433,7 @@ void InGameScene::drawBombBoxFX_Multi() {
 
 bool InGameScene::canMoveTo(Point pos) const
 {
-    if (pos.x < 0 || pos.x >= MAP_WIDTH || pos.y < 0 || pos.y >= MAP_HEIGHT)
+    if (pos.x < 0 || pos.x >= getMapWidth() || pos.y < 0 || pos.y >= getMapHeight())
         return false;
     
     if (mapData_[pos.y][pos.x] == TileType::Wall)
@@ -482,8 +469,8 @@ bool InGameScene::canPushBox(Point playerPos, Point boxPos, Point direction) con
 {
     Point nextBoxPos = boxPos + direction;
     
-    if (nextBoxPos.x < 0 || nextBoxPos.x >= MAP_WIDTH || 
-        nextBoxPos.y < 0 || nextBoxPos.y >= MAP_HEIGHT)  // nextBox -> nextBoxPos 수정
+    if (nextBoxPos.x < 0 || nextBoxPos.x >= getMapWidth() || 
+        nextBoxPos.y < 0 || nextBoxPos.y >= getMapHeight())  // nextBox -> nextBoxPos 수정
         return false;
     
     if (mapData_[nextBoxPos.y][nextBoxPos.x] == TileType::Wall)
@@ -1064,6 +1051,9 @@ void InGameScene::updateAnimations()
 void InGameScene::draw()
 {
     drawBackground();
+	// 카메라 변환 시작
+	const auto _t = camera().createTransformer();
+
     drawMap();
     drawPlayer();
     drawUI();
@@ -1142,8 +1132,8 @@ void InGameScene::drawBackground()
 void InGameScene::drawMap()
 {
 	// 타일 배경
-	for (int32 y = 0; y < MAP_HEIGHT; ++y) {
-		for (int32 x = 0; x < MAP_WIDTH; ++x) {
+	for (int32 y = 0; y < getMapHeight(); ++y) {
+		for (int32 x = 0; x < getMapWidth(); ++x) {
 			const Rect tileRect{ x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
 
 			switch (mapData_[y][x]) {
@@ -2073,6 +2063,241 @@ void InGameScene::drawPaintAnimation()
     }
 }
 
+// InGameScene.cpp (추가)
 
+// 0) 카메라 단일 인스턴스 + 접근자 오버로드
+CustomCamera2D& InGameScene::camInstance() {
+	static CustomCamera2D s_cam{ Vec2{ 0, 0 }, 1.0 };
+	return s_cam;
+}
+CustomCamera2D& InGameScene::camera() { return camInstance(); }
+const CustomCamera2D& InGameScene::camera() const { return camInstance(); }
 
+// 1) 동적 맵 크기 질의 (mapData_ 우선, 비어 있으면 레거시 폴백)
+int32 InGameScene::getMapWidth() const {
+	if (!mapData_.isEmpty()) return static_cast<int32>(mapData_.front().size());
+	return getMapWidth(); // 폴백 (점진 전환 시 제거 가능)
+}
+int32 InGameScene::getMapHeight() const {
+	if (!mapData_.isEmpty()) return static_cast<int32>(mapData_.size());
+	return getMapHeight(); // 폴백 (점진 전환 시 제거 가능)
+}
 
+// 2) 스테이지 인덱스로 로드 (가변 파서 경로 사용)
+void InGameScene::loadStageByIndex(int32 stageNumber)
+{
+	currentStage_ = stageNumber;
+	const Array<String> mapText = StageData::getStageMap(stageNumber);
+	loadStageFromText_VarSize(mapText); // 가변 파서 호출
+}
+
+// 3) 가변 맵 파서 (텍스트 길이로 크기 산출 → 리사이즈 → 전체 범위 파싱)
+void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
+{
+	// 크기 산출
+	const int32 H = static_cast<int32>(mapText.size());
+	int32 W = 0;
+	for (const auto& line : mapText) {
+		W = Max(W, static_cast<int32>(line.size()));
+	}
+	const int32 width = Max(1, W);
+	const int32 height = Max(1, H);
+
+	// mapData_ 리사이즈 및 초기화
+	mapData_.clear();
+	mapData_.resize(height);
+	for (auto& row : mapData_) {
+		row.assign(width, TileType::Empty);
+	}
+
+	// 엔티티/목표 초기화
+	boxes_.clear();
+	items_.clear();
+	redGoalPositions_.clear();
+	yellowGoalPositions_.clear();
+	blueGoalPositions_.clear();
+	orangeGoalPositions_.clear();
+	greenGoalPositions_.clear();
+	violetGoalPositions_.clear();
+	blackGoalPositions_.clear();
+
+	// 전체 범위 파싱 (기존 로직 유지, addBox 없이 push_back 사용)
+	for (int32 y = 0; y < height; ++y) {
+		const String line = (y < mapText.size() ? mapText[y] : U"");
+		for (int32 x = 0; x < width; ++x) {
+			const char32 ch = (x < static_cast<int32>(line.size()) ? line[x] : U'.');
+			const Point pos{ x, y };
+
+			switch (ch) {
+			case U'#': mapData_[y][x] = TileType::Wall; break;
+
+			case U'T':
+				playerPos_ = pos;
+				playerPixelPos_ = tileToPixel(pos);
+				targetPixelPos_ = playerPixelPos_;
+				isPlayerMoving_ = false;
+				break;
+
+				// 박스(대문자)
+			case U'R': boxes_.push_back(ColorBox{ pos, BoxColor::Red });    break;
+			case U'Y': boxes_.push_back(ColorBox{ pos, BoxColor::Yellow }); break;
+			case U'B': boxes_.push_back(ColorBox{ pos, BoxColor::Blue });   break;
+			case U'O': boxes_.push_back(ColorBox{ pos, BoxColor::Orange }); break;
+			case U'G': boxes_.push_back(ColorBox{ pos, BoxColor::Green });  break;
+			case U'V': boxes_.push_back(ColorBox{ pos, BoxColor::Violet }); break;
+			case U'K': boxes_.push_back(ColorBox{ pos, BoxColor::Black });  break;
+
+				// 목표(소문자)
+			case U'r': mapData_[y][x] = TileType::RedGoal;    redGoalPositions_.push_back(pos);    break;
+			case U'y': mapData_[y][x] = TileType::YellowGoal; yellowGoalPositions_.push_back(pos); break;
+			case U'b': mapData_[y][x] = TileType::BlueGoal;   blueGoalPositions_.push_back(pos);   break;
+			case U'o': mapData_[y][x] = TileType::OrangeGoal; orangeGoalPositions_.push_back(pos); break;
+			case U'g': mapData_[y][x] = TileType::GreenGoal;  greenGoalPositions_.push_back(pos);  break;
+			case U'v': mapData_[y][x] = TileType::VioletGoal; violetGoalPositions_.push_back(pos); break;
+			case U'k': mapData_[y][x] = TileType::BlackGoal;  blackGoalPositions_.push_back(pos);  break;
+
+				// 아이템(숫자)
+			case U'2': items_.push_back(GameItem{ pos, ItemType::RedItem }); mapData_[y][x] = TileType::RedItem;    break;
+			case U'4': items_.push_back(GameItem{ pos, ItemType::OrangeItem }); mapData_[y][x] = TileType::OrangeItem; break;
+			case U'6': items_.push_back(GameItem{ pos, ItemType::YellowItem }); mapData_[y][x] = TileType::YellowItem; break;
+			case U'7': items_.push_back(GameItem{ pos, ItemType::GreenItem }); mapData_[y][x] = TileType::GreenItem;  break;
+			case U'8': items_.push_back(GameItem{ pos, ItemType::BlueItem }); mapData_[y][x] = TileType::BlueItem;   break;
+			case U'9': items_.push_back(GameItem{ pos, ItemType::VioletItem }); mapData_[y][x] = TileType::VioletItem; break;
+
+				// 빈 공간
+			case U'.':
+			case U' ':
+			default:
+				mapData_[y][x] = TileType::Empty;
+				break;
+			}
+		}
+	}
+
+	// 픽셀 좌표 및 고정 카메라 정렬
+	playerPixelPos_ = tileToPixel(playerPos_);
+	onStageLoaded_FixedCamera(); // 맵 크기에 맞게 스케일/센터 고정
+}
+
+// 4) 경계/이동 체크 (동적 크기 기반)
+bool InGameScene::isInsideMap(Point pos) const {
+	return (pos.x >= 0 && pos.y >= 0
+		 && pos.x < getMapWidth()
+		 && pos.y < getMapHeight());
+}
+
+bool InGameScene::canMoveToPoint(Point pos) const {
+	if (!isInsideMap(pos)) return false;
+	if (mapData_[pos.y][pos.x] == TileType::Wall) return false;
+	if (getBoxAt(pos) != nullptr) return false;
+	return true;
+}
+
+//bool InGameScene::canPushBox(Point playerPos, Point boxPos, Point dir) const {
+//	const Point next = boxPos + dir;
+//	if (!isInsideMap(next)) return false;
+//	if (mapData_[next.y][next.x] == TileType::Wall) return false;
+//	if (const auto* target = getBoxAt(next)) {
+//		if (const auto* current = getBoxAt(boxPos)) {
+//			const Optional<BoxColor> merged = getMergedColor(current->color, target->color);
+//			return merged.has_value();
+//		}
+//		return false;
+//	}
+//	return true;
+//}
+
+// 5) 고정 카메라 유틸 (추적 없음)
+double InGameScene::computeFitScaleToMap(double margin) const {
+	const double vw = static_cast<double>(Scene::Width());
+	const double vh = static_cast<double>(Scene::Height());
+	const double worldW = static_cast<double>(getMapWidth()) * TILE_SIZE;
+	const double worldH = static_cast<double>(getMapHeight()) * TILE_SIZE;
+	if (worldW <= 0.0 || worldH <= 0.0) return 1.0;
+	double s = Min(vw / worldW, vh / worldH) * margin;
+	return Clamp(s, 0.25, 5.0);
+}
+
+void InGameScene::applyFixedCameraFitToMap() {
+	const double s = computeFitScaleToMap(0.95);
+	const Vec2 center(
+		static_cast<double>(getMapWidth()) * TILE_SIZE * 0.5,
+		static_cast<double>(getMapHeight()) * TILE_SIZE * 0.5
+	);
+	auto& cam = camera();
+	cam.jumpToScale(s);
+	cam.jumpToPos(center);
+}
+
+void InGameScene::applyFixedCameraFitToRect(const Rect& tileRect, double margin) {
+	const double vw = static_cast<double>(Scene::Width());
+	const double vh = static_cast<double>(Scene::Height());
+	const double worldW = static_cast<double>(tileRect.w) * TILE_SIZE;
+	const double worldH = static_cast<double>(tileRect.h) * TILE_SIZE;
+	if (worldW <= 0.0 || worldH <= 0.0) return;
+
+	double s = Min(vw / worldW, vh / worldH) * margin;
+	s = Clamp(s, 0.25, 5.0);
+
+	const Vec2 center(
+		(static_cast<double>(tileRect.x) + tileRect.w * 0.5) * TILE_SIZE,
+		(static_cast<double>(tileRect.y) + tileRect.h * 0.5) * TILE_SIZE
+	);
+
+	auto& cam = camera();
+	cam.jumpToScale(s);
+	cam.jumpToPos(center);
+}
+
+void InGameScene::updateFixedCameraZoomByWheelInput() {
+	const double minScale = computeFitScaleToMap(0.95);
+	const double maxScale = 3.0;
+
+	auto& cam = camera();
+	double s = cam.getScale();
+	const double wheel = Mouse::Wheel();
+	if (wheel != 0.0) {
+		s = Clamp(s * (1.0 + wheel * 0.1), minScale, maxScale);
+		cam.jumpToScale(s);
+	}
+	const Vec2 center(
+		static_cast<double>(getMapWidth()) * TILE_SIZE * 0.5,
+		static_cast<double>(getMapHeight()) * TILE_SIZE * 0.5
+	);
+	cam.jumpToPos(center);
+}
+
+void InGameScene::onStageLoaded_FixedCamera() {
+	playerPixelPos_ = tileToPixel(playerPos_);
+	applyFixedCameraFitToMap();
+}
+
+// 6) 뷰 컬링(Rect: 타일 인덱스 범위)
+Rect InGameScene::getVisibleTileRect() const
+{
+	const auto& cam = camera();
+	const double s = cam.getScale();
+	const Vec2 c = cam.getCenter();
+	const double vw = static_cast<double>(Scene::Width()) / s;
+	const double vh = static_cast<double>(Scene::Height()) / s;
+	const RectF view(c.x - vw * 0.5, c.y - vh * 0.5, vw, vh);
+
+	const int32 W = getMapWidth();
+	const int32 H = getMapHeight();
+
+	const int32 minX = Max(0, static_cast<int32>(Floor(view.x / TILE_SIZE)) - 1);
+	const int32 minY = Max(0, static_cast<int32>(Floor(view.y / TILE_SIZE)) - 1);
+	const int32 maxX = Min(W - 1, static_cast<int32>(Floor((view.x + view.w) / TILE_SIZE)) + 1);
+	const int32 maxY = Min(H - 1, static_cast<int32>(Floor((view.y + view.h) / TILE_SIZE)) + 1);
+
+	return Rect(minX, minY, Max(0, maxX - minX + 1), Max(0, maxY - minY + 1));
+}
+
+// 7) 월드/UI 드로잉 래핑(선택)
+void InGameScene::drawWorldWithCamera(const std::function<void()>& worldDraw,
+									  const std::function<void()>& uiDraw)
+{
+	const auto _t = camera().createTransformer();
+	worldDraw();
+	uiDraw();
+}
