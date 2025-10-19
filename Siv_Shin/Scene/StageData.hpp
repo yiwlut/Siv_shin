@@ -47,7 +47,7 @@ namespace StageData
         U"###########", 
         U"#####b#####",
         U"#####B#####",
-        U"T   B R Y o",  
+        U"T     R Y o",  
         U"#####G#####",
         U"#####g#####",  
         U"###########", 
@@ -55,19 +55,24 @@ namespace StageData
         U"###########"
     };
 
-    inline const Array<String> STAGE_2 = {
-		U"###########",
-		U"#  v B  R #",
-		U"# R       #",  
-		U"#         #",
-		U"#     Y   #",
-		U"#T        #",  
-		U"#       o #",
-		U"#   r     #",  
-		U"# R       #",  
-		U"#         #",
-		U"###########"
+	inline const Array<String> STAGE_2 = {
+		U"  o",
+		U"TRY",
+		U"   ",
 	};
+ //   inline const Array<String> STAGE_2 = {
+	//	U"###########",
+	//	U"#  v B  R #",
+	//	U"# R       #",  
+	//	U"#         #",
+	//	U"#     Y   #",
+	//	U"#T        #",  
+	//	U"#       o #",
+	//	U"#   r     #",  
+	//	U"# R       #",  
+	//	U"#         #",
+	//	U"###########"
+	//};
 
 	inline const Array<String> STAGE_3 = {
 		U"#o#########",
