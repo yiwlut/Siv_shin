@@ -2,6 +2,7 @@
 #include "SceneManager.hpp"
 #include "StageData.hpp"  // 스테이지 데이터 포함
 #include "../Shader/Manager/ShaderManager.hpp"
+#include "../Camera/CustomCamera2D.hpp"
 
 // 상자 색상
 enum class BoxColor
@@ -324,10 +325,9 @@ private:
     Audio bgm_;  // 배경음악
     
     // 블록 밀기 효과음
-    Audio noteC5_;  // 빨강 (C5)
     Audio noteE5_;  // 노랑 (E5)
     Audio noteG5_;  // 파랑 (G5)
-    Audio noteC6_;  // 검정의 최고음 (C6)
+    Audio noteC6_;  // 빨강 및 검정 (C6)
     
     // 블록 색상에 따라 음악 재생
     void playBoxSound(BoxColor color);
@@ -352,4 +352,36 @@ private:
     void createClearEffect();
     void updateClearEffect();
     void drawClearEffect();
+
+	static CustomCamera2D& camInstance();                    
+	CustomCamera2D& camera();           
+	const CustomCamera2D& camera() const;                   
+
+	// 동적 맵 크기 질의
+	int32 getMapWidth() const;                     
+	int32 getMapHeight() const;
+
+	// 가변 맵 파서 (텍스트 기반)
+	void loadStageFromText_VarSize(const Array<String>& mapText);
+
+	// 스테이지 인덱스 로드 래퍼
+	void loadStageByIndex(int32 stageNumber);           
+
+	// 경계/이동 체크(가변)
+	bool isInsideMap(Point pos) const;                 
+	bool canMoveToPoint(Point pos) const;         
+
+	// 고정 카메라 유틸(추적 없음)
+	double computeFitScaleToMap(double margin = 0.95) const;
+	void applyFixedCameraFitToMap();                         
+	void applyFixedCameraFitToRect(const Rect& tileRect, double margin = 0.95); 
+	void updateFixedCameraZoomByWheelInput();              
+	void onStageLoaded_FixedCamera();                      
+
+	// 뷰 컬링
+	Rect getVisibleTileRect() const;         
+
+	// 월드/UI 드로잉 래핑(선택)
+	void drawWorldWithCamera(const std::function<void()>& worldDraw,
+							 const std::function<void()>& uiDraw);  
 };
