@@ -13,10 +13,10 @@ public:
 		float  gravity = 800.0f;
 		float  seed = 0.37f;
 
-		float  progress = 0.0f;
-		float  timeSeconds = 0.0f;
+		//float  progress = 0.0f;
+		//float  timeSeconds = 0.0f;
 
-		ColorF baseColor = ColorF{ 0.08, 0.08, 0.08 };
+		//ColorF baseColor = ColorF{ 0.08, 0.08, 0.08 };
 
 		Params() {}
 	};
@@ -40,6 +40,10 @@ public:
 	bool exploded() const;   // 폭발 연출이 끝났는가
 
 	void drawInst(const RectF& box, const Params& p);
+
+	bool isExploding() const;   // 폭발(파편) 구간: true
+	bool isPulsing()  const;    // 점등 구간: true
+
 private:
 	PixelShader m_ps;
 	struct UBO {

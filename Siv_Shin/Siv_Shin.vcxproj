@@ -336,6 +336,7 @@
     <Xml Include="App\example\xml\test.xml" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Camera\CustomCamera2D.hpp" />
     <ClInclude Include="Scene\GameOverScene.hpp" />
     <ClInclude Include="Scene\InGameScene.hpp" />
     <ClInclude Include="Scene\MainMenuScene.hpp" />

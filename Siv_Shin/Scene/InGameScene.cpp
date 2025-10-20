@@ -364,23 +364,20 @@ void InGameScene::updateMergePaintFX()
 }
 
 // 진행 중인 이펙트를 즉시 완료시키는 헬퍼 함수
+
 void InGameScene::forceMergePaintFXCompletion()
 {
 	if (!mergeFX_.active) return;
-	
-	// 이펙트가 진행 중이면 즉시 커밋
+
 	if (mergeFX_.commitPending) {
 		if (ColorBox* b = getBoxByUid(mergeFX_.targetUid)) {
 			b->color = mergeFX_.finalColor;
 		}
 		mergeFX_.commitPending = false;
 	}
-	
-	// 이펙트 상태 초기화
-	mergeFX_.active = false;
-	// 참고: PaintSpreadShader는 다음 startAnimation 호출 시 자동으로 리셋됨
-}
 
+	mergeFX_.active = false;
+}
 
 bool InGameScene::removeBoxByUid(uint64 uid)
 {
@@ -391,83 +388,152 @@ bool InGameScene::removeBoxByUid(uint64 uid)
 
 void InGameScene::triggerBombBoxFXForBlack_Multi(uint64 uid, double durationSec)
 {
-	BombBoxInst inst;
+	BombBoxInstance inst;
 	inst.uid = uid;
-	inst.t = 0.0;
-	inst.dur = Max(0.05, durationSec);
-	inst.seed = static_cast<uint32>(RandomUint32()); // 선택
-    // 폭발 시작 위치를 UID로부터 고정 저장하고, 즉시 박스를 제거하여 본체가 남지 않게 함
-    if (ColorBox* b = getBoxByUid(uid)) {
-        inst.tilePos = b->pos;
-        removeBoxByUid(uid);
-        bombFXs_.push_back(inst);
-    }
+	inst.effect = std::make_unique<BombBoxEffect>();
+	inst.effect->reset();
+	inst.params.pulseDuration = 3.0;
+	inst.params.pulseCount = 1.0;
+	inst.params.explodeTime = 0.5;
+	inst.params.pulseAmp = 0.12f;
+	inst.params.pulseSpeed = 10.0f;
+	inst.params.spread = 100.0f;
+	inst.params.seed = static_cast<float>(Random(0.0, 1.0));
+	bombFXs_.push_back(std::move(inst));
 }
 
 void InGameScene::updateBombBoxFX_Multi()
 {
-	if (bombFXs_.isEmpty()) return;
-
-	const double dt = Scene::DeltaTime();
-
-	// 시간 누적
 	for (auto& fx : bombFXs_) {
-		fx.t += dt;
+		if (fx.effect) {
+			fx.effect->update(Scene::DeltaTime());
+		}
 	}
-
-    // 만료된 인스턴스 정리: FX만 제거 (박스는 시작 시 제거됨)
-    bombFXs_.remove_if([&](const BombBoxInst& fx) {
-        return (fx.t >= fx.dur);
-    });
+	bombFXs_.remove_if([this](const BombBoxInstance& fx) {
+		if (fx.effect && fx.effect->exploded()) {
+			removeBoxByUid(fx.uid);
+			return true;
+		}
+		return false;
+	});
 }
 
-void InGameScene::drawBombBoxFX_Multi() {
-	const auto& cam = camera();
-	
-    for (const auto& fx : bombFXs_) {
-        // 박스는 FX 시작 시 제거되었으므로 저장된 타일 좌표를 사용
-        if (fx.tilePos.x >= 0 && fx.tilePos.y >= 0 &&
-            fx.tilePos.x < getMapWidth() && fx.tilePos.y < getMapHeight())
-        {
-            const Rect boxRect(fx.tilePos.x * TILE_SIZE, fx.tilePos.y * TILE_SIZE,
-                               TILE_SIZE, TILE_SIZE);
-			RectF inner = boxRect.stretched(-8);
 
-			// 월드 좌표를 카메라 스크린 좌표로 변환
-			// (카메라 변환 매트릭스 적용)
-			const Mat3x2 transform = cam.getMat3x2();
+void InGameScene::drawBombBoxFX_Multi()
+{
+	// 1. 현재 카메라의 변환 행렬을 직접 가져옵니다.
+	// 이 행렬은 줌, 이동 등 모든 카메라 변환 정보를 담고 있습니다.
+	const Mat3x2 transform = camera().getMat3x2();
+
+	for (auto& fx : bombFXs_)
+	{
+		if (!fx.effect) continue;
+
+		if (const ColorBox* b = getBoxByUid(fx.uid))
+		{
+			const s3d::Rect boxRect{ b->pos.x * TILE_SIZE, b->pos.y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+			const s3d::RectF inner = boxRect.stretched(-8);
+
+			// 2. 행렬을 사용해 월드 좌표계의 박스 중심점을 화면 좌표로 변환합니다.
 			const Vec2 worldCenter = inner.center();
 			const Vec2 screenCenter = transform.transformPoint(worldCenter);
+
+			// 3. 박스의 크기 또한 현재 카메라 줌(scale)에 맞게 조절합니다.
 			const Vec2 worldHalfSize = inner.size * 0.5;
-			const Vec2 screenHalfSize = worldHalfSize * cam.getScale();
+			const Vec2 screenHalfSize = worldHalfSize * camera().getScale();
 
-			const float progress = static_cast<float>(Clamp(fx.t / fx.dur, 0.0, 1.0));
+			// 4. 계산된 화면 좌표와 크기로 최종 RectF를 생성합니다.
+			const RectF screenRect(Arg::center = screenCenter, screenHalfSize * 2.0);
 
-			BombBoxEffect::Params p;
-			p.progress = progress;
-			p.timeSeconds = static_cast<float>(fx.t);
-			p.seed = fx.seed;
-			p.baseColor = ColorF(0.9, 0.3, 0.3);
-
-			p.pulseAmp = 0.08f;
-			p.pulseSpeed = 5.0f;
-			p.pulseCount = 3.0f;
-
-			// 스크린 크기에 비례하도록 조정
-			float boxSize = static_cast<float>(screenHalfSize.x * 2.0);
-			p.spread = boxSize * 3.0f;
-			p.gravity = 800.0f;
-
-			// 스크린 좌표로 변환된 RectF 생성
-			RectF screenRect(screenCenter.x - screenHalfSize.x,
-							 screenCenter.y - screenHalfSize.y,
-							 screenHalfSize.x * 2.0,
-							 screenHalfSize.y * 2.0);
-
-			g_Shaders.bombBox().drawInst(screenRect, p);
+			// 5. 이 최종 화면 좌표 RectF를 셰이더에 전달합니다.
+			fx.effect->draw(screenRect, fx.params);
 		}
 	}
 }
+
+bool InGameScene::isBombGhost(uint64 uid) const
+{
+	for (const auto& fx : bombFXs_) {
+		if (fx.uid == uid && fx.effect && !fx.effect->exploded()) return true;
+	}
+	return false;
+}
+
+bool InGameScene::isBombHidden(uint64 uid) const
+{
+	for (const auto& fx : bombFXs_) {
+		if (fx.uid == uid && fx.effect && !fx.effect->exploded()) return true;
+	}
+	return false;
+}
+
+bool InGameScene::isBombNonBlocking(uint64 uid) const
+{
+	for (const auto& fx : bombFXs_) {
+		if (fx.uid == uid && fx.effect && fx.effect->isExploding()) return true;
+	}
+	return false;
+}
+
+bool InGameScene::isBombPulsing(uint64 uid) const
+{
+	for (const auto& fx : bombFXs_) {
+		if (fx.uid == uid && fx.effect && fx.effect->isPulsing()) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool InGameScene::shouldDrawBox(const ColorBox& box) const
+{
+	if (box.color == BoxColor::Black && isBombHidden(box.uid)) return false;
+	return true;
+}
+
+void InGameScene::drawBoxes_RespectBombFX()
+{
+	for (const auto& box : boxes_) {
+		if (!shouldDrawBox(box)) continue;
+
+		const Rect boxRect{ box.pos.x * TILE_SIZE, box.pos.y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+		const bool onGoal = std::any_of(
+			getGoalPositionsForColor(box.color).begin(),
+			getGoalPositionsForColor(box.color).end(),
+			[&](const Point& g) { return g == box.pos; }
+		);
+
+		if (onGoal) {
+			Circle{ boxRect.center(), 32 }.draw(ColorF{ getBoxColorF(box.color), 0.3 });
+		}
+
+		if (mergeFX_.active && (box.uid == mergeFX_.targetUid)) {
+			RectF inner = boxRect.stretched(-8);
+			constexpr double frameThickness = 3.0;
+			RectF centerRect = inner.stretched(-frameThickness);
+			const ColorF frameBase = ColorF{
+				mergeFX_.baseColor.r * 1.2,
+				mergeFX_.baseColor.g * 1.2,
+				mergeFX_.baseColor.b * 1.2, 1.0
+			};
+			g_Shaders.paintSpread().draw(inner, frameBase);
+			centerRect.draw(mergeFX_.baseColor);
+			g_Shaders.paintSpread().draw(inner, mergeFX_.baseColor);
+		}
+		else {
+			const ColorF c = getBoxColorF(box.color);
+			boxRect.stretched(-8).draw(c);
+			boxRect.stretched(-8).drawFrame(3, 0, ColorF{ c.r * 1.2, c.g * 1.2, c.b * 1.2 });
+			Circle{ boxRect.center(), 8 }.draw(ColorF{ c, 0.8 });
+		}
+	}
+
+}
+
+void InGameScene::destroyWalls8(Point centerTile) {}
+void InGameScene::spawnWallBreakFXAtTile(Point tile) {}
+void InGameScene::updateWallBreakFX() {}
+void InGameScene::drawWallBreakFX() {}
 
 
 bool InGameScene::canMoveTo(Point pos) const
@@ -486,22 +552,28 @@ bool InGameScene::canMoveTo(Point pos) const
 
 ColorBox* InGameScene::getBoxAt(Point pos)
 {
-    for (auto& box : boxes_)
-    {
-        if (box.pos == pos)
-            return &box;
-    }
-    return nullptr;
+	for (auto& box : boxes_) {
+		if (box.pos != pos) continue;
+		// 충돌 제외는 '폭발 구간'에서만
+		if (box.color == BoxColor::Black && isBombNonBlocking(box.uid)) {
+			continue;
+		}
+		return &box;
+	}
+	return nullptr;
 }
 
+// const 버전
 const ColorBox* InGameScene::getBoxAt(Point pos) const
 {
-    for (const auto& box : boxes_)
-    {
-        if (box.pos == pos)
-            return &box;
-    }
-    return nullptr;
+	for (const auto& box : boxes_) {
+		if (box.pos != pos) continue;
+		if (box.color == BoxColor::Black && isBombNonBlocking(box.uid)) {
+			continue;
+		}
+		return &box;
+	}
+	return nullptr;
 }
 
 bool InGameScene::canPushBox(Point playerPos, Point boxPos, Point direction) const
@@ -974,60 +1046,54 @@ void InGameScene::handleInput()
 			if (Optional<BoxColor> merged = getMergedColor(box->color, target->color)) {
 				// ★★ 새 합성 시작 전에 진행 중인 이펙트 즉시 완료
 				forceMergePaintFXCompletion();
-				
+
 				// 1) 이펙트 파라미터 준비
-				Vec2 originUV = (dir == Point{ 1, 0 }) ? Vec2(0.0, 0.5)
-					: (dir == Point{ -1, 0 }) ? Vec2(1.0, 0.5)
-					: (dir == Point{ 0, 1 }) ? Vec2(0.5, 0.0)
-					: Vec2(0.5, 1.0);
+				Vec2 originUV = impactOriginLocalUVForDir(dir);
 				const ColorF base = getBoxColorF(target->color);
 				const ColorF result = getBoxColorF(*merged);
 
-                // 2) 실제 합성: 두 상자 제거 후 결과 색으로 새 박스 생성(UID 부여)
-                const Point resultPos = next;
-                boxes_.remove_if([&](const ColorBox& b) {
-                    return (b.pos == box->pos || b.pos == target->pos);
-                });
-                const BoxColor finalColorNow = *merged; // 논리 색상은 즉시 결과 색으로 적용
-                ColorBox newBox{ resultPos, finalColorNow, 0.0, nextBoxUID_++ }; // uid 부여
-                if (*merged == BoxColor::Black) {
-                    newBox.creationTime = gameTime_; // 생성 시각 기록
-                    // 폭발 FX는 3초 후 트리거 (updateBlackBoxes에서 처리)
-                }
-                boxes_.push_back(newBox);
+				// 2) 실제 합성: 두 상자 제거 후 '타깃 기존색'으로 결과 위치에 새 박스 생성(UID 부여)
+				const Point resultPos = next;
+				// 효과가 진행되는 동안에는 시각적으로는 기존 타겟의 색을 유지합니다.
+				const BoxColor visualColor = target->color;
+				boxes_.remove_if([&](const ColorBox& b) {
+					return (b.pos == box->pos || b.pos == target->pos);
+				});
+
+				ColorBox newBox{ resultPos, visualColor, 0.0, nextBoxUID_++ };
+				if (*merged == BoxColor::Black) {
+					newBox.creationTime = gameTime_;
+					// 여기서 바로 BombFX를 트리거합니다.
+					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
+				}
+				boxes_.push_back(newBox);
 
 				// 3) 이펙트 바인딩(UID 기준) + 즉시 시작
 				mergeFX_.active = true;
 				mergeFX_.baseColor = base;
 				mergeFX_.paintColor = result;
 				mergeFX_.originUV = originUV;
-				mergeFX_.targetUid = newBox.uid;       // ← 타일이 아닌 UID로 바인딩
-                mergeFX_.finalColor = *merged;   // 렌더 전용 파라미터 (논리 색은 이미 적용됨)
-                mergeFX_.commitPending = false;  // 지연 커밋 사용 안 함
+				mergeFX_.targetUid = newBox.uid;
+				mergeFX_.finalColor = *merged; // 효과가 끝나면 이 색으로 바뀝니다.
+				mergeFX_.commitPending = true; // 효과가 끝난 후 논리적 색상 변경 예약
+
 				g_Shaders.paintSpread().setPaintColor(result);
 				g_Shaders.paintSpread().setOriginPoint(originUV);
-				g_Shaders.paintSpread().setNoiseScale(1.0f);
-				g_Shaders.paintSpread().setWaveStrength(0.4f);
-				g_Shaders.paintSpread().setSpreadSpeed(2.0f);  // 0.6 → 2.0 (더 빠르게)
+				g_Shaders.paintSpread().setSpreadSpeed(2.0f);
 				g_Shaders.paintSpread().startAnimation();
 
-				// 합성된 블록의 효과음 재생
 				playBoxSound(*merged);
 
-				// 4) 점수/이동/저장
 				const ColorTier tier = getColorTier(*merged);
 				if (tier == ColorTier::Secondary) score_ += 50;
 				else if (tier == ColorTier::Tertiary) score_ += 100;
 
 				movePlayerTo(newPos);
-				inputCooldown_ = moveDelay_;
 				moves_ += 1;
 				collectItem(newPos);
 				saveGameState();
-
 				if (tacoDirection_ != newDir || isFacingLeft_ != newFacingLeft) {
 					tacoDirection_ = newDir; isFacingLeft_ = newFacingLeft;
-					tacoAnimFrame_ = 0;     tacoAnimTimer_ = 0.0;
 				}
 				return;
 			}
@@ -1102,6 +1168,10 @@ void InGameScene::draw()
         drawPlayer();
         drawUI();
     }
+
+	drawBombBoxFX_Multi();
+
+
     // 카메라 변환 종료
 
     // Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리 (스크린 좌표계에서 마스크)
@@ -1251,70 +1321,7 @@ void InGameScene::drawMap()
 	}
 
 	// 상자
-	for (const auto& box : boxes_) {
-		const Rect boxRect{ box.pos.x * TILE_SIZE, box.pos.y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
-		const bool isFX = (mergeFX_.active && (box.uid == mergeFX_.targetUid));
-
-		// 목표 위 빛남
-		bool onGoal = false;
-		const Array<Point>& goals = getGoalPositionsForColor(box.color);
-		for (const auto& g : goals) {
-			if (box.pos == g) { onGoal = true; break; }
-		}
-		if (onGoal) {
-			Circle{ boxRect.center(), 32 }.draw(ColorF{ getBoxColorF(box.color), 0.3 });
-		}
-
-		if (isFX)
-		{
-			g_Shaders.paintSpread().setPaintColor(mergeFX_.paintColor);
-			g_Shaders.paintSpread().setOriginPoint(mergeFX_.originUV);
-
-			RectF inner = boxRect.stretched(-8);          // 기준 사각형(원래 채움과 동일 크기)
-			constexpr double frameThickness = 3.0;              // 기존 drawFrame 두께와 동일하게
-			RectF centerRect = inner.stretched(-frameThickness);
-
-
-			const ColorF frameBase = ColorF{
-				mergeFX_.baseColor.r * 1.2,
-				mergeFX_.baseColor.g * 1.2,
-				mergeFX_.baseColor.b * 1.2, 1.0
-			};
-			g_Shaders.paintSpread().draw(inner, frameBase); 
-
-
-			centerRect.draw(mergeFX_.baseColor);              
-
-			
-			g_Shaders.paintSpread().draw(inner, mergeFX_.baseColor); 
-		}
-		else
-		{
-			// 기존 일반 렌더 (채움 + 프레임 + 중앙 점 등)
-			const ColorF c = getBoxColorF(box.color);
-			boxRect.stretched(-8).draw(c);
-			boxRect.stretched(-8).drawFrame(3, 0, ColorF{ c.r * 1.2, c.g * 1.2, c.b * 1.2 });
-			Circle{ boxRect.center(), 8 }.draw(ColorF{ c, 0.8 });
-
-			// 검정 블록 카운트다운 (3→2→1), 소수점 없이
-			if (box.color == BoxColor::Black) {
-				const bool hasActiveFX = bombFXs_.any([&](const BombBoxInst& fx) { return fx.uid == box.uid; });
-				if (!hasActiveFX) {
-					double elapsed = Max(0.0, gameTime_ - box.creationTime);
-					double remain = Max(0.0, 3.0 - elapsed);
-					int count = static_cast<int>(Ceil(remain)); // 3,2,1
-					count = Clamp(count, 0, 3);
-					if (count > 0) {
-						String txt = U"{}"_fmt(count);
-						auto dt = gameFont_(txt);
-						// 가독성을 위한 약한 그림자
-						dt.drawAt(boxRect.center().movedBy(1, 1), ColorF{ 0, 0, 0, 0.8 });
-						dt.drawAt(boxRect.center(), Palette::White);
-					}
-				}
-			}
-		}
-	}
+	drawBoxes_RespectBombFX();
 
 	// 아이템
 	for (const auto& item : items_) {
@@ -1549,27 +1556,37 @@ const Array<Point>& InGameScene::getGoalPositionsForColor(BoxColor color) const
 
 void InGameScene::updateBlackBoxes()
 {
-    // 검정 블록: 3초 후 폭발 FX 시작
-    // 주의: 순회 중 boxes_를 변경하면 크래시가 발생할 수 있으므로, 먼저 UID를 수집 후 처리
-    Array<uint64> toTrigger;
-    toTrigger.reserve(boxes_.size());
+	//// 처리할 UID를 임시로 저장할 배열
+	//Array<uint64> toTrigger;
 
-    for (const auto& box : boxes_) {
-        if (box.color != BoxColor::Black) continue;
+	//// 모든 상자를 순회하며 검은 상자를 찾습니다.
+	//for (const auto& box : boxes_)
+	//{
+	//	if (box.color != BoxColor::Black) continue;
 
-        const bool hasActiveFX = bombFXs_.any([&](const BombBoxInst& fx) { return fx.uid == box.uid; });
-        if (hasActiveFX) continue; // 진행 중이면 대기
+	//	// 이미 이 상자에 대한 폭발 효과가 진행 중인지 확인합니다.
+	//	// (중복 트리거 방지)
+	//	bool hasActiveFX = false;
+	//	for (const auto& fx : bombFXs_) {
+	//		if (fx.uid == box.uid) {
+	//			hasActiveFX = true;
+	//			break;
+	//		}
+	//	}
+	//	if (hasActiveFX) continue;
 
-        const double elapsed = gameTime_ - box.creationTime;
-        if (elapsed >= 3.0) {
-            toTrigger.push_back(box.uid);
-        }
-    }
+	//	// 생성된 후 3초가 지났는지 확인합니다.
+	//	const double elapsed = gameTime_ - box.creationTime;
+	//	if (elapsed >= 3.0) {
+	//		// 3초가 지났다면, 효과를 발동시킬 목록에 추가합니다.
+	//		toTrigger.push_back(box.uid);
+	//	}
+	//}
 
-    for (const uint64 uid : toTrigger) {
-        // FX 시작과 동시에 박스 제거는 triggerBombBoxFXForBlack_Multi 내부에서 수행
-        triggerBombBoxFXForBlack_Multi(uid, 1.5);
-    }
+	//// 목록에 있는 모든 UID에 대해 폭발 효과를 트리거합니다.
+	//for (const uint64 uid : toTrigger) {
+	//	triggerBombBoxFXForBlack_Multi(uid, BLACK_BOX_LIFETIME);
+	//}
 }
 
 Vec2 InGameScene::tileToPixel(Point tilePos) const

@@ -77,7 +77,7 @@ private:
     static constexpr int32 TILE_SIZE = 80;  // 타일 크기 증가 (1024/11 ≈ 93, 여백 고려하여 80)
     static constexpr int32 MAP_WIDTH = 11;  // 11x11 맵
     static constexpr int32 MAP_HEIGHT = 11;
-    static constexpr double BLACK_BOX_LIFETIME = 1.5;  // 검은색 블록 수명 (초)
+    static constexpr double BLACK_BOX_LIFETIME = 3.5;  // 검은색 블록 수명 (초)
 
 	uint64 nextBoxUID_ = 1;
 
@@ -223,23 +223,33 @@ private:
 										 const ColorF& resultColor, Point pushDir);
 	void updateMergePaintFX();
 	void forceMergePaintFXCompletion(); // 진행 중인 이펙트를 즉시 완료
-	
-	// BombBox Shader helper (동시 다발 폭발용)
-	struct BombBoxInst {
-		uint64 uid = 0;          // 대상 박스 UID
-		Point  tilePos{ 0, 0 };  // 폭발 위치(타일 좌표) - FX 시작 시 고정
-		double t = 0.0;          // 경과 시간
-		double dur = 1.5;        // FX 지속 시간
-		uint32 seed = 0;         // 이펙트 랜덤 변주용(선택)
-	};
 
-	Array<BombBoxInst> bombFXs_;  // 동시 다발 폭발용 컨테이너
 	bool removeBoxByUid(uint64 uid);
 
-	// 발동/업데이트/드로우
+	// BombBox Shader helper (동시 다발 폭발용)
+	struct BombBoxInstance {
+		uint64 uid = 0;
+		std::unique_ptr<BombBoxEffect> effect;
+		BombBoxEffect::Params params;
+	};
+	Array<BombBoxInstance> bombFXs_;
+
 	void triggerBombBoxFXForBlack_Multi(uint64 uid, double durationSec = 1.5);
 	void updateBombBoxFX_Multi();
 	void drawBombBoxFX_Multi();
+	
+
+	bool isBombGhost(uint64 uid) const;        // bomb FX 진행 중인 박스인가
+	bool isBombHidden(uint64 uid) const;        // 렌더 숨김: pulse+explode 모두
+	bool isBombNonBlocking(uint64 uid) const;   // 충돌 제외: explode만
+	bool isBombPulsing(uint64 uid) const;
+	bool shouldDrawBox(const ColorBox& box) const; // 유령 상태면 그리지 않음
+	void drawBoxes_RespectBombFX();
+
+	void destroyWalls8(Point centerTile);
+	void spawnWallBreakFXAtTile(Point tile);
+	void updateWallBreakFX();
+	void drawWallBreakFX();
 
 public:
     InGameScene();

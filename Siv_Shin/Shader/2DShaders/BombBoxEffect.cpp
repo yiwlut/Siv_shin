@@ -43,8 +43,25 @@ bool BombBoxEffect::exploded() const {
 	return m_finished;
 }
 
-void BombBoxEffect::draw(const RectF& box, const Params& p) {
-	// 타임라인: pulse -> explode -> finish
+// BombBoxEffect.cpp
+bool BombBoxEffect::isExploding() const
+{
+	// pulse 종료 후 폭발 시작 ~ 종료(finished 전)까지
+	return m_inExplode && !m_finished;
+}
+
+bool BombBoxEffect::isPulsing() const
+{
+	// 트리거 전 ~ pulse 진행 중
+	return (!m_inExplode) && (!m_finished);
+}
+
+
+
+// BombBoxEffect.cpp
+void BombBoxEffect::draw(const RectF& boxScreenTL, const Params& p)
+{
+	// 타임라인 업데이트
 	if (!m_inExplode) {
 		if (m_pulseT >= p.pulseDuration) {
 			m_pulseT = 0.0;
@@ -63,22 +80,60 @@ void BombBoxEffect::draw(const RectF& box, const Params& p) {
 	}
 
 	const Size sceneSize = Scene::Size();
+
+	// 화면(TL) 좌표계에서의 중심/반폭
+	const Vec2 centerTL = boxScreenTL.center();
+	const Vec2 halfSize = boxScreenTL.size * 0.5;
+
+	UBO u;
+	u.rt = Float4{
+		static_cast<float>(sceneSize.x),
+		static_cast<float>(sceneSize.y),
+		static_cast<float>(m_time),
+		m_inExplode ? static_cast<float>(m_explodeT / p.explodeTime) : 0.0f
+	};
+	// TL 그대로 전달 (BL 변환 금지)
+	u.ch = Float4{
+		static_cast<float>(centerTL.x),
+		static_cast<float>(centerTL.y),
+		static_cast<float>(halfSize.x),
+		static_cast<float>(halfSize.y)
+	};
+	u.pp = Float4{ p.pulseAmp, p.pulseSpeed, p.spread, p.gravity };
+	u.sd = Float4{ p.seed, 0.0f, 0.0f, 0.0f };
+	m_cb = u;
+
+	const ScopedCustomShader2D shader{ m_ps };
+	Graphics2D::SetPSConstantBuffer(1, m_cb);
+
+	// 카메라 변환 무시: 화면 전체에 패스
+	const Transformer2D identity{ Mat3x2::Identity(), TransformCursor::Yes };
+	Rect{ Scene::Rect() }.draw(ColorF{ 0.0, 0.0 });
+}
+
+
+
+
+void BombBoxEffect::drawInst(const RectF& box, const Params& p) {
+	const Size sceneSize = Scene::Size();
 	const Vec2 centerTL = box.center();
 	const Vec2 halfSize = box.size * 0.5;
 
-
 	UBO u;
-	u.rt = Float4{ static_cast<float>(sceneSize.x),
-				   static_cast<float>(sceneSize.y),
-				   static_cast<float>(m_time),
-				   static_cast<float>(p.explodeTime <= 0.0 ? 0.0 : (m_explodeT / p.explodeTime)) };
+	u.rt = Float4{
+		static_cast<float>(sceneSize.x),
+		static_cast<float>(sceneSize.y),
+		static_cast<float>(m_time),
+		p.explodeTime
+	};
 
-	u.ch = Float4{ static_cast<float>(centerTL.x),
-				   static_cast<float>(centerTL.y),
-				   static_cast<float>(halfSize.x),
-				   static_cast<float>(halfSize.y) };
+	u.ch = Float4{
+		static_cast<float>(centerTL.x),
+		static_cast<float>(centerTL.y),
+		static_cast<float>(halfSize.x),
+		static_cast<float>(halfSize.y)
+	};
 
-	// 폭발 전에는 pulseSpeed 사용, 폭발 중에는 유지
 	u.pp = Float4{
 		p.pulseAmp,
 		p.pulseSpeed,
@@ -89,26 +144,8 @@ void BombBoxEffect::draw(const RectF& box, const Params& p) {
 	u.sd = Float4{ p.seed, 0.0f, 0.0f, 0.0f };
 
 	m_cb = u;
+
 	const ScopedCustomShader2D shader{ m_ps };
 	Graphics2D::SetPSConstantBuffer(1, m_cb);
 	Rect{ Scene::Rect() }.draw(ColorF{ 0.0, 0.0 });
-}
-
-void BombBoxEffect::drawInst(const RectF& box, const Params& p)
-{
-	const Size sceneSize = Scene::Size();
-	const Vec2 centerTL = box.center();
-	const Vec2 halfSize = box.size * 0.5;
-
-	UBO u;
-	u.rt = Float4{ (float)sceneSize.x, (float)sceneSize.y, p.timeSeconds, Clamp(p.progress, 0.0f, 1.0f) };
-	u.ch = Float4{ (float)centerTL.x, (float)centerTL.y, (float)halfSize.x, (float)halfSize.y };
-	u.pp = Float4{ p.pulseAmp, p.pulseSpeed, p.spread, p.gravity };
-	u.sd = Float4{ p.seed, 0.0f, 0.0f, 0.0f }; // minThickness를 sd.y로 쓰는 경우 여기 채움
-	u.col = Float4{ (float)p.baseColor.r, (float)p.baseColor.g, (float)p.baseColor.b, (float)p.baseColor.a }; // [추가]
-
-	m_cb = u;
-	const ScopedCustomShader2D shader{ m_ps };
-	Graphics2D::SetPSConstantBuffer(1, m_cb);
-	Rect{ Scene::Rect() }.draw(ColorF{ 0.0 }); // FS 전화면 패스
 }
