@@ -45,12 +45,25 @@ void main(){
     float explodeT  = rt.w;
 
     vec2 centerTL = ch.xy;
-    //vec2 p = gl_FragCoord.xy; p.y = resolution.y - p.y;
     vec2 p = gl_FragCoord.xy;
     vec2 pos = p - centerTL;                                              
 
+    // =================================================================
+    // ### 수정 #1: 진행률 변수 추가 ###
+    // 점멸 효과가 진행되는 3초 동안 0.0에서 1.0으로 증가하는 변수입니다.
+    // 이 변수를 이용해 박동 속도와 색상을 조절합니다.
+    float preExplodeProgress = saturate(time / 3.0);
+    // =================================================================
+
     // 프리(점등) 단계
-    float pulse    = 1.0 + pp.x * sin(time * pp.y);
+    // =================================================================
+    // ### 수정 #2: 박동 효과 점점 빠르게 ###
+    // 시간이 지날수록(preExplodeProgress가 1에 가까워질수록) 박동 주파수가 빨라집니다.
+    // 1.0 + 2.0 * ... : 시작은 1배속, 끝날 때는 3배(1+2)속이 됩니다.
+    float freqMultiplier = 1.0 + 2.0 * preExplodeProgress * preExplodeProgress; // 마지막에 급격히 빨라지도록 제곱 사용
+    float pulse    = 1.0 + pp.x * sin(time * pp.y * freqMultiplier);
+    // =================================================================
+    
     vec2  halfPre  = ch.zw * pulse;
     vec2  halfFix  = ch.zw;
     float aaPre = fwidth(halfPre.x + halfPre.y) * 0.25 + 1.0;
@@ -65,6 +78,15 @@ void main(){
     warm *= (0.85 + 0.15 * sin(time * 11.1));
     vec3 redWarm = mix(redDeep, redBright, saturate(0.35 + 0.65 * warm));
     vec3 preFillCol = mix(nearBlack, redWarm, env);                       
+
+    // =================================================================
+    // ### 수정 #3: 붉은색 강조 효과 ###
+    // 시간이 지날수록(preExplodeProgress가 1에 가까워질수록) 밝은 오렌지색 '글로우'를 덧씌웁니다.
+    // pow(..., 4.0)을 사용하여 폭발 직전에만 효과가 강하게 나타나도록 합니다.
+    float glowAmount = pow(preExplodeProgress, 4.0);
+    vec3 glowColor = vec3(1.0, 0.35, 0.1); // 밝은 오렌지/레드 색상
+    vec3 finalFillCol = preFillCol + glowColor * glowAmount;
+    // =================================================================
 
     const float framePx = 3.0;
     vec2 halfInnerSafe = max(halfPre - vec2(framePx), vec2(1.0));
@@ -83,7 +105,10 @@ void main(){
     vec2  uv = posPre / max(halfInnerSafe, vec2(1.0));
     float dirHL = saturate(0.5 + 0.5 * (-uv.x + uv.y));
     vec3  frameCol = vec3(0.24, 0.24, 0.27);
-    vec3  fillCol  = preFillCol * (1.0 - 0.10 * (1.0 - edgeMask)) + 0.08 * dirHL * edgeMask; 
+    
+    // ### 수정 #4: 최종 색상 적용 ###
+    // 기존 preFillCol 대신 finalFillCol을 사용합니다.
+    vec3  fillCol  = finalFillCol * (1.0 - 0.10 * (1.0 - edgeMask)) + 0.08 * dirHL * edgeMask; 
 
     if (explodeT <= 1e-6){
         float a = clamp(aFrame + aFill, 0.0, 1.0);
@@ -93,7 +118,8 @@ void main(){
         return;
     } 
 
-    // ---------- 폭발 조각 ----------
+    // ---------- 폭발 조각 (이 부분은 수정 없음) ----------
+    // ... (기존 폭발 조각 코드와 동일)
     vec2  N[10]; float D[10];
     for (int i = 0; i < 10; ++i){
         float ang = hash11(sd.x * 113.0 + float(i) * 17.0) * 6.2831853;
@@ -171,19 +197,14 @@ void main(){
                 float aE = aRect * aCuts;
                 if (aE > bestA){
                     bestA = aE;
-
-                    // 0=bomb(붉은 불빛), 1=wall(회색 파편)
+                    
                     float tintMode = step(0.5, sd.z);
                     vec3 tintCol = col.rgb;
-
-                    // 폭탄용 붉은 조각
                     vec3 fireCol = mix(vec3(0.78, 0.22, 0.08), vec3(0.10, 0.02, 0.02), kRot);
                     float edge = smoothstep(aaExp * 3.0, 0.0, abs(sdRect));
                     fireCol *= (0.90 + 0.10 * edge);
                     float sparkR = 0.28 * (hash21(pos * 0.7 + vec2(sd.x) + time * 2.3) - 0.5);
                     fireCol += vec3(max(0.0, sparkR));
-
-                    // 벽용 회색 조각(벽 색 유지 + 에지 하이라이트)
                     vec3 wallCol = tintCol * (0.90 + 0.10 * edge);
                     float sparkG = 0.18 * (hash21(q * 0.9 + vec2(sd.x * 3.1)) - 0.5);
                     wallCol += vec3(max(0.0, sparkG));
