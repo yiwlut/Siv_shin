@@ -41,15 +41,16 @@
 
 namespace StageData
 {
+	//7x7
     inline const Array<String> STAGE_1 = {
-        U"########",
-        U"########", 
-        U"###b####",
-        U"###B####",
-        U"T  R Y o",  
-        U"###G####",
-        U"###g####",  
-        U"########", 
+        U"#######", 
+        U"###b###",
+        U"###B###",
+        U"T R Y o",  
+        U"###G###",
+        U"###g###",  
+        U"#######",
+
     };
 
 	//inline const Array<String> STAGE_2 = {
@@ -57,59 +58,51 @@ namespace StageData
 	//	U"TRY",
 	//	U"   ",
 	//};
+
+
+	//8x8
     inline const Array<String> STAGE_2 = {
-		U"##########",
-		U"#  v B R #",
-		U"# R      #",  
-		U"#        #",
-		U"#     Y  #",
-		U"#T       #",  
-		U"#   r  o #",
-		U"#  R     #",  
-		U"#        #",  
-		U"##########"
+		U"########",
+		U"# vB R #",
+		U"# R    #",  
+		U"# T    #",
+		U"#    Y #",
+		U"#  Rr o#",
+		U"#      #",  
+		U"########"
 	};
 
+	//7x7
 	inline const Array<String> STAGE_3 = {
-		U"###########",
-		U"###########",  
-		U"####   ####",  
-		U" YBR   ####",  
-		U" V#   #####",
-		U"   #   ####",  
-		U"####   ####",  
-		U"####   OBv#",
-		U"#### T ####",  
-		U"###########",
-		U"###########"
+		U"#######",
+		U"###  ##",
+		U"YBR  ##",  
+		U" V#  ##",
+		U"    T##",  
+		U"## OBv#",
+		U"#######",
 	};
 
     inline const Array<String> STAGE_4 = {
-		U"###########",
-		U"######v####",  
-		U"####  O####",  
-		U"###   V ###",  
-		U"## R    ###",
-		U"#T   BO ###",  
-		U"##      ###",  
-		U"### Y   ###",  
-		U"####BV ####",  
-		U"####v######",
-		U"###########"
+		U"## VOv#",  
+		U"#     #",  
+		U" R    #",
+		U"T  BO #",  
+		U"# Y   #",  
+		U"##BV ##",  
+		U"##v####",
 	};
 
     inline const Array<String> STAGE_5 = {
-		U"##### #####",
-		U"###g Y ####",  
-		U"###   BG###",
-		U"###R      #",  
-		U"# Y    R  #",  
-		U"#    T    #",
-		U"#       Y #",
-		U"#      R###",  
-		U"###BB   ###",
-		U"#### B v###",  
-		U"##### #####"
+		U"#### ####",
+		U"###gY ###",  
+		U"###R BG##",
+		U"# Y T R #",  
+		U"#    Y  #",
+		U"##BB  R##",
+		U"### B v##",  
+		U"#### ####",
+		U"#### ####",
 	};
 
     inline const Array<String> STAGE_6 = {
