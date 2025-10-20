@@ -42,53 +42,35 @@
 namespace StageData
 {
     inline const Array<String> STAGE_1 = {
-        U"###########",
-        U"###########",
-        U"###########", 
-        U"#####b#####",
-        U"#####B#####",
-        U"T     R Y o",  
-        U"#####G#####",
-        U"#####g#####",  
-        U"###########", 
-        U"###########",
-        U"###########"
+        U"########",
+        U"########", 
+        U"###b####",
+        U"###B####",
+        U"T  R Y o",  
+        U"###G####",
+        U"###g####",  
+        U"########", 
     };
 
-	inline const Array<String> STAGE_2 = {
-		U"  o",
-		U"TRY",
-		U"   ",
-	};
- //   inline const Array<String> STAGE_2 = {
-	//	U"###########",
-	//	U"#  v B  R #",
-	//	U"# R       #",  
-	//	U"#         #",
-	//	U"#     Y   #",
-	//	U"#T        #",  
-	//	U"#       o #",
-	//	U"#   r     #",  
-	//	U"# R       #",  
-	//	U"#         #",
-	//	U"###########"
+	//inline const Array<String> STAGE_2 = {
+	//	U"  o",
+	//	U"TRY",
+	//	U"   ",
 	//};
+    inline const Array<String> STAGE_2 = {
+		U"##########",
+		U"#  v B R #",
+		U"# R      #",  
+		U"#        #",
+		U"#     Y  #",
+		U"#T       #",  
+		U"#   r  o #",
+		U"#  R     #",  
+		U"#        #",  
+		U"##########"
+	};
 
 	inline const Array<String> STAGE_3 = {
-		U"#o#########",
-		U"    #   #v#",  
-		U"    B #   #",  
-		U"#   #   O #",  
-		U"#R### ### #",
-		U"     T     ",  
-		U"# ### ###R#",  
-		U"# V   #   #",  
-		U"#   # Y    ",  
-		U"#o#   #    ",
-		U"#########v#"
-	};
-
-	inline const Array<String> STAGE_4 = {
 		U"###########",
 		U"###########",  
 		U"####   ####",  
@@ -102,7 +84,7 @@ namespace StageData
 		U"###########"
 	};
 
-    inline const Array<String> STAGE_5 = {
+    inline const Array<String> STAGE_4 = {
 		U"###########",
 		U"######v####",  
 		U"####  O####",  
@@ -116,7 +98,7 @@ namespace StageData
 		U"###########"
 	};
 
-    inline const Array<String> STAGE_6 = {
+    inline const Array<String> STAGE_5 = {
 		U"##### #####",
 		U"###g Y ####",  
 		U"###   BG###",
@@ -130,7 +112,7 @@ namespace StageData
 		U"##### #####"
 	};
 
-    inline const Array<String> STAGE_7 = {
+    inline const Array<String> STAGE_6 = {
 		U"###########",
 		U"###########",  
 		U"###########",
@@ -144,7 +126,7 @@ namespace StageData
 		U"###########"
 	};
 
-    inline const Array<String> STAGE_8 = {
+    inline const Array<String> STAGE_7 = {
 		U"###########",
 		U"# R R R R #",  
 		U"#R R R6R R#",
@@ -158,7 +140,7 @@ namespace StageData
 		U"###########"
 	};
 
-    inline const Array<String> STAGE_9 = {
+    inline const Array<String> STAGE_8 = {
 		U"##6########",
 		U"## # #   ##",  
 		U"oG R   #  #",
@@ -173,7 +155,7 @@ namespace StageData
 	};
 
     /// @brief 모든 스테이지 맵 데이터를 반환하는 함수
-    /// @param stageNumber 스테이지 번호 (1-9)
+    /// @param stageNumber 스테이지 번호 (1-8)
     /// @return 해당 스테이지의 맵 데이터 (빈 배열이면 스테이지 없음)
     inline Array<String> getStageMap(int32 stageNumber)
     {
@@ -187,7 +169,6 @@ namespace StageData
         case 6: return STAGE_6;
         case 7: return STAGE_7;
         case 8: return STAGE_8;
-        case 9: return STAGE_9;
         default: return STAGE_1; // 기본값: 스테이지 1
         }
     }
@@ -196,7 +177,7 @@ namespace StageData
     /// @return 총 스테이지 개수
     inline constexpr int32 getTotalStageCount()
     {
-        return 9;
+        return 8;
     }
 
     /// @brief 스테이지가 유효한지 확인

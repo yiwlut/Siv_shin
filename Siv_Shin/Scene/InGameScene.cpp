@@ -1050,21 +1050,25 @@ void InGameScene::updateAnimations()
 void InGameScene::draw()
 {
     drawBackground();
-	// 카메라 변환 시작
-	const auto _t = camera().createTransformer();
-
-    drawMap();
-    drawPlayer();
-    drawUI();
+	
+    // 카메라 변환 시작 (월드 렌더링 + 인게임 UI)
+	{
+        const auto _t = camera().createTransformer();
+        
+        drawMap();
+        drawPlayer();
+        drawUI();
+    }
+    // 카메라 변환 종료
     
-    // 조작법 도움말 표시 (포커스 잃었을 때도 표시)
+    // 조작법 도움말 표시 (포커스 잃었을 때도 표시) - 카메라 변환 밖에서 그리기
     if (showHelpScreen_)
     {
         drawHelpScreen();
         return;  // 도움말이 표시 중이면 다른 UI는 그리지 않음
     }
     
-    // 클리어 효과 - 버튼과 Move 횟수 표시
+    // 클리어 효과 - 버튼과 Move 횟수 표시 (카메라 변환 밖에서 그리기)
     if (isCleared_ && showClearButtons_)
     {
         // 배경 오버레이 표시
@@ -1109,7 +1113,7 @@ void InGameScene::draw()
         gameFont_(U"Press Space or Enter").drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 + 150, ColorF{ 0.8, 0.8, 0.8 });
     }
     
-    // 클리어 이펙트 그리기 (가장 마지막에 - 모든 UI 위에)
+    // 클리어 이펙트 그리기 (가장 마지막에 - 모든 UI 위에, 카메라 변환 밖에서)
     if (showClearEffect_)
     {
         drawClearEffect();
