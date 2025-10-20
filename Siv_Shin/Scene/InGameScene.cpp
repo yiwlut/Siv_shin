@@ -350,7 +350,7 @@ void InGameScene::updateMergePaintFX()
 {
 	if (!mergeFX_.active) return;
 
-	g_Shaders.paintSpread().updateProgress(Scene::DeltaTime()); // 즉시 누적[attached_file:36]
+	g_Shaders.paintSpread().updateProgress(Scene::DeltaTime());
 
 	if (g_Shaders.paintSpread().isAnimationComplete()) {
 		if (mergeFX_.commitPending) {
@@ -361,6 +361,24 @@ void InGameScene::updateMergePaintFX()
 		}
 		mergeFX_.active = false;
 	}
+}
+
+// 진행 중인 이펙트를 즉시 완료시키는 헬퍼 함수
+void InGameScene::forceMergePaintFXCompletion()
+{
+	if (!mergeFX_.active) return;
+	
+	// 이펙트가 진행 중이면 즉시 커밋
+	if (mergeFX_.commitPending) {
+		if (ColorBox* b = getBoxByUid(mergeFX_.targetUid)) {
+			b->color = mergeFX_.finalColor;
+		}
+		mergeFX_.commitPending = false;
+	}
+	
+	// 이펙트 상태 초기화
+	mergeFX_.active = false;
+	// 참고: PaintSpreadShader는 다음 startAnimation 호출 시 자동으로 리셋됨
 }
 
 
@@ -378,6 +396,11 @@ void InGameScene::triggerBombBoxFXForBlack_Multi(uint64 uid, double durationSec)
 	inst.t = 0.0;
 	inst.dur = Max(0.05, durationSec);
 	inst.seed = static_cast<uint32>(RandomUint32()); // 선택
+    // 폭발 시작 위치를 UID로부터 고정 저장하고, 즉시 박스를 제거하여 본체가 남지 않게 함
+    if (ColorBox* b = getBoxByUid(uid)) {
+        inst.tilePos = b->pos;
+        removeBoxByUid(uid);
+    }
 	bombFXs_.push_back(inst);
 }
 
@@ -392,22 +415,20 @@ void InGameScene::updateBombBoxFX_Multi()
 		fx.t += dt;
 	}
 
-	// 만료된 인스턴스 정리: 박스 제거 후 리스트에서 삭제
-	bombFXs_.remove_if([&](const BombBoxInst& fx) {
-		if (fx.t < fx.dur) return false;
-		removeBoxByUid(fx.uid); // 폭발 타이밍과 동시에 블럭 제거
-		return true;
-	});
+    // 만료된 인스턴스 정리: FX만 제거 (박스는 시작 시 제거됨)
+    bombFXs_.remove_if([&](const BombBoxInst& fx) {
+        return (fx.t >= fx.dur);
+    });
 }
 
 void InGameScene::drawBombBoxFX_Multi() {
 	const auto& cam = camera();
 	
-	for (const auto& fx : bombFXs_) {
-		if (const ColorBox* b = getBoxByUid(fx.uid)) {
-			// 월드 좌표에서 박스 사각형 계산
-			const Rect boxRect(b->pos.x * TILE_SIZE, b->pos.y * TILE_SIZE,
-							   TILE_SIZE, TILE_SIZE);
+    for (const auto& fx : bombFXs_) {
+        // 박스는 FX 시작 시 제거되었으므로 저장된 타일 좌표를 사용
+        {
+            const Rect boxRect(fx.tilePos.x * TILE_SIZE, fx.tilePos.y * TILE_SIZE,
+                               TILE_SIZE, TILE_SIZE);
 			RectF inner = boxRect.stretched(-8);
 
 			// 월드 좌표를 카메라 스크린 좌표로 변환
@@ -949,6 +970,9 @@ void InGameScene::handleInput()
 
 		if (ColorBox* target = getBoxAt(next)) {
 			if (Optional<BoxColor> merged = getMergedColor(box->color, target->color)) {
+				// ★★ 새 합성 시작 전에 진행 중인 이펙트 즉시 완료
+				forceMergePaintFXCompletion();
+				
 				// 1) 이펙트 파라미터 준비
 				Vec2 originUV = (dir == Point{ 1, 0 }) ? Vec2(0.0, 0.5)
 					: (dir == Point{ -1, 0 }) ? Vec2(1.0, 0.5)
@@ -957,18 +981,18 @@ void InGameScene::handleInput()
 				const ColorF base = getBoxColorF(target->color);
 				const ColorF result = getBoxColorF(*merged);
 
-				// 2) 실제 합성: 두 상자 제거 후 '타깃 기존색'으로 결과 위치에 새 박스 생성(UID 부여)
-				const Point resultPos = next;
-				const BoxColor visualColor = target->color; // 효과 중에는 시각적으로 기존색 유지
-				boxes_.remove_if([&](const ColorBox& b) {
-					return (b.pos == box->pos || b.pos == target->pos);
-				});
-				ColorBox newBox{ resultPos, visualColor, 0.0, nextBoxUID_++ }; // uid 부여
-				if (*merged == BoxColor::Black) {
-					//newBox.creationTime = gameTime_;
-					triggerBombBoxFXForBlack_Multi(newBox.uid, 1.5);
-				}
-				boxes_.push_back(newBox);
+                // 2) 실제 합성: 두 상자 제거 후 결과 색으로 새 박스 생성(UID 부여)
+                const Point resultPos = next;
+                boxes_.remove_if([&](const ColorBox& b) {
+                    return (b.pos == box->pos || b.pos == target->pos);
+                });
+                const BoxColor finalColorNow = *merged; // 논리 색상은 즉시 결과 색으로 적용
+                ColorBox newBox{ resultPos, finalColorNow, 0.0, nextBoxUID_++ }; // uid 부여
+                if (*merged == BoxColor::Black) {
+                    newBox.creationTime = gameTime_; // 생성 시각 기록
+                    // 폭발 FX는 3초 후 트리거 (updateBlackBoxes에서 처리)
+                }
+                boxes_.push_back(newBox);
 
 				// 3) 이펙트 바인딩(UID 기준) + 즉시 시작
 				mergeFX_.active = true;
@@ -976,8 +1000,8 @@ void InGameScene::handleInput()
 				mergeFX_.paintColor = result;
 				mergeFX_.originUV = originUV;
 				mergeFX_.targetUid = newBox.uid;       // ← 타일이 아닌 UID로 바인딩
-				mergeFX_.finalColor = *merged;
-				mergeFX_.commitPending = true;
+                mergeFX_.finalColor = *merged;   // 렌더 전용 파라미터 (논리 색은 이미 적용됨)
+                mergeFX_.commitPending = false;  // 지연 커밋 사용 안 함
 				g_Shaders.paintSpread().setPaintColor(result);
 				g_Shaders.paintSpread().setOriginPoint(originUV);
 				g_Shaders.paintSpread().setNoiseScale(1.0f);
@@ -1077,6 +1101,21 @@ void InGameScene::draw()
         drawUI();
     }
     // 카메라 변환 종료
+
+    // Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리 (스크린 좌표계에서 마스크)
+    if (currentStage_ == 6)
+    {
+        const Mat3x2 transform = camera().getMat3x2();
+        const Vec2 screenPos = transform.transformPoint(playerPixelPos_);
+        const double radius = 80.0; // 가시 반경 (px)
+        const double w = static_cast<double>(Scene::Width());
+        const double h = static_cast<double>(Scene::Height());
+        const double outer = std::sqrt(w * w + h * h);
+
+        // 화면 전체를 덮는 두꺼운 원 프레임을 그려 내부 원(가시영역)만 남김
+        Circle spotlight(screenPos, radius);
+        spotlight.drawFrame(0.0, Max(0.0, outer - radius), ColorF{ 0, 0, 0, 1.0 });
+    }
     
     // 조작법 도움말 표시 (포커스 잃었을 때도 표시) - 카메라 변환 밖에서 그리기
     if (showHelpScreen_)
@@ -1254,6 +1293,24 @@ void InGameScene::drawMap()
 			boxRect.stretched(-8).draw(c);
 			boxRect.stretched(-8).drawFrame(3, 0, ColorF{ c.r * 1.2, c.g * 1.2, c.b * 1.2 });
 			Circle{ boxRect.center(), 8 }.draw(ColorF{ c, 0.8 });
+
+			// 검정 블록 카운트다운 (3→2→1), 소수점 없이
+			if (box.color == BoxColor::Black) {
+				const bool hasActiveFX = bombFXs_.any([&](const BombBoxInst& fx) { return fx.uid == box.uid; });
+				if (!hasActiveFX) {
+					double elapsed = Max(0.0, gameTime_ - box.creationTime);
+					double remain = Max(0.0, 3.0 - elapsed);
+					int count = static_cast<int>(Ceil(remain)); // 3,2,1
+					count = Clamp(count, 0, 3);
+					if (count > 0) {
+						String txt = U"{}"_fmt(count);
+						auto dt = gameFont_(txt);
+						// 가독성을 위한 약한 그림자
+						dt.drawAt(boxRect.center().movedBy(1, 1), ColorF{ 0, 0, 0, 0.8 });
+						dt.drawAt(boxRect.center(), Palette::White);
+					}
+				}
+			}
 		}
 	}
 
@@ -1490,15 +1547,19 @@ const Array<Point>& InGameScene::getGoalPositionsForColor(BoxColor color) const
 
 void InGameScene::updateBlackBoxes()
 {
-    // 1.5초가 지난 검은색 블록 제거
-    boxes_.remove_if([this](const ColorBox& box) {
-        if (box.color == BoxColor::Black)
-        {
-            double elapsed = gameTime_ - box.creationTime;
-            return elapsed >= BLACK_BOX_LIFETIME;
+    // 검정 블록: 3초 후 폭발 FX를 시작하고, FX에서 제거를 담당
+    for (auto& box : boxes_) {
+        if (box.color != BoxColor::Black) continue;
+
+        const bool hasActiveFX = bombFXs_.any([&](const BombBoxInst& fx) { return fx.uid == box.uid; });
+        if (hasActiveFX) continue; // 진행 중이면 대기
+
+        const double elapsed = gameTime_ - box.creationTime;
+        if (elapsed >= 3.0) {
+            // 3초 경과 시 폭발 FX 시작 (지속시간 1.5초 등)
+            triggerBombBoxFXForBlack_Multi(box.uid, 1.5);
         }
-        return false;
-    });
+    }
 }
 
 Vec2 InGameScene::tileToPixel(Point tilePos) const
@@ -1538,6 +1599,9 @@ void InGameScene::saveGameState()
 void InGameScene::undoLastMove()
 {
     if (!canUndo()) return;
+    
+    // ★★ Undo 전에 진행 중인 이펙트 즉시 완료
+    forceMergePaintFXCompletion();
     
     // 현재 상태 제거 (가장 마지막)
     gameStateHistory_.pop_back();

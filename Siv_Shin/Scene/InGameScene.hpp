@@ -222,12 +222,14 @@ private:
 	void triggerMergePaintFX_Directional(Point tile, const ColorF& baseColor,
 										 const ColorF& resultColor, Point pushDir);
 	void updateMergePaintFX();
+	void forceMergePaintFXCompletion(); // 진행 중인 이펙트를 즉시 완료
 	
 	// BombBox Shader helper (동시 다발 폭발용)
 	struct BombBoxInst {
 		uint64 uid = 0;          // 대상 박스 UID
-		double t = 0.0;        // 경과 시간
-		double dur = 1.5;        // 폭발까지 시간
+		Point  tilePos{ 0, 0 };  // 폭발 위치(타일 좌표) - FX 시작 시 고정
+		double t = 0.0;          // 경과 시간
+		double dur = 1.5;        // FX 지속 시간
 		uint32 seed = 0;         // 이펙트 랜덤 변주용(선택)
 	};
 
