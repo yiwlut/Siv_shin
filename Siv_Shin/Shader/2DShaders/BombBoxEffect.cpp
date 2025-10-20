@@ -100,7 +100,16 @@ void BombBoxEffect::draw(const RectF& boxScreenTL, const Params& p)
 		static_cast<float>(halfSize.y)
 	};
 	u.pp = Float4{ p.pulseAmp, p.pulseSpeed, p.spread, p.gravity };
-	u.sd = Float4{ p.seed, 0.0f, 0.0f, 0.0f };
+
+	float tintMode = p.useWallColor ? 1.0f : 0.0f;
+	u.sd = Float4{ p.seed, 0.0f, tintMode, 0.0f };
+	u.col = Float4{
+		static_cast<float>(p.wallColor.r),
+		static_cast<float>(p.wallColor.g),
+		static_cast<float>(p.wallColor.b),
+		0.0f
+	};
+
 	m_cb = u;
 
 	const ScopedCustomShader2D shader{ m_ps };

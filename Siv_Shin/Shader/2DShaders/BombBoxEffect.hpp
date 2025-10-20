@@ -18,6 +18,10 @@ public:
 
 		//ColorF baseColor = ColorF{ 0.08, 0.08, 0.08 };
 
+		bool wallsDestroyed = false; // true면 벽 파괴 모드
+		bool useWallColor = false;           // true면 벽 색상 사용
+		ColorF wallColor = ColorF{ 0.3, 0.3, 0.35 };  // 벽 색상
+
 		Params() {}
 	};
 

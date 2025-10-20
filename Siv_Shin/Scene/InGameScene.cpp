@@ -407,10 +407,21 @@ void InGameScene::updateBombBoxFX_Multi()
 	for (auto& fx : bombFXs_) {
 		if (fx.effect) {
 			fx.effect->update(Scene::DeltaTime());
+
+			// 폭발 파편이 날아가기 시작할 때 벽도 함께 파괴
+			if (!fx.params.wallsDestroyed && fx.effect->isExploding()) {
+				if (const ColorBox* b = getBoxByUid(fx.uid)) {
+					destroyWalls8(b->pos);
+				}
+				fx.params.wallsDestroyed = true;
+			}
 		}
 	}
 	bombFXs_.remove_if([this](const BombBoxInstance& fx) {
 		if (fx.effect && fx.effect->exploded()) {
+			if (const ColorBox* b = getBoxByUid(fx.uid)) {
+				destroyWalls8(b->pos);  // 주변 8방향 벽 파괴
+			}
 			removeBoxByUid(fx.uid);
 			return true;
 		}
@@ -530,10 +541,108 @@ void InGameScene::drawBoxes_RespectBombFX()
 
 }
 
-void InGameScene::destroyWalls8(Point centerTile) {}
-void InGameScene::spawnWallBreakFXAtTile(Point tile) {}
-void InGameScene::updateWallBreakFX() {}
-void InGameScene::drawWallBreakFX() {}
+void InGameScene::destroyWalls8(Point centerTile)
+{
+	const Array<Point> directions = {
+		Point{-1, -1}, Point{0, -1}, Point{1, -1},  // 위쪽 3칸
+		Point{-1,  0},               Point{1,  0},  // 좌우
+		Point{-1,  1}, Point{0,  1}, Point{1,  1}   // 아래쪽 3칸
+	};
+
+	for (const auto& dir : directions) {
+		Point targetTile = centerTile + dir;
+
+		// 맵 범위 체크
+		if (!isInsideMap(targetTile)) continue;
+
+		// 벽인지 확인
+		if (mapData_[targetTile.y][targetTile.x] == TileType::Wall) {
+			// 벽을 빈 타일로 변환
+			mapData_[targetTile.y][targetTile.x] = TileType::Empty;
+
+			// 벽 파괴 효과 생성
+			spawnWallBreakFXAtTile(targetTile);
+		}
+	}
+}
+void InGameScene::spawnWallBreakFXAtTile(Point tile)
+{
+	WallBreakFX fx;
+	fx.tilePos = tile;
+	fx.effect = std::make_unique<BombBoxEffect>();
+	fx.effect->reset();
+	fx.effect->trigger();
+	//fx.effect->update(0.1);
+
+	fx.params.pulseDuration = 0.0;
+	fx.params.pulseCount = 0.0;
+	fx.params.explodeTime = 0.6;
+	fx.params.pulseAmp = 0.0f;
+	fx.params.pulseSpeed = 0.0f;
+	fx.params.spread = 150.0f;
+	fx.params.gravity = 600.0f;
+	fx.params.seed = static_cast<float>(Random(0.0, 1.0));
+
+	//벽 색상 설정
+	fx.params.useWallColor = true;
+	fx.params.wallColor = ColorF{ 0.3, 0.3, 0.35 };  // 벽의 색상
+
+	fx.finished = false;
+	wallBreakFXs.push_back(std::move(fx));
+}
+void InGameScene::updateWallBreakFX()
+{
+	for (auto& fx : wallBreakFXs) {
+		if (fx.effect && !fx.finished) {
+			fx.effect->update(Scene::DeltaTime());
+
+			// 폭발 효과가 끝났는지 확인
+			if (fx.effect->exploded()) {
+				fx.finished = true;
+			}
+		}
+	}
+
+	// 완료된 효과 제거
+	wallBreakFXs.remove_if([](const WallBreakFX& fx) {
+		return fx.finished;
+	});
+}
+void InGameScene::drawWallBreakFX()
+{
+	const Mat3x2 transform = camera().getMat3x2();
+
+	for (auto& fx : wallBreakFXs) {
+		if (!fx.effect || fx.finished) continue;
+
+		// 2. 타일의 월드 좌표 계산 (벽의 렉트)
+		const s3d::Rect tileRect(
+			fx.tilePos.x * TILE_SIZE,
+			fx.tilePos.y * TILE_SIZE,
+			TILE_SIZE,
+			TILE_SIZE
+		);
+
+		// 3. 벽 중심을 기준으로 약간 안쪽 영역 (프레임 제외)
+		const s3d::RectF inner = tileRect.stretched(-8);
+
+		// 4. 월드 좌표를 스크린 좌표로 변환
+		const Vec2 worldCenter = inner.center();
+		const Vec2 screenCenter = transform.transformPoint(worldCenter);
+
+		// 5. 스케일 적용한 화면 크기 계산
+		const Vec2 worldHalfSize = inner.size * 0.5;
+		const Vec2 screenHalfSize = worldHalfSize * camera().getScale();
+
+		// 6. 화면 좌표계 RectF 생성
+		const RectF screenRect = RectF(Arg::center = screenCenter, screenHalfSize * 2.0);
+
+		// 7. 쉐이더에 벽 색상 전달을 위해 UBO 수정 필요
+		// BombBoxEffect에서 sd.z를 tintMode로 사용 (1.0 = 벽 색상 사용)
+		// 여기서는 간단히 draw 호출
+		fx.effect->draw(screenRect, fx.params);
+	}
+}
 
 
 bool InGameScene::canMoveTo(Point pos) const
@@ -860,6 +969,7 @@ void InGameScene::update()
 	updateMergePaintFX(); // ★★
 
 	updateBombBoxFX_Multi();
+	updateWallBreakFX();
 
 	// 포커스/도움말 토글
 	const bool focused = Window::GetState().focused;
@@ -1167,9 +1277,10 @@ void InGameScene::draw()
         drawMap();
         drawPlayer();
         drawUI();
+		drawBombBoxFX_Multi();
+		drawWallBreakFX();
     }
 
-	drawBombBoxFX_Multi();
 
 
     // 카메라 변환 종료

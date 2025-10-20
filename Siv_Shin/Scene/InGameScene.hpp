@@ -246,6 +246,16 @@ private:
 	bool shouldDrawBox(const ColorBox& box) const; // 유령 상태면 그리지 않음
 	void drawBoxes_RespectBombFX();
 
+	// 벽 파괴 효과용
+	struct WallBreakFX {
+		Point tilePos;                              // 부서지는 벽 타일 위치
+		std::unique_ptr<BombBoxEffect> effect;      // 파편 효과용
+		BombBoxEffect::Params params;
+		bool finished = false;
+	};
+
+	Array<WallBreakFX> wallBreakFXs;  // 벽 파괴 효과 목록
+
 	void destroyWalls8(Point centerTile);
 	void spawnWallBreakFXAtTile(Point tile);
 	void updateWallBreakFX();
