@@ -205,33 +205,27 @@ void InGameScene::loadStageFromText(const Array<String>& mapText)
                 break;
                 
             // 대문자 = 상자
-            case U'R':  // 빨간 상자
-                boxes_.push_back(ColorBox{ pos, BoxColor::Red });
-                break;
-                
-            case U'Y':  // 노란 상자
-                boxes_.push_back(ColorBox{ pos, BoxColor::Yellow });
-                break;
-                
-            case U'B':  // 파란 상자
-                boxes_.push_back(ColorBox{ pos, BoxColor::Blue });
-                break;
-                
-            case U'O':  // 주황 상자
-                boxes_.push_back(ColorBox{ pos, BoxColor::Orange });
-                break;
-                
-            case U'G':  // 초록 상자
-                boxes_.push_back(ColorBox{ pos, BoxColor::Green });
-                break;
-                
-            case U'V':  // 보라 상자
-                boxes_.push_back(ColorBox{ pos, BoxColor::Violet });
-                break;
-                
-            case U'K':  // 검은 상자
-                boxes_.push_back(ColorBox{ pos, BoxColor::Black });
-                break;
+			case U'R': // 빨간 상자
+				boxes_.push_back(ColorBox{ pos, BoxColor::Red, 0.0, nextBoxUID_++ }); // ★ uid 추가
+				break;
+			case U'Y': // 노란 상자
+				boxes_.push_back(ColorBox{ pos, BoxColor::Yellow, 0.0, nextBoxUID_++ }); // ★ uid 추가
+				break;
+			case U'B': // 파간 상자
+				boxes_.push_back(ColorBox{ pos, BoxColor::Blue, 0.0, nextBoxUID_++ }); // ★ uid 추가
+				break;
+			case U'O': // 주황 상자
+				boxes_.push_back(ColorBox{ pos, BoxColor::Orange, 0.0, nextBoxUID_++ }); // ★ uid 추가
+				break;
+			case U'G': // 초록 상자
+				boxes_.push_back(ColorBox{ pos, BoxColor::Green, 0.0, nextBoxUID_++ }); // ★ uid 추가
+				break;
+			case U'V': // 보라 상자
+				boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ }); // ★ uid 추가
+				break;
+			case U'K': // 검은 상자
+				boxes_.push_back(ColorBox{ pos, BoxColor::Black, 0.0, nextBoxUID_++ }); // ★ uid 추가
+				break;
                 
             // 소문자 = 목표
             case U'r':  // 빨강 목표
@@ -377,6 +371,23 @@ void InGameScene::forceMergePaintFXCompletion()
 	}
 
 	mergeFX_.active = false;
+}
+
+BoxColor InGameScene::getEffectiveBoxColor(uint64 uid) const {
+	// 현재 합성 중인 박스라면 최종 색상을 반환
+	if (mergeFX_.active && mergeFX_.commitPending && mergeFX_.targetUid == uid) {
+		return mergeFX_.finalColor;
+	}
+
+	// 아니면 실제 박스 색상 반환
+	for (const auto& box : boxes_) {
+		if (box.uid == uid) {
+			return box.color;
+		}
+	}
+
+	// 박스를 찾지 못한 경우 (shouldn't happen)
+	return BoxColor::Red;
 }
 
 bool InGameScene::removeBoxByUid(uint64 uid)
@@ -541,6 +552,36 @@ void InGameScene::drawBoxes_RespectBombFX()
 
 }
 
+void InGameScene::rebuildBombFXFromState_() {
+	bombFXs_.clear();
+
+	for (const auto& b : boxes_) {
+		if (b.color != BoxColor::Black) continue;
+		const double expiry = bombExpiryAbs_.contains(b.uid) ? bombExpiryAbs_[b.uid]
+			: (bombClock_ + kTotal);
+		const double remaining = Max(0.0, expiry - bombClock_);
+		const double elapsed = Clamp(kTotal - remaining, 0.0, kTotal);
+
+		BombBoxInstance inst;
+		inst.uid = b.uid;
+		inst.effect = std::make_unique<BombBoxEffect>();
+		inst.effect->reset();
+		inst.params.explodeTime = static_cast<float>(kExpDuration);
+		inst.params.spread = 220.0f;
+		inst.params.gravity = 800.0f;
+		inst.params.seed = static_cast<float>(Random(0.0, 1.0));
+
+		if (elapsed < kPreDuration) {
+			inst.effect->update(elapsed);
+		}
+		else {
+			inst.effect->trigger();
+			inst.effect->update(elapsed - kPreDuration);
+		}
+		bombFXs_.push_back(std::move(inst));
+	}
+}
+
 void InGameScene::destroyWalls8(Point centerTile)
 {
 	const Array<Point> directions = {
@@ -579,7 +620,7 @@ void InGameScene::spawnWallBreakFXAtTile(Point tile)
 	fx.params.explodeTime = 0.6;
 	fx.params.pulseAmp = 0.0f;
 	fx.params.pulseSpeed = 0.0f;
-	fx.params.spread = 150.0f;
+	fx.params.spread = 100.0f;
 	fx.params.gravity = 600.0f;
 	fx.params.seed = static_cast<float>(Random(0.0, 1.0));
 
@@ -685,36 +726,24 @@ const ColorBox* InGameScene::getBoxAt(Point pos) const
 	return nullptr;
 }
 
-bool InGameScene::canPushBox(Point playerPos, Point boxPos, Point direction) const
-{
-    Point nextBoxPos = boxPos + direction;
-    
-    if (nextBoxPos.x < 0 || nextBoxPos.x >= getMapWidth() || 
-        nextBoxPos.y < 0 || nextBoxPos.y >= getMapHeight())  // nextBox -> nextBoxPos 수정
-        return false;
-    
-    if (mapData_[nextBoxPos.y][nextBoxPos.x] == TileType::Wall)
-        return false;
-    
-    // 목표 위치에 상자가 있는지 확인
-    const ColorBox* targetBox = getBoxAt(nextBoxPos);
-    if (targetBox)
-    {
-        // 합성 가능한 경우만 true 반환
-        const ColorBox* currentBox = getBoxAt(boxPos);
-        if (currentBox)
-        {
-            Optional<BoxColor> mergedColor = getMergedColor(currentBox->color, targetBox->color);
-            if (mergedColor)
-            {
-                return true;  // 합성 가능!
-            }
-        }
-        // 합성 불가능하면 밀 수 없음
-        return false;
-    }
-    
-    return true;
+bool InGameScene::canPushBox(Point playerPos, Point boxPos, Point dir) const {
+	const Point next = boxPos + dir;
+
+	if (!isInsideMap(next)) return false;
+	if (mapData_[next.y][next.x] == TileType::Wall) return false;
+
+	if (const auto* target = getBoxAt(next)) {
+		if (const auto* current = getBoxAt(boxPos)) {
+			
+			BoxColor currentColor = getEffectiveBoxColor(current->uid);
+			BoxColor targetColor = getEffectiveBoxColor(target->uid);
+
+			const Optional<BoxColor> merged = getMergedColor(currentColor, targetColor);
+			return merged.has_value();
+		}
+		return false;
+	}
+	return true;
 }
 
 void InGameScene::pushBox(ColorBox* box, Point direction)
@@ -965,11 +994,12 @@ ColorF InGameScene::getBoxColorF(BoxColor color) const
 
 void InGameScene::update()
 {
-	// 0) 페인트 스프레드 진행을 '항상' 최우선 갱신 (지연 제거 핵심)
-	updateMergePaintFX(); // ★★
+	updateMergePaintFX();
 
 	updateBombBoxFX_Multi();
 	updateWallBreakFX();
+
+
 
 	// 포커스/도움말 토글
 	const bool focused = Window::GetState().focused;
@@ -983,8 +1013,8 @@ void InGameScene::update()
 		if (!bgm_.isEmpty() && bgm_.isPlaying()) {
 			bgm_.pause();
 		}
-		// 조기 return 직전에도 1회 더 보장 호출
-		updateMergePaintFX(); // ★★
+		
+		updateMergePaintFX(); 
 		return;
 	}
 	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_) {
@@ -992,6 +1022,8 @@ void InGameScene::update()
 	}
 
 	const double dt = Scene::DeltaTime();
+
+	bombClock_ += dt;
 
 	// R로 즉시 리트라이
 	if (KeyR.down() && !isCleared_) {
@@ -1004,7 +1036,7 @@ void InGameScene::update()
 		undoCooldown_ = 0.0;
 		loadStage(currentStage_);
 		// 조기 return 보호
-		updateMergePaintFX(); // ★★
+		updateMergePaintFX(); 
 		return;
 	}
 
@@ -1018,7 +1050,7 @@ void InGameScene::update()
 				undoLastMove();
 				undoCooldown_ = UNDO_REPEAT_DELAY;
 				// 조기 return 보호
-				updateMergePaintFX(); // ★★
+				updateMergePaintFX(); 
 				return;
 			}
 			if (undoHoldTime_ >= UNDO_HOLD_THRESHOLD) {
@@ -1027,7 +1059,7 @@ void InGameScene::update()
 					undoLastMove();
 					undoCooldown_ = UNDO_REPEAT_DELAY;
 					// 조기 return 보호
-					updateMergePaintFX(); // ★★
+					updateMergePaintFX(); 
 					return;
 				}
 			}
@@ -1071,7 +1103,7 @@ void InGameScene::update()
 		}
 
 		// 조기 return 보호
-		updateMergePaintFX(); // ★★
+		updateMergePaintFX(); 
 		return;
 	}
 
@@ -1089,7 +1121,7 @@ void InGameScene::update()
 	updatePaintAnimation();
 
 	// 진행 갱신을 한 번 더 보장 (다중 호출 안전)
-	updateMergePaintFX(); // ★★
+	updateMergePaintFX();
 
 	// 블랙 박스 등 기타 업데이트
 	updateBlackBoxes();
@@ -1153,38 +1185,41 @@ void InGameScene::handleInput()
 		if (!canPushBox(playerPos_, box->pos, dir)) return;
 
 		if (ColorBox* target = getBoxAt(next)) {
-			if (Optional<BoxColor> merged = getMergedColor(box->color, target->color)) {
-				// ★★ 새 합성 시작 전에 진행 중인 이펙트 즉시 완료
+			//시각적 색상이 아닌 실제 효과 적용될 색상 사용
+			BoxColor currentBoxColor = getEffectiveBoxColor(box->uid);
+			BoxColor targetBoxColor = getEffectiveBoxColor(target->uid);
+
+			if (Optional<BoxColor> merged = getMergedColor(currentBoxColor, targetBoxColor)) {
 				forceMergePaintFXCompletion();
 
-				// 1) 이펙트 파라미터 준비
+				
 				Vec2 originUV = impactOriginLocalUVForDir(dir);
-				const ColorF base = getBoxColorF(target->color);
+				const ColorF base = getBoxColorF(targetBoxColor);
 				const ColorF result = getBoxColorF(*merged);
 
-				// 2) 실제 합성: 두 상자 제거 후 '타깃 기존색'으로 결과 위치에 새 박스 생성(UID 부여)
+				//UID 부여
 				const Point resultPos = next;
-				// 효과가 진행되는 동안에는 시각적으로는 기존 타겟의 색을 유지합니다.
-				const BoxColor visualColor = target->color;
+				//const BoxColor visualColor = targetBoxColor;
 				boxes_.remove_if([&](const ColorBox& b) {
 					return (b.pos == box->pos || b.pos == target->pos);
 				});
 
-				ColorBox newBox{ resultPos, visualColor, 0.0, nextBoxUID_++ };
+				//ColorBox newBox{ resultPos, visualColor, 0.0, nextBoxUID_++ };
+				ColorBox newBox(resultPos, *merged, 0.0, nextBoxUID_++);
 				if (*merged == BoxColor::Black) {
 					newBox.creationTime = gameTime_;
-					// 여기서 바로 BombFX를 트리거합니다.
+					bombExpiryAbs_[newBox.uid] = bombClock_ + kTotal;
 					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
 				}
 				boxes_.push_back(newBox);
 
-				// 3) 이펙트 바인딩(UID 기준) + 즉시 시작
+				//이펙트 바인딩(UID 기준) + 즉시 시작
 				mergeFX_.active = true;
 				mergeFX_.baseColor = base;
 				mergeFX_.paintColor = result;
 				mergeFX_.originUV = originUV;
 				mergeFX_.targetUid = newBox.uid;
-				mergeFX_.finalColor = *merged; // 효과가 끝나면 이 색으로 바뀝니다.
+				mergeFX_.finalColor = *merged; 
 				mergeFX_.commitPending = true; // 효과가 끝난 후 논리적 색상 변경 예약
 
 				g_Shaders.paintSpread().setPaintColor(result);
@@ -1228,8 +1263,51 @@ void InGameScene::handleInput()
 }
 
 
+void InGameScene::ensureUniqueBoxUIDs() {
+	HashSet<uint64> used;
+	for (auto& b : boxes_) {
+		if (b.uid == 0 || used.contains(b.uid)) {
+			b.uid = nextBoxUID_++;
+		}
+		used.insert(b.uid);
+	}
+}
 
+uint8 InGameScene::encodeTile_(InGameScene::TileType t) noexcept {
+	return static_cast<s3d::uint8>(t);
+}
 
+InGameScene::TileType InGameScene::decodeTile_(s3d::uint8 c) noexcept {
+	using T = TileType;
+	
+	constexpr s3d::uint8 kMax =
+		static_cast<s3d::uint8>(T::VioletItem); // 필요 시 실제 마지막 값으로 갱신
+	if (c <= kMax) {
+		return static_cast<T>(c);
+	}
+	return T::Empty; // 범위를 벗어나면 안전하게 Empty로
+}
+
+Array<Array<s3d::uint8>> InGameScene::exportMapCodes_() const {
+	Array<Array<s3d::uint8>> out(mapData_.size());
+	for (size_t y = 0; y < mapData_.size(); ++y) {
+		out[y].resize(mapData_[y].size());
+		for (size_t x = 0; x < mapData_[y].size(); ++x) {
+			out[y][x] = encodeTile_(mapData_[y][x]);
+		}
+	}
+	return out;
+}
+
+void InGameScene::importMapCodes_(const Array<Array<s3d::uint8>>& codes) {
+	mapData_.resize(codes.size());
+	for (size_t y = 0; y < codes.size(); ++y) {
+		mapData_[y].resize(codes[y].size());
+		for (size_t x = 0; x < codes[y].size(); ++x) {
+			mapData_[y][x] = decodeTile_(codes[y][x]);
+		}
+	}
+}
 
 void InGameScene::updatePlayer()
 {
@@ -1724,7 +1802,26 @@ void InGameScene::saveGameState()
     currentState.playerHeldItem = playerHeldItem_;  // 플레이어가 가진 아이템 저장
     currentState.moves = moves_;
     currentState.score = score_;
-    
+
+	currentState.mapData = exportMapCodes_();
+	currentState.gameTime = gameTime_;
+	currentState.nextBoxUID = nextBoxUID_;
+
+	//폭탄 남은 시간 저장
+	for (const auto& b : boxes_) {
+		if (b.color != BoxColor::Black) continue;
+		double remain = 0.0;
+		if (auto it = bombExpiryAbs_.find(b.uid); it != bombExpiryAbs_.end()) {
+			remain = Max(0.0, it->second - bombClock_);
+		}
+		else {
+			// 생성시각 기반 추정
+			const double elapsed = Max(0.0, gameTime_ - b.creationTime);
+			remain = Max(0.0, kTotal - elapsed);
+		}
+		currentState.bombRemain[b.uid] = remain;
+	}
+
     gameStateHistory_.push_back(currentState);
     
     // 최대 저장 개수 제한
@@ -1738,10 +1835,10 @@ void InGameScene::undoLastMove()
 {
     if (!canUndo()) return;
     
-    // ★★ Undo 전에 진행 중인 이펙트 즉시 완료
+    //Undo 전에 진행 중인 이펙트 즉시 완료
     forceMergePaintFXCompletion();
     
-    // 현재 상태 제거 (가장 마지막)
+    // 현재 상태 제거
     gameStateHistory_.pop_back();
     
     // 이전 상태로 복원
@@ -1760,6 +1857,41 @@ void InGameScene::undoLastMove()
         playerHeldItem_ = previousState.playerHeldItem;  // 플레이어가 가진 아이템 복원
         moves_ = previousState.moves;
         score_ = previousState.score;
+
+		importMapCodes_(previousState.mapData); // 코드 스냅샷으로부터 mapData_ 복원
+		gameTime_ = previousState.gameTime;
+		nextBoxUID_ = previousState.nextBoxUID;
+
+		//이펙트/폭발 큐 초기화 및 재동기화
+		bombFXs_.clear();
+		wallBreakFXs.clear();
+		mergeFX_.active = false;
+		mergeFX_.commitPending = false;
+
+		// 폭발 이펙트 재구성
+		bombExpiryAbs_.clear();
+		for (const auto& b : boxes_) {
+			if (b.color != BoxColor::Black) continue;
+
+			double remain = kTotal;
+			if (auto it = previousState.bombRemain.find(b.uid); it != previousState.bombRemain.end()) {
+				remain = it->second;
+			}
+			else {
+				const double elapsedSnap = Max(0.0, gameTime_ - b.creationTime);
+				remain = Max(0.0, kTotal - elapsedSnap);
+			}
+			bombExpiryAbs_[b.uid] = bombClock_ + remain;
+
+			// 2) creationTime도 스냅샷 남은 시간과 일치하도록 역산해 재설정
+			if (auto* live = getBoxByUid(b.uid)) {
+				const double elapsedSnap = kTotal - remain;
+				live->creationTime = gameTime_ - elapsedSnap; // 시각효과 경과시간과 일치하도록 조정
+			}
+		}
+
+
+		rebuildBombFXFromState_();
     }
 }
 
@@ -2362,13 +2494,13 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 				break;
 
 				// 박스(대문자)
-			case U'R': boxes_.push_back(ColorBox{ pos, BoxColor::Red });    break;
-			case U'Y': boxes_.push_back(ColorBox{ pos, BoxColor::Yellow }); break;
-			case U'B': boxes_.push_back(ColorBox{ pos, BoxColor::Blue });   break;
-			case U'O': boxes_.push_back(ColorBox{ pos, BoxColor::Orange }); break;
-			case U'G': boxes_.push_back(ColorBox{ pos, BoxColor::Green });  break;
-			case U'V': boxes_.push_back(ColorBox{ pos, BoxColor::Violet }); break;
-			case U'K': boxes_.push_back(ColorBox{ pos, BoxColor::Black });  break;
+			case U'R': boxes_.push_back(ColorBox{ pos, BoxColor::Red,    0.0, nextBoxUID_++ }); break;
+			case U'Y': boxes_.push_back(ColorBox{ pos, BoxColor::Yellow, 0.0, nextBoxUID_++ }); break;
+			case U'B': boxes_.push_back(ColorBox{ pos, BoxColor::Blue,   0.0, nextBoxUID_++ }); break;
+			case U'O': boxes_.push_back(ColorBox{ pos, BoxColor::Orange, 0.0, nextBoxUID_++ }); break;
+			case U'G': boxes_.push_back(ColorBox{ pos, BoxColor::Green,  0.0, nextBoxUID_++ }); break;
+			case U'V': boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ }); break;
+			case U'K': boxes_.push_back(ColorBox{ pos, BoxColor::Black,  0.0, nextBoxUID_++ }); break;
 
 				// 목표(소문자)
 			case U'r': mapData_[y][x] = TileType::RedGoal;    redGoalPositions_.push_back(pos);    break;
@@ -2416,21 +2548,6 @@ bool InGameScene::canMoveToPoint(Point pos) const {
 	return true;
 }
 
-//bool InGameScene::canPushBox(Point playerPos, Point boxPos, Point dir) const {
-//	const Point next = boxPos + dir;
-//	if (!isInsideMap(next)) return false;
-//	if (mapData_[next.y][next.x] == TileType::Wall) return false;
-//	if (const auto* target = getBoxAt(next)) {
-//		if (const auto* current = getBoxAt(boxPos)) {
-//			const Optional<BoxColor> merged = getMergedColor(current->color, target->color);
-//			return merged.has_value();
-//		}
-//		return false;
-//	}
-//	return true;
-//}
-
-// 5) 고정 카메라 유틸 (추적 없음)
 double InGameScene::computeFitScaleToMap(double margin) const {
 	const double vw = static_cast<double>(Scene::Width());
 	const double vh = static_cast<double>(Scene::Height());
@@ -2495,7 +2612,6 @@ void InGameScene::onStageLoaded_FixedCamera() {
 	applyFixedCameraFitToMap();
 }
 
-// 6) 뷰 컬링(Rect: 타일 인덱스 범위)
 Rect InGameScene::getVisibleTileRect() const
 {
 	const auto& cam = camera();
@@ -2516,7 +2632,6 @@ Rect InGameScene::getVisibleTileRect() const
 	return Rect(minX, minY, Max(0, maxX - minX + 1), Max(0, maxY - minY + 1));
 }
 
-// 7) 월드/UI 드로잉 래핑(선택)
 void InGameScene::drawWorldWithCamera(const std::function<void()>& worldDraw,
 									  const std::function<void()>& uiDraw)
 {

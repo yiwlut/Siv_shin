@@ -68,6 +68,12 @@ struct GameState
     ItemType playerHeldItem; // 플레이어가 가진 아이템도 저장
     int32 moves;
     int32 score;
+
+	Array<Array<uint8>> mapData;
+	double gameTime = 0.0;
+	uint64 nextBoxUID = 1;
+
+	HashTable<uint64, double> bombRemain;
 };
 
 class InGameScene : public GameScene
@@ -197,6 +203,14 @@ private:
     double undoCooldown_ = 0.0;  // Undo 쿨다운 타이머 (반복용)
     static constexpr double UNDO_HOLD_THRESHOLD = 0.5;  // 반복 시작까지 필요한 홀드 시간 (초)
     static constexpr double UNDO_REPEAT_DELAY = 0.1;  // Undo 반복 간격 (초)
+
+	void ensureUniqueBoxUIDs(); //초기 UID 보정
+	static uint8 encodeTile_(TileType t) noexcept; 	// TileType -> 코드 변환
+	static TileType decodeTile_(uint8 c) noexcept; 	// 코드 -> TileType 변환
+
+	// 스냅샷 내보내기 / 가져오기
+	Array<Array<uint8>> exportMapCodes_() const;
+	void importMapCodes_(const Array<Array<uint8>>& codes);
     
     // 클리어 화면 버튼들
     ClearButton retryButton_;      // 다시하기
@@ -223,6 +237,7 @@ private:
 										 const ColorF& resultColor, Point pushDir);
 	void updateMergePaintFX();
 	void forceMergePaintFXCompletion(); // 진행 중인 이펙트를 즉시 완료
+	BoxColor getEffectiveBoxColor(uint64 uid) const; // 합성 중이면 최종 색상 반환
 
 	bool removeBoxByUid(uint64 uid);
 
@@ -233,6 +248,13 @@ private:
 		BombBoxEffect::Params params;
 	};
 	Array<BombBoxInstance> bombFXs_;
+
+	double bombClock_ = 0.0; // Undo 불변 시계
+	HashTable<uint64, double> bombExpiryAbs_; // uid -> 절대 만료시각(Undo 불변)
+	// undo 시 bombExpiryAbs_ 재구성 필요
+	static constexpr double kPreDuration = 3.0;
+	static constexpr double kExpDuration = 0.9;
+	static constexpr double kTotal = kPreDuration + kExpDuration;
 
 	void triggerBombBoxFXForBlack_Multi(uint64 uid, double durationSec = 1.5);
 	void updateBombBoxFX_Multi();
@@ -245,6 +267,8 @@ private:
 	bool isBombPulsing(uint64 uid) const;
 	bool shouldDrawBox(const ColorBox& box) const; // 유령 상태면 그리지 않음
 	void drawBoxes_RespectBombFX();
+
+	void rebuildBombFXFromState_();
 
 	// 벽 파괴 효과용
 	struct WallBreakFX {
