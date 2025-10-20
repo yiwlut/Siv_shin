@@ -16,7 +16,7 @@ enum class SceneType
 // 게임 데이터 저장 구조체
 struct GameData
 {
-    Array<bool> stageUnlocked = { true, true, true, false, false, false, false, false };  // Stage 1~3 해금 (총 8개)
+    Array<bool> stageUnlocked = { true, true, true, true, true, true, true, true };  // Stage 1~8 모두 해금 (총 8개)
     int32 currentStage = 3;  // 스테이지 3부터 시작
     int32 totalScore = 0;
     
@@ -50,12 +50,8 @@ struct GameData
     void initializeForStageCount(int32 totalStages)
     {
         stageUnlocked.clear();
-        stageUnlocked.resize(totalStages, false);
-        // 처음 3개 스테이지 해금
-        for (int32 i = 0; i < Min(3, totalStages); i++)
-        {
-            stageUnlocked[i] = true;
-        }
+        // 처음부터 모든 스테이지 해금
+        stageUnlocked.resize(totalStages, true);
     }
 };
 

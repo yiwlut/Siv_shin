@@ -401,11 +401,22 @@ void InGameScene::updateBombBoxFX_Multi()
 }
 
 void InGameScene::drawBombBoxFX_Multi() {
+	const auto& cam = camera();
+	
 	for (const auto& fx : bombFXs_) {
 		if (const ColorBox* b = getBoxByUid(fx.uid)) {
+			// 월드 좌표에서 박스 사각형 계산
 			const Rect boxRect(b->pos.x * TILE_SIZE, b->pos.y * TILE_SIZE,
 							   TILE_SIZE, TILE_SIZE);
 			RectF inner = boxRect.stretched(-8);
+
+			// 월드 좌표를 카메라 스크린 좌표로 변환
+			// (카메라 변환 매트릭스 적용)
+			const Mat3x2 transform = cam.getMat3x2();
+			const Vec2 worldCenter = inner.center();
+			const Vec2 screenCenter = transform.transformPoint(worldCenter);
+			const Vec2 worldHalfSize = inner.size * 0.5;
+			const Vec2 screenHalfSize = worldHalfSize * cam.getScale();
 
 			const float progress = static_cast<float>(Clamp(fx.t / fx.dur, 0.0, 1.0));
 
@@ -419,12 +430,18 @@ void InGameScene::drawBombBoxFX_Multi() {
 			p.pulseSpeed = 5.0f;
 			p.pulseCount = 3.0f;
 
-			// *** 수정: 박스 크기에 비례하도록 조정 ***
-			float boxSize = static_cast<float>(inner.w); // 또는 inner.h
-			p.spread = boxSize * 3.0f;  // 220.0f 대신 비례값 (64 * 3 = 192)
+			// 스크린 크기에 비례하도록 조정
+			float boxSize = static_cast<float>(screenHalfSize.x * 2.0);
+			p.spread = boxSize * 3.0f;
 			p.gravity = 800.0f;
 
-			g_Shaders.bombBox().drawInst(inner, p);
+			// 스크린 좌표로 변환된 RectF 생성
+			RectF screenRect(screenCenter.x - screenHalfSize.x,
+							 screenCenter.y - screenHalfSize.y,
+							 screenHalfSize.x * 2.0,
+							 screenHalfSize.y * 2.0);
+
+			g_Shaders.bombBox().drawInst(screenRect, p);
 		}
 	}
 }
@@ -1254,7 +1271,8 @@ void InGameScene::drawMap()
 		Quad(top, right, bottom, left).draw(ic);
 		Quad(top, right, bottom, left).drawFrame(2, ColorF{ ic.r * 1.3, ic.g * 1.3, ic.b * 1.3 });
 	}
-	//폭발 이펙트(모든 인스턴스) 호출
+	
+	// 폭발 이펙트 (카메라 변환 내부에서 그리기)
 	drawBombBoxFX_Multi();
 }
 

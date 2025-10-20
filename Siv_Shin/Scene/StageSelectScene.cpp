@@ -29,24 +29,19 @@ void StageSelectScene::onEnter()
 {
     animTimer_ = 0.0;
     selectedStage_ = -1;
-    
-    // 게임 데이터가 있으면 스테이지 해금 상태 업데이트
-    if (gameData_)
+
+    // 처음부터 모두 선택 가능하도록 강제 해금
+    for (auto& button : stageButtons_)
     {
-        for (auto& button : stageButtons_)
-        {
-            button.isLocked = !gameData_->isStageUnlocked(button.stageNumber);
-        }
+        button.isLocked = false;
     }
-    
+
     // 배경음악 재생
     if (!bgm_.isEmpty())
     {
         bgm_.setVolume(0.2);  // 볼륨 설정 (0.05 * 4 = 0.2)
         bgm_.play();
     }
-    
-    // Print << U"스테이지 선택 화면 진입";
 }
 
 void StageSelectScene::onExit()
@@ -56,8 +51,6 @@ void StageSelectScene::onExit()
     {
         bgm_.stop();
     }
-    
-    // Print << U"스테이지 선택 화면 종료";
 }
 
 void StageSelectScene::initializeStages()
@@ -67,11 +60,11 @@ void StageSelectScene::initializeStages()
     // 화면 중앙 Y 위치
     const int32 centerY = 400;
     
-    // 전체 9개 스테이지에 대한 이름과 설명
+    // 전체 8개 스테이지에 대한 이름과 설명
     Array<String> stageNames = {
         U"Tutorial1", U"Basic", U"Complex", 
         U"Tutorial2", U"Fish", U"Master",
-        U"Tutorial3", U"RedChess", U"Final"
+        U"Tutorial3", U"RedChess"
     };
     
     Array<String> descriptions = {
@@ -82,12 +75,11 @@ void StageSelectScene::initializeStages()
         U"It's fish",
         U"Wow",
         U"Learn about Item",
-        U"Chess", 
-        U"You Win"
+        U"Chess"
     };
     
-    // 9개 스테이지 버튼 생성 (가로로 나열)
-    for (int32 i = 0; i < 9; i++)
+    // 8개 스테이지 버튼 생성 (가로로 나열)
+    for (int32 i = 0; i < 8; i++)
     {
         StageButton button;
         
@@ -100,15 +92,8 @@ void StageSelectScene::initializeStages()
         
         button.stageNumber = i + 1;
         
-        // 게임 데이터가 있으면 해금 상태 확인, 없으면 기본값 (Stage 1만 해금)
-        if (gameData_)
-        {
-            button.isLocked = !gameData_->isStageUnlocked(i + 1);
-        }
-        else
-        {
-            button.isLocked = (i != 0);  // Stage 1만 해금
-        }
+        // 처음부터 모두 해금
+        button.isLocked = false;
         
         button.stageName = stageNames[i];
         button.description = descriptions[i];
@@ -121,12 +106,12 @@ void StageSelectScene::initializeStages()
 
 void StageSelectScene::loadStageTextures()
 {
-    // 스테이지 텍스처 배열 초기화 (9개 스테이지, 각각 3개 프레임)
+    // 스테이지 텍스처 배열 초기화 (8개 스테이지, 각각 3개 프레임)
     stageTextures_.clear();
-    stageTextures_.resize(9);
+    stageTextures_.resize(8);
     
     // 각 스테이지별로 3개의 애니메이션 프레임 로드
-    for (int32 stageIndex = 0; stageIndex < 9; stageIndex++)
+    for (int32 stageIndex = 0; stageIndex < 8; stageIndex++)
     {
         const int32 stageNumber = stageIndex + 1;  // 스테이지 번호는 1부터 시작
         
@@ -141,13 +126,11 @@ void StageSelectScene::loadStageTextures()
             if (!frameTexture.isEmpty())
             {
                 stageTextures_[stageIndex].push_back(frameTexture);
-                // Print << U"Loaded texture: {}"_fmt(texturePath);
             }
             else
             {
                 // 로딩 실패 시 빈 텍스처 추가 (오류 방지)
                 stageTextures_[stageIndex].push_back(Texture{});
-                // Print << U"Failed to load texture: {}"_fmt(texturePath);
             }
         }
     }
@@ -219,20 +202,13 @@ void StageSelectScene::updateStageButtons()
                 if (gameData_)
                 {
                     gameData_->currentStage = button.stageNumber;
-                    // Print << U"Stage {} selected, gameData->currentStage = {}"_fmt(button.stageNumber, gameData_->currentStage);
                 }
-                // else
-                // {
-                //     Print << U"gameData_ is nullptr!"_fmt();
-                // }
                 
-                // Print << U"Changing to InGame scene..."_fmt();
                 changeScene(SceneType::InGame);
             }
             else
             {
                 // 잠긴 스테이지를 클릭했을 때 피드백
-                // Print << U"Stage {} is locked!"_fmt(button.stageNumber);
             }
         }
         
@@ -434,8 +410,8 @@ void StageSelectScene::updateScrolling()
 
 double StageSelectScene::getMaxScrollOffset() const
 {
-    // 총 9개 스테이지의 전체 너비
-    const double totalWidth = (STAGE_WIDTH + STAGE_SPACING) * 9 - STAGE_SPACING;
+    // 총 8개 스테이지의 전체 너비
+    const double totalWidth = (STAGE_WIDTH + STAGE_SPACING) * 8 - STAGE_SPACING;
     
     // 화면에 3개가 편안하게 보이도록 하는 가시 너비 (여백 포함)
     const double visibleWidth = VISIBLE_STAGES * (STAGE_WIDTH + STAGE_SPACING);
