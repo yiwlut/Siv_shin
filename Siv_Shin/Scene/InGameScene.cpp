@@ -400,8 +400,8 @@ void InGameScene::triggerBombBoxFXForBlack_Multi(uint64 uid, double durationSec)
     if (ColorBox* b = getBoxByUid(uid)) {
         inst.tilePos = b->pos;
         removeBoxByUid(uid);
+        bombFXs_.push_back(inst);
     }
-	bombFXs_.push_back(inst);
 }
 
 void InGameScene::updateBombBoxFX_Multi()
@@ -426,6 +426,8 @@ void InGameScene::drawBombBoxFX_Multi() {
 	
     for (const auto& fx : bombFXs_) {
         // 박스는 FX 시작 시 제거되었으므로 저장된 타일 좌표를 사용
+        if (fx.tilePos.x >= 0 && fx.tilePos.y >= 0 &&
+            fx.tilePos.x < getMapWidth() && fx.tilePos.y < getMapHeight())
         {
             const Rect boxRect(fx.tilePos.x * TILE_SIZE, fx.tilePos.y * TILE_SIZE,
                                TILE_SIZE, TILE_SIZE);
@@ -1547,8 +1549,12 @@ const Array<Point>& InGameScene::getGoalPositionsForColor(BoxColor color) const
 
 void InGameScene::updateBlackBoxes()
 {
-    // 검정 블록: 3초 후 폭발 FX를 시작하고, FX에서 제거를 담당
-    for (auto& box : boxes_) {
+    // 검정 블록: 3초 후 폭발 FX 시작
+    // 주의: 순회 중 boxes_를 변경하면 크래시가 발생할 수 있으므로, 먼저 UID를 수집 후 처리
+    Array<uint64> toTrigger;
+    toTrigger.reserve(boxes_.size());
+
+    for (const auto& box : boxes_) {
         if (box.color != BoxColor::Black) continue;
 
         const bool hasActiveFX = bombFXs_.any([&](const BombBoxInst& fx) { return fx.uid == box.uid; });
@@ -1556,9 +1562,13 @@ void InGameScene::updateBlackBoxes()
 
         const double elapsed = gameTime_ - box.creationTime;
         if (elapsed >= 3.0) {
-            // 3초 경과 시 폭발 FX 시작 (지속시간 1.5초 등)
-            triggerBombBoxFXForBlack_Multi(box.uid, 1.5);
+            toTrigger.push_back(box.uid);
         }
+    }
+
+    for (const uint64 uid : toTrigger) {
+        // FX 시작과 동시에 박스 제거는 triggerBombBoxFXForBlack_Multi 내부에서 수행
+        triggerBombBoxFXForBlack_Multi(uid, 1.5);
     }
 }
 
