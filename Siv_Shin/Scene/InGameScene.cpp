@@ -148,12 +148,11 @@ void InGameScene::loadAssets()
     noteG5_ = Audio{ U"ArtResources/SFX/G5.wav" };
     noteC6_ = Audio{ U"ArtResources/SFX/C6.wav" };
 
-    // 보스 이미지 로드 (Final stage 전용) - summon 0~6 프레임
+    // 보스 이미지 로드 (Final stage 전용) - clock 0~2 프레임
     bossIdleFrames_.clear();
-    for (int32 i = 0; i < 7; ++i)
+    for (int32 i = 0; i < 3; ++i)
     {
-        // 워크스페이스 기준 상대 경로 사용
-        Texture f{ U"ArtResources/Texture2D/Boss/boss_summon_{}.png"_fmt(i) };
+        Texture f{ U"ArtResources/Texture2D/Boss/boss_clock_{}.png"_fmt(i) };
         if (!f.isEmpty()) bossIdleFrames_.push_back(f);
     }
     bossAnimFrame_ = 0;
