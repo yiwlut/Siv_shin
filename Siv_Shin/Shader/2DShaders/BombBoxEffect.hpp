@@ -48,6 +48,22 @@ public:
 	bool isExploding() const;   // 폭발(파편) 구간: true
 	bool isPulsing()  const;    // 점등 구간: true
 
+	// 배칭용 정적 렌더 함수 추가
+	static void drawBatched(
+		const PixelShader& ps,
+		const Array<RectF>& screenRects,
+		const Array<Params>& params,
+		const Array<double>& times,
+		const Array<double>& explodeTs
+	);
+
+	// 시간 정보 getter 추가
+	double getTime() const { return m_time; }
+	double getExplodeT() const { return m_explodeT; }
+	bool isInExplode() const { return m_inExplode; }
+
+	const PixelShader& getPixelShader() const { return m_ps; }
+
 private:
 	PixelShader m_ps;
 	struct UBO {

@@ -422,62 +422,129 @@ void InGameScene::triggerBombBoxFXForBlack_Multi(uint64 uid, double durationSec)
 	bombFXs_.push_back(std::move(inst));
 }
 
-void InGameScene::updateBombBoxFX_Multi()
+void InGameScene::updateBombBoxFX_Multi(double dt)
 {
-	for (auto& fx : bombFXs_) {
-		if (fx.effect) {
-			fx.effect->update(Scene::DeltaTime());
+	for (auto it = bombFXs_.begin(); it != bombFXs_.end(); )
+	{
+		auto& fx = *it;
+		if (!fx.effect)
+		{
+			it = bombFXs_.erase(it);
+			continue;
+		}
 
-			// 폭발 파편이 날아가기 시작할 때 벽도 함께 파괴
-			if (!fx.params.wallsDestroyed && fx.effect->isExploding()) {
-				if (const ColorBox* b = getBoxByUid(fx.uid)) {
+		// 1) 매 프레임 이펙트 업데이트
+		fx.effect->update(dt);
+
+		// 2) 펄스 종료 시 자동 트리거
+		if (!fx.params.wallsDestroyed && fx.effect->isPulsing())
+		{
+			double elapsed = fx.effect->getTime();
+			double threshold = fx.params.pulseDuration * fx.params.pulseCount;
+			if (elapsed >= threshold)
+			{
+				fx.effect->trigger();
+				// 폭발 시작 시 벽 파괴
+				if (const ColorBox* b = getBoxByUid(fx.uid))
+				{
 					destroyWalls8(b->pos);
 				}
 				fx.params.wallsDestroyed = true;
 			}
 		}
-	}
-	bombFXs_.remove_if([this](const BombBoxInstance& fx) {
-		if (fx.effect && fx.effect->exploded()) {
+
+		// 3) 폭발 진행 중, isExploding() 전환 시 추가 파괴(안정성)
+		if (fx.params.wallsDestroyed && fx.effect->isExploding() && !fx.params.useWallColor)
+		{
+			if (const ColorBox* b = getBoxByUid(fx.uid))
+			{
+				destroyWalls8(b->pos);
+			}
+			fx.params.useWallColor = true; // 중복 방지
+		}
+
+		// 4) 연출 완료 시 박스 제거 및 추가 파괴
+		if (fx.effect->isInExplode() && (fx.effect->getExplodeT() >= fx.params.explodeTime)) {
 			if (const ColorBox* b = getBoxByUid(fx.uid)) {
-				destroyWalls8(b->pos);  // 주변 8방향 벽 파괴
+				destroyWalls8(b->pos);
 			}
 			removeBoxByUid(fx.uid);
-			return true;
+			it = bombFXs_.erase(it);
+			continue;
 		}
-		return false;
-	});
+		++it;
+	}
 }
 
 
 void InGameScene::drawBombBoxFX_Multi()
 {
-	// 1. 현재 카메라의 변환 행렬을 직접 가져옵니다.
-	// 이 행렬은 줌, 이동 등 모든 카메라 변환 정보를 담고 있습니다.
+	if (bombFXs_.isEmpty()) return;
+
+	// 1. 좌표 변환은 한 번만
 	const Mat3x2 transform = camera().getMat3x2();
+	const double scale = camera().getScale();
+
+	// 2. 배칭 데이터 준비
+	Array<RectF> screenRects;
+	Array<BombBoxEffect::Params> batchParams;
+	Array<double> batchTimes;
+	Array<double> batchExplodeTs;
+
+	screenRects.reserve(bombFXs_.size());
+	batchParams.reserve(bombFXs_.size());
+	batchTimes.reserve(bombFXs_.size());
+	batchExplodeTs.reserve(bombFXs_.size());
 
 	for (auto& fx : bombFXs_)
 	{
 		if (!fx.effect) continue;
 
+		// 박스가 존재하는지 확인
 		if (const ColorBox* b = getBoxByUid(fx.uid))
 		{
-			const s3d::Rect boxRect{ b->pos.x * TILE_SIZE, b->pos.y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+			// 타일 → 월드 → 스크린 좌표 변환
+			const s3d::Rect boxRect(
+				b->pos.x * TILE_SIZE,
+				b->pos.y * TILE_SIZE,
+				TILE_SIZE,
+				TILE_SIZE
+			);
 			const s3d::RectF inner = boxRect.stretched(-8);
-
-			// 2. 행렬을 사용해 월드 좌표계의 박스 중심점을 화면 좌표로 변환합니다.
 			const Vec2 worldCenter = inner.center();
 			const Vec2 screenCenter = transform.transformPoint(worldCenter);
+			const Vec2 screenHalfSize = (inner.size * 0.5) * scale;
 
-			// 3. 박스의 크기 또한 현재 카메라 줌(scale)에 맞게 조절합니다.
-			const Vec2 worldHalfSize = inner.size * 0.5;
-			const Vec2 screenHalfSize = worldHalfSize * camera().getScale();
+			const RectF screenRect = RectF(Arg::center = screenCenter, screenHalfSize * 2.0);
 
-			// 4. 계산된 화면 좌표와 크기로 최종 RectF를 생성합니다.
-			const RectF screenRect(Arg::center = screenCenter, screenHalfSize * 2.0);
+			// 배칭 데이터에 추가
+			screenRects.push_back(screenRect);
+			batchParams.push_back(fx.params);
+			batchTimes.push_back(fx.effect->getTime());
 
-			// 5. 이 최종 화면 좌표 RectF를 셰이더에 전달합니다.
-			fx.effect->draw(screenRect, fx.params);
+			// explodeT 계산
+			double explodeT = 0.0;
+			if (fx.effect->isInExplode())
+			{
+				explodeT = fx.effect->getExplodeT() / fx.params.explodeTime;
+			}
+			batchExplodeTs.push_back(explodeT);
+		}
+	}
+
+	// 3. 한 번의 배칭 렌더 호출
+	if (!screenRects.isEmpty())
+	{
+		// 셰이더는 첫 번째 이펙트의 것을 사용 (모두 동일하므로)
+		if (bombFXs_[0].effect)
+		{
+			BombBoxEffect::drawBatched(
+				bombFXs_[0].effect->getPixelShader(),
+				screenRects,
+				batchParams,
+				batchTimes,
+				batchExplodeTs
+			);
 		}
 	}
 }
@@ -640,57 +707,87 @@ void InGameScene::spawnWallBreakFXAtTile(Point tile)
 	fx.finished = false;
 	wallBreakFXs.push_back(std::move(fx));
 }
+
 void InGameScene::updateWallBreakFX()
 {
-	for (auto& fx : wallBreakFXs) {
-		if (fx.effect && !fx.finished) {
-			fx.effect->update(Scene::DeltaTime());
+	for (auto& fx : wallBreakFXs)
+	{
+		if (!fx.effect) { fx.finished = true; continue; } // 안전 가드
 
-			// 폭발 효과가 끝났는지 확인
-			if (fx.effect->exploded()) {
-				fx.finished = true;
-			}
+		fx.effect->update(Scene::DeltaTime()); // 진행도 갱신
+
+		// 시간 기반 제거: 폭발 구간 + 한계 시간 도달 시 완료
+		const double limit = fx.params.explodeTime;
+		const double expTime = fx.effect->getExplodeT();
+		if (fx.effect->isInExplode() && (expTime >= limit)) {
+			fx.finished = true;
 		}
 	}
 
-	// 완료된 효과 제거
-	wallBreakFXs.remove_if([](const WallBreakFX& fx) {
-		return fx.finished;
-	});
+	// 완료된 항목 제거
+	wallBreakFXs.remove_if([](const WallBreakFX& e) { return e.finished; });
 }
+
 void InGameScene::drawWallBreakFX()
 {
-	const Mat3x2 transform = camera().getMat3x2();
+	if (wallBreakFXs.isEmpty()) return;
 
-	for (auto& fx : wallBreakFXs) {
+	// 1. 좌표 변환 한 번만
+	const Mat3x2 transform = camera().getMat3x2();
+	const double scale = camera().getScale();
+
+	// 2. 배칭 데이터 준비
+	Array<RectF> screenRects;
+	Array<BombBoxEffect::Params> batchParams;
+	Array<double> batchTimes;
+	Array<double> batchExplodeTs;
+
+	screenRects.reserve(wallBreakFXs.size());
+	batchParams.reserve(wallBreakFXs.size());
+	batchTimes.reserve(wallBreakFXs.size());
+	batchExplodeTs.reserve(wallBreakFXs.size());
+
+	for (auto& fx : wallBreakFXs)
+	{
 		if (!fx.effect || fx.finished) continue;
 
-		// 2. 타일의 월드 좌표 계산 (벽의 렉트)
+		// 타일 → 월드 → 스크린 좌표 변환
 		const s3d::Rect tileRect(
 			fx.tilePos.x * TILE_SIZE,
 			fx.tilePos.y * TILE_SIZE,
 			TILE_SIZE,
 			TILE_SIZE
 		);
-
-		// 3. 벽 중심을 기준으로 약간 안쪽 영역 (프레임 제외)
 		const s3d::RectF inner = tileRect.stretched(-8);
-
-		// 4. 월드 좌표를 스크린 좌표로 변환
 		const Vec2 worldCenter = inner.center();
 		const Vec2 screenCenter = transform.transformPoint(worldCenter);
+		const Vec2 screenHalfSize = (inner.size * 0.5) * scale;
 
-		// 5. 스케일 적용한 화면 크기 계산
-		const Vec2 worldHalfSize = inner.size * 0.5;
-		const Vec2 screenHalfSize = worldHalfSize * camera().getScale();
-
-		// 6. 화면 좌표계 RectF 생성
 		const RectF screenRect = RectF(Arg::center = screenCenter, screenHalfSize * 2.0);
 
-		// 7. 쉐이더에 벽 색상 전달을 위해 UBO 수정 필요
-		// BombBoxEffect에서 sd.z를 tintMode로 사용 (1.0 = 벽 색상 사용)
-		// 여기서는 간단히 draw 호출
-		fx.effect->draw(screenRect, fx.params);
+		// 배칭 데이터에 추가
+		screenRects.push_back(screenRect);
+		batchParams.push_back(fx.params);
+		batchTimes.push_back(fx.effect->getTime());
+
+		// 벽 파괴는 항상 explode 상태
+		double explodeT = 0.0;
+		if (fx.effect->isInExplode()) {
+			explodeT = (fx.effect->getExplodeT() / fx.params.explodeTime); // 0..1
+		}
+		batchExplodeTs.push_back(explodeT);
+	}
+
+	// 3. 한 번의 배칭 렌더 호출
+	if (!screenRects.isEmpty() && wallBreakFXs[0].effect)
+	{
+		BombBoxEffect::drawBatched(
+			wallBreakFXs[0].effect->getPixelShader(),
+			screenRects,
+			batchParams,
+			batchTimes,
+			batchExplodeTs
+		);
 	}
 }
 
@@ -1003,9 +1100,12 @@ ColorF InGameScene::getBoxColorF(BoxColor color) const
 
 void InGameScene::update()
 {
+	const double dt = Scene::DeltaTime();
+	bombClock_ += dt;
+
 	updateMergePaintFX();
 
-	updateBombBoxFX_Multi();
+	updateBombBoxFX_Multi(dt);
 	updateWallBreakFX();
 
 
@@ -1030,9 +1130,9 @@ void InGameScene::update()
 		bgm_.play();
 	}
 
-	const double dt = Scene::DeltaTime();
 
-	bombClock_ += dt;
+
+
 
 	// R로 즉시 리트라이
 	if (KeyR.down() && !isCleared_) {
@@ -1043,6 +1143,12 @@ void InGameScene::update()
 		gameStateHistory_.clear();
 		undoHoldTime_ = 0.0;
 		undoCooldown_ = 0.0;
+
+		// 폭탄 이펙트 및 벽 파괴 이펙트 초기화
+		bombFXs_.clear();
+		wallBreakFXs.clear();
+		bombExpiryAbs_.clear();
+
 		loadStage(currentStage_);
 		// 조기 return 보호
 		updateMergePaintFX(); 
@@ -1058,6 +1164,12 @@ void InGameScene::update()
 			if (undoDown) {
 				undoLastMove();
 				undoCooldown_ = UNDO_REPEAT_DELAY;
+
+				// 폭탄 이펙트 및 벽 파괴 이펙트 초기화
+				bombFXs_.clear();
+				wallBreakFXs.clear();
+				bombExpiryAbs_.clear();
+
 				// 조기 return 보호
 				updateMergePaintFX(); 
 				return;
@@ -1067,6 +1179,12 @@ void InGameScene::update()
 				if (undoCooldown_ <= 0.0) {
 					undoLastMove();
 					undoCooldown_ = UNDO_REPEAT_DELAY;
+
+					// 폭탄 이펙트 및 벽 파괴 이펙트 초기화
+					bombFXs_.clear();
+					wallBreakFXs.clear();
+					bombExpiryAbs_.clear();
+
 					// 조기 return 보호
 					updateMergePaintFX(); 
 					return;
@@ -1494,11 +1612,11 @@ void InGameScene::draw()
         drawMap();
         drawPlayer();
         drawUI();
-		drawBombBoxFX_Multi();
-		drawWallBreakFX();
+
     }
 
-
+	drawBombBoxFX_Multi();
+	drawWallBreakFX();
 
     // 카메라 변환 종료
 

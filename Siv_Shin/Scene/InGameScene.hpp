@@ -250,6 +250,16 @@ private:
 		std::unique_ptr<BombBoxEffect> effect;
 		BombBoxEffect::Params params;
 	};
+
+	// 배칭 렌더링용 구조체
+	struct BombRenderBatch {
+		RectF screenRect;
+		BombBoxEffect::Params params;
+		double time;
+		double explodeT;
+	};
+
+
 	Array<BombBoxInstance> bombFXs_;
 
 	double bombClock_ = 0.0; // Undo 불변 시계
@@ -260,7 +270,7 @@ private:
 	static constexpr double kTotal = kPreDuration + kExpDuration;
 
 	void triggerBombBoxFXForBlack_Multi(uint64 uid, double durationSec = 1.5);
-	void updateBombBoxFX_Multi();
+	void updateBombBoxFX_Multi(double dt);
 	void drawBombBoxFX_Multi();
 	
 

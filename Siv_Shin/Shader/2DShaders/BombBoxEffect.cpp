@@ -158,3 +158,66 @@ void BombBoxEffect::drawInst(const RectF& box, const Params& p) {
 	Graphics2D::SetPSConstantBuffer(1, m_cb);
 	Rect{ Scene::Rect() }.draw(ColorF{ 0.0, 0.0 });
 }
+
+
+void BombBoxEffect::drawBatched(
+	const PixelShader& ps,
+	const Array<RectF>& screenRects,
+	const Array<Params>& params,
+	const Array<double>& times,
+	const Array<double>& explodeTs
+)
+{
+	if (screenRects.isEmpty() || !ps) return;
+
+	const Size sceneSize = Scene::Size();
+	const ScopedCustomShader2D shader{ ps };
+	const Transformer2D identity{ Mat3x2::Identity(), TransformCursor::Yes };
+
+	// 각 이펙트를 순회하며 UBO 설정 후 렌더
+	for (size_t i = 0; i < screenRects.size(); ++i)
+	{
+		const RectF& rect = screenRects[i];
+		const Params& p = params[i];
+		const double time = times[i];
+		const double explodeT = explodeTs[i];
+
+		const Vec2 centerTL = rect.center();
+		const Vec2 halfSize = rect.size * 0.5;
+
+		UBO u;
+		u.rt = Float4{
+			static_cast<float>(sceneSize.x),
+			static_cast<float>(sceneSize.y),
+			static_cast<float>(time),
+			static_cast<float>(explodeT)
+		};
+		u.ch = Float4{
+			static_cast<float>(centerTL.x),
+			static_cast<float>(centerTL.y),
+			static_cast<float>(halfSize.x),
+			static_cast<float>(halfSize.y)
+		};
+		u.pp = Float4{
+			p.pulseAmp,
+			p.pulseSpeed,
+			p.spread,
+			p.gravity
+		};
+
+		float tintMode = p.useWallColor ? 1.0f : 0.0f;
+		u.sd = Float4{ p.seed, 0.0f, tintMode, 0.0f };
+		u.col = Float4{
+			static_cast<float>(p.wallColor.r),
+			static_cast<float>(p.wallColor.g),
+			static_cast<float>(p.wallColor.b),
+			0.0f
+		};
+
+		ConstantBuffer<UBO> cb = u;
+		Graphics2D::SetPSConstantBuffer(1, cb);
+
+		// 화면 전체 렌더 (셰이더 내부에서 좌표 필터링)
+		rect.draw(ColorF{ 0.0, 0.0 });
+	}
+}
