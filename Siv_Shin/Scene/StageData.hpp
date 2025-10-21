@@ -29,6 +29,7 @@
  * 'g' = 초록 목표 (Green Goal)
  * 'v' = 보라 목표 (Violet Goal)
  * 'k' = 검은 목표 (Black Goal)
+ * 'i' = 얼음 바닥 (Ice) - 미끄러짐
  * 
  * 빈 공간:
  * ' ' 또는 '.' = 빈 공간 (Empty)
@@ -149,9 +150,9 @@ namespace StageData
 
 	// 10x5 Final Boss Stage (always referenced as FINAL_STAGE)
     inline const Array<String> FINAL_STAGE = {
-		U"##########",
-		U"#  R  Y  #",
-		U"#  B  G  #",
+		U"###iiii###",
+		U"#  iiii  #",
+		U"#  ii i  #",
 		U"# roybg T#",
 		U"##########"
 	};

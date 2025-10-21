@@ -202,6 +202,9 @@ void InGameScene::loadStageFromText(const Array<String>& mapText)
             case U'#':  // 벽
                 mapData_[y][x] = TileType::Wall;
                 break;
+            case U'i':  // 얼음
+                mapData_[y][x] = TileType::Ice;
+                break;
                 
             case U'T':  // 플레이어 시작 위치 (Taco)
                 playerPos_ = pos;
@@ -1116,6 +1119,30 @@ void InGameScene::update()
 	// 일반 업데이트
 	gameTime_ += dt;
 
+    // 얼음 미끄러짐 진행 중이면 입력을 무시하고 자동 이동만 수행
+    if (isSliding_) {
+        continueSliding();
+        updatePlayer();
+        updateAnimations();
+        updatePaintAnimation();
+        updateMergePaintFX();
+        updateBlackBoxes();
+        if (!isCleared_ && isGameClear()) {
+            isCleared_ = true;
+            score_ += 1000;
+            showClearEffect_ = true;
+            clearEffectTimer_ = 0.0;
+            createClearEffect();
+            if (gameData_) {
+                gameData_->clearStage(currentStage_);
+            }
+        }
+        if (showClearEffect_ && !isCleared_) {
+            updateClearEffect();
+        }
+        return;
+    }
+
 	// 입력 → 합성 성공 분기에서 즉시 setOriginPoint + startAnimation 호출되어야 함
 	handleInput();
 
@@ -1154,7 +1181,7 @@ void InGameScene::handleInput()
 {
 	const double dt = Scene::DeltaTime();
 	inputCooldown_ = Max(0.0, inputCooldown_ - dt);
-	if (isPlayerMoving_ || isPlayingPaintAnimation_) return;
+    if (isPlayerMoving_ || isPlayingPaintAnimation_ || isSliding_) return;
 
 	Point dir(0, 0);
 	bool moved = false;
@@ -1239,6 +1266,13 @@ void InGameScene::handleInput()
 				if (tier == ColorTier::Secondary) score_ += 50;
 				else if (tier == ColorTier::Tertiary) score_ += 100;
 
+				// 합성 결과 박스가 얼음 위라면 즉시 미끄러지도록 처리
+				if (isIce(resultPos)) {
+					if (ColorBox* nb = getBoxAt(resultPos)) {
+						slideBoxOnIce(nb, dir);
+					}
+				}
+
 				movePlayerTo(newPos);
 				moves_ += 1;
 				collectItem(newPos);
@@ -1253,6 +1287,8 @@ void InGameScene::handleInput()
 
 		// 비어 있으면 일반 밀기
 		pushBox(box, dir);
+		// 박스가 얼음 위에 도달하면 계속 미끄러짐
+		slideBoxOnIce(box, dir);
 	}
 
 	if (canMoveTo(newPos) || getBoxAt(newPos)) {
@@ -1264,6 +1300,12 @@ void InGameScene::handleInput()
 		if (tacoDirection_ != newDir || isFacingLeft_ != newFacingLeft) {
 			tacoDirection_ = newDir; isFacingLeft_ = newFacingLeft;
 			tacoAnimFrame_ = 0;     tacoAnimTimer_ = 0.0;
+		}
+
+		// 만약 도착한 타일이 얼음이면 슬라이딩 시작
+		if (isIce(newPos)) {
+			isSliding_ = true;
+			slideDir_ = dir;
 		}
 	}
 }
@@ -1277,6 +1319,75 @@ void InGameScene::ensureUniqueBoxUIDs() {
 		}
 		used.insert(b.uid);
 	}
+}
+
+bool InGameScene::isIce(Point pos) const
+{
+    if (!isInsideMap(pos)) return false;
+    return (mapData_[pos.y][pos.x] == TileType::Ice);
+}
+
+void InGameScene::continueSliding()
+{
+    // 이미 이동 중이면 위치 보정만 계속
+    if (isPlayerMoving_) {
+        return;
+    }
+
+    if (!isSliding_) return;
+
+    const Point next = playerPos_ + slideDir_;
+
+    // 다음 칸이 맵 밖이거나 벽이면 슬라이드 종료
+    if (!isInsideMap(next) || mapData_[next.y][next.x] == TileType::Wall) {
+        isSliding_ = false;
+        return;
+    }
+
+    // 다음 칸에 박스가 있으면 그 박스를 밀 수 있는지 확인
+    if (ColorBox* box = getBoxAt(next)) {
+        if (!canPushBox(playerPos_, box->pos, slideDir_)) {
+            isSliding_ = false;
+            return;
+        }
+
+        // 밀기 수행
+        pushBox(box, slideDir_);
+        // 박스 얼음 슬라이드
+        slideBoxOnIce(box, slideDir_);
+    }
+
+    // 한 칸 전진
+    movePlayerTo(next);
+    moves_ += 1;
+    collectItem(next);
+    saveGameState();
+
+    // 다음 칸이 얼음이면 계속, 아니면 종료
+    if (!isIce(next)) {
+        isSliding_ = false;
+    }
+}
+
+void InGameScene::slideBoxOnIce(ColorBox* box, Point dir)
+{
+    if (!box) return;
+
+    // 박스가 현재 있는 위치 또는 다음 위치가 얼음일 때, 벽이나 다른 박스 또는 비얼음이 나올 때까지 이동
+    Point cur = box->pos;
+    while (true) {
+        const Point nxt = cur + dir;
+        if (!isInsideMap(nxt)) break;
+        if (mapData_[nxt.y][nxt.x] == TileType::Wall) break;
+        if (getBoxAt(nxt) != nullptr) break; // 다른 박스가 막으면 중단
+
+        // 다음 칸으로 이동
+        cur = nxt;
+
+        // 다음 칸이 얼음이 아니라면 이번 이동까지만
+        if (!isIce(cur)) break;
+    }
+    box->pos = cur;
 }
 
 uint8 InGameScene::encodeTile_(InGameScene::TileType t) noexcept {
@@ -1491,6 +1602,11 @@ void InGameScene::drawMap()
 			case TileType::Wall:
 				tileRect.draw(ColorF{ 0.3, 0.3, 0.35 });
 				tileRect.drawFrame(2, 0, ColorF{ 0.5, 0.5, 0.55 });
+				break;
+			case TileType::Ice:
+				// 얼음 타일: 연한 하늘색
+				tileRect.draw(ColorF{ 0.615, 0.988, 0.976, 0.6 });
+				tileRect.drawFrame(2, 0, ColorF{ 0.8, 1.0, 1.0, 0.8 });
 				break;
 			case TileType::RedGoal:
 				tileRect.draw(ColorF{ 0.9, 0.2, 0.2, 0.3 });
@@ -2513,6 +2629,7 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 
 			switch (ch) {
 			case U'#': mapData_[y][x] = TileType::Wall; break;
+            case U'i': mapData_[y][x] = TileType::Ice; break;
 
 			case U'T':
 				playerPos_ = pos;

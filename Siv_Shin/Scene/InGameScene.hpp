@@ -99,6 +99,7 @@ private:
         GreenGoal,   // g - 초록 목표
         VioletGoal,  // v - 보라 목표
         BlackGoal,   // k - 검정 목표
+        Ice,         // i - 얼음 바닥 (미끄럼)
         RedItem,     // ㅃ - 빨강 아이템
         OrangeItem,  // ㅈ - 주황 아이템
         YellowItem,  // ㄴ - 노랑 아이템
@@ -286,6 +287,13 @@ private:
 	void spawnWallBreakFXAtTile(Point tile);
 	void updateWallBreakFX();
 	void drawWallBreakFX();
+
+    // 얼음(슬라이딩) 시스템
+    bool isSliding_ = false;      // 플레이어가 현재 미끄러지는 중인지
+    Point slideDir_{ 0, 0 };      // 미끄러지는 방향
+    bool isIce(Point pos) const;  // 얼음 타일 여부
+    void continueSliding();       // 미끄러짐 자동 진행
+    void slideBoxOnIce(ColorBox* box, Point dir); // 박스 얼음 슬라이드
 
 public:
     InGameScene();
