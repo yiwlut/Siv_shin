@@ -148,10 +148,14 @@ void InGameScene::loadAssets()
     noteG5_ = Audio{ U"ArtResources/SFX/G5.wav" };
     noteC6_ = Audio{ U"ArtResources/SFX/C6.wav" };
 
-    // 보스 이미지 로드 (Final stage 전용)
-    // 프로젝트 상대 경로 사용: Siv_Shin/App/ 아래가 작업 디렉토리라면 아래 경로로 접근
-    // 절대경로 지양: C:\Users\User\Documents\GitHub\Siv_shin\Siv_Shin\App\ArtResources\Texture2D\Boss\boss_Idle_0.png
-    bossTexture_ = Texture{ U"ArtResources/Texture2D/Boss/boss_Idle_0.png" };
+    // 보스 이미지 로드 (Final stage 전용) - clock 0~2 프레임
+    bossIdleFrames_.clear();
+    for (int32 i = 0; i < 3; ++i)
+    {
+        Texture f{ U"ArtResources/Texture2D/Boss/boss_clock_{}.png"_fmt(i) };
+        if (!f.isEmpty()) bossIdleFrames_.push_back(f);
+    }
+    bossAnimFrame_ = 0;
 }
 
 void InGameScene::loadStage(int32 stageNumber)
@@ -1576,6 +1580,11 @@ void InGameScene::updateAnimations()
     {
         tacoAnimTimer_ -= 0.4;
         tacoAnimFrame_ = (tacoAnimFrame_ + 1) % 2;
+        // 보스 애니메이션도 Taco와 동일 속도로 진행
+        if (!bossIdleFrames_.isEmpty())
+        {
+            bossAnimFrame_ = (bossAnimFrame_ + 1) % static_cast<int32>(bossIdleFrames_.size());
+        }
     }
 }
 
@@ -1584,14 +1593,15 @@ void InGameScene::draw()
     drawBackground();
 	
     // Final stage 상단 영역에 보스 이미지 표시 (카메라 변환 밖, 화면 좌표)
-    if (StageData::isFinalStage(currentStage_) && !bossTexture_.isEmpty())
+    if (StageData::isFinalStage(currentStage_) && !bossIdleFrames_.isEmpty())
     {
         const int32 screenW = Scene::Width();
         const int32 screenH = Scene::Height();
         const int32 topH = screenH / 2; // 상단 절반
 
         // 보스 이미지가 상단 절반 내부에 비율 유지로 최대한 크게 보이도록 리사이즈
-        const Size bossSize = bossTexture_.size();
+        const Texture& bossTex = bossIdleFrames_[bossAnimFrame_ % static_cast<int32>(bossIdleFrames_.size())];
+        const Size bossSize = bossTex.size();
         if (bossSize.x > 0 && bossSize.y > 0)
         {
             const double sx = static_cast<double>(screenW) / bossSize.x;
@@ -1601,7 +1611,7 @@ void InGameScene::draw()
             const int32 drawH = static_cast<int32>(bossSize.y * s);
             const int32 x = (screenW - drawW) / 2;
             const int32 y = (topH - drawH) / 2; // 상단 영역 중앙에 배치
-            bossTexture_.resized(drawW, drawH).draw(x, y);
+            bossTex.resized(drawW, drawH).draw(x, y);
         }
     }
 

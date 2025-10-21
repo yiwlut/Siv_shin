@@ -118,8 +118,9 @@ private:
     
     // 배경 이미지
     Texture stageBackground_;
-    // 보스 이미지 (Final stage 전용)
-    Texture bossTexture_;
+    // 보스 이미지 (Final stage 전용) - 3프레임 애니메이션
+    Array<Texture> bossIdleFrames_;
+    int32 bossAnimFrame_ = 0;
     
     // 플레이어 - 부드러운 이동 추가
     Point playerPos_;           // 논리적 타일 위치

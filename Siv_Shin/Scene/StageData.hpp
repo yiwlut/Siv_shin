@@ -150,11 +150,11 @@ namespace StageData
 
 	// 10x5 Final Boss Stage (always referenced as FINAL_STAGE)
     inline const Array<String> FINAL_STAGE = {
-		U"###iiii###",
-		U"#  iiii  #",
-		U"#  ii i  #",
-		U"# roybg T#",
-		U"##########"
+		U"   iiii   ",
+		U"   iiii   ",
+		U"   ii i   ",
+		U"  roybg T ",
+		U"          "
 	};
 
     /// @brief 모든 스테이지 맵 데이터를 반환하는 함수
