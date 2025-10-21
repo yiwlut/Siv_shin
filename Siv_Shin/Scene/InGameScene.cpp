@@ -1,4 +1,5 @@
 ﻿#include "InGameScene.hpp"
+#include "StageData.hpp"
 
 InGameScene::InGameScene()
     : InGameScene(1)  // 기본은 스테이지 1
@@ -146,6 +147,11 @@ void InGameScene::loadAssets()
     noteE5_ = Audio{ U"ArtResources/SFX/E5.wav" };
     noteG5_ = Audio{ U"ArtResources/SFX/G5.wav" };
     noteC6_ = Audio{ U"ArtResources/SFX/C6.wav" };
+
+    // 보스 이미지 로드 (Final stage 전용)
+    // 프로젝트 상대 경로 사용: Siv_Shin/App/ 아래가 작업 디렉토리라면 아래 경로로 접근
+    // 절대경로 지양: C:\Users\User\Documents\GitHub\Siv_shin\Siv_Shin\App\ArtResources\Texture2D\Boss\boss_Idle_0.png
+    bossTexture_ = Texture{ U"ArtResources/Texture2D/Boss/boss_Idle_0.png" };
 }
 
 void InGameScene::loadStage(int32 stageNumber)
@@ -1348,6 +1354,28 @@ void InGameScene::draw()
 {
     drawBackground();
 	
+    // Final stage 상단 영역에 보스 이미지 표시 (카메라 변환 밖, 화면 좌표)
+    if (StageData::isFinalStage(currentStage_) && !bossTexture_.isEmpty())
+    {
+        const int32 screenW = Scene::Width();
+        const int32 screenH = Scene::Height();
+        const int32 topH = screenH / 2; // 상단 절반
+
+        // 보스 이미지가 상단 절반 내부에 비율 유지로 최대한 크게 보이도록 리사이즈
+        const Size bossSize = bossTexture_.size();
+        if (bossSize.x > 0 && bossSize.y > 0)
+        {
+            const double sx = static_cast<double>(screenW) / bossSize.x;
+            const double sy = static_cast<double>(topH) / bossSize.y;
+            const double s = Min(sx, sy) * 0.9; // 약간 여백
+            const int32 drawW = static_cast<int32>(bossSize.x * s);
+            const int32 drawH = static_cast<int32>(bossSize.y * s);
+            const int32 x = (screenW - drawW) / 2;
+            const int32 y = (topH - drawH) / 2; // 상단 영역 중앙에 배치
+            bossTexture_.resized(drawW, drawH).draw(x, y);
+        }
+    }
+
     // 카메라 변환 시작 (월드 렌더링 + 인게임 UI)
 	{
         const auto _t = camera().createTransformer();
@@ -2609,7 +2637,37 @@ void InGameScene::updateFixedCameraZoomByWheelInput() {
 
 void InGameScene::onStageLoaded_FixedCamera() {
 	playerPixelPos_ = tileToPixel(playerPos_);
-	applyFixedCameraFitToMap();
+	
+    // Final stage (보스 스테이지)는 플레이 영역을 화면 하단에 배치
+    if (StageData::isFinalStage(currentStage_)) {
+		const double vw = static_cast<double>(Scene::Width());
+		const double vh = static_cast<double>(Scene::Height());
+		const double worldW = static_cast<double>(getMapWidth()) * TILE_SIZE;
+		const double worldH = static_cast<double>(getMapHeight()) * TILE_SIZE;
+		
+		// 플레이 영역(10x5)을 화면에 맞게 스케일 계산
+		double s = Min(vw / worldW, (vh * 0.5) / worldH) * 0.9;  // 화면 하단 절반 영역에 맞춤
+		s = Clamp(s, 0.25, 5.0);
+		
+		// 플레이 영역 중심을 화면 하단에 배치 (상단 절반은 보스용)
+		const Vec2 center(
+			worldW * 0.5,
+			worldH * 0.5
+		);
+		
+		auto& cam = camera();
+		cam.jumpToScale(s);
+		
+        // 카메라를 위로 이동 (화면 하단에 플레이 영역 표시)
+		const Vec2 offsetCenter = Vec2(
+			center.x,
+            center.y - (vh / s) * 0.25  // 화면 하단으로 이동
+		);
+		cam.jumpToPos(offsetCenter);
+	}
+	else {
+		applyFixedCameraFitToMap();
+	}
 }
 
 Rect InGameScene::getVisibleTileRect() const

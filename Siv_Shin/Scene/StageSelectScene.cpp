@@ -1,4 +1,5 @@
 ﻿#include "StageSelectScene.hpp"
+#include "StageData.hpp"
 
 StageSelectScene::StageSelectScene()
     : titleFont_(FontMethod::MSDF, 48, Typeface::Bold)
@@ -60,13 +61,16 @@ void StageSelectScene::initializeStages()
     // 화면 중앙 Y 위치
     const int32 centerY = 400;
     
-    // 전체 8개 스테이지에 대한 이름과 설명
+    // 스테이지 개수 동적 결정 (마지막은 finalStage)
+    const int32 totalStages = StageData::getTotalStageCount();
+
+    // 스테이지 이름과 설명 기본값 준비
     Array<String> stageNames = {
         U"Tutorial1", U"Basic", U"Complex", 
         U"Tutorial2", U"Fish", U"Master",
-        U"Tutorial3", U"RedChess"
+        U"Tutorial3", U"RedChess", U"Final"
     };
-    
+
     Array<String> descriptions = {
         U"Learn basic movements",
         U"Color mixing basics", 
@@ -75,11 +79,12 @@ void StageSelectScene::initializeStages()
         U"It's fish",
         U"Wow",
         U"Learn about Item",
-        U"Chess"
+        U"Chess",
+        U"Final boss stage"
     };
     
-    // 8개 스테이지 버튼 생성 (가로로 나열)
-    for (int32 i = 0; i < 8; i++)
+    // 스테이지 버튼 생성 (가로로 나열)
+    for (int32 i = 0; i < totalStages; i++)
     {
         StageButton button;
         
@@ -95,8 +100,9 @@ void StageSelectScene::initializeStages()
         // 처음부터 모두 해금
         button.isLocked = false;
         
-        button.stageName = stageNames[i];
-        button.description = descriptions[i];
+        // 배열 범위를 넘어가면 기본 이름/설명 사용
+        button.stageName = (i < stageNames.size()) ? stageNames[i] : U"Stage {}"_fmt(i + 1);
+        button.description = (i < descriptions.size()) ? descriptions[i] : U"";
         
         stageButtons_.push_back(button);
     }
@@ -108,10 +114,11 @@ void StageSelectScene::loadStageTextures()
 {
     // 스테이지 텍스처 배열 초기화 (8개 스테이지, 각각 3개 프레임)
     stageTextures_.clear();
-    stageTextures_.resize(8);
+    const int32 totalStages = StageData::getTotalStageCount();
+    stageTextures_.resize(totalStages);
     
     // 각 스테이지별로 3개의 애니메이션 프레임 로드
-    for (int32 stageIndex = 0; stageIndex < 8; stageIndex++)
+    for (int32 stageIndex = 0; stageIndex < totalStages; stageIndex++)
     {
         const int32 stageNumber = stageIndex + 1;  // 스테이지 번호는 1부터 시작
         
@@ -411,7 +418,8 @@ void StageSelectScene::updateScrolling()
 double StageSelectScene::getMaxScrollOffset() const
 {
     // 총 8개 스테이지의 전체 너비
-    const double totalWidth = (STAGE_WIDTH + STAGE_SPACING) * 8 - STAGE_SPACING;
+    const int32 totalStages = StageData::getTotalStageCount();
+    const double totalWidth = (STAGE_WIDTH + STAGE_SPACING) * totalStages - STAGE_SPACING;
     
     // 화면에 3개가 편안하게 보이도록 하는 가시 너비 (여백 포함)
     const double visibleWidth = VISIBLE_STAGES * (STAGE_WIDTH + STAGE_SPACING);

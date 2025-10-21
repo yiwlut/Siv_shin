@@ -147,8 +147,17 @@ namespace StageData
 		U"##2##T#####"
 	};
 
+	// 10x5 Final Boss Stage (always referenced as FINAL_STAGE)
+    inline const Array<String> FINAL_STAGE = {
+		U"##########",
+		U"#  R  Y  #",
+		U"#  B  G  #",
+		U"# roybg T#",
+		U"##########"
+	};
+
     /// @brief 모든 스테이지 맵 데이터를 반환하는 함수
-    /// @param stageNumber 스테이지 번호 (1-8)
+    /// @param stageNumber 스테이지 번호 (1-8) + 마지막은 final stage
     /// @return 해당 스테이지의 맵 데이터 (빈 배열이면 스테이지 없음)
     inline Array<String> getStageMap(int32 stageNumber)
     {
@@ -162,6 +171,7 @@ namespace StageData
         case 6: return STAGE_6;
         case 7: return STAGE_7;
         case 8: return STAGE_8;
+        case 9: return FINAL_STAGE; // Final Boss Stage (명명: finalStage)
         default: return STAGE_1; // 기본값: 스테이지 1
         }
     }
@@ -170,7 +180,25 @@ namespace StageData
     /// @return 총 스테이지 개수
     inline constexpr int32 getTotalStageCount()
     {
-        return 8;
+        return 9;
+    }
+
+    /// @brief 파이널 스테이지(보스) 맵 반환 - 번호와 무관하게 명시적으로 접근
+    inline Array<String> getFinalStageMap()
+    {
+        return FINAL_STAGE;
+    }
+
+    /// @brief 파이널 스테이지인지 여부 (현재는 마지막 스테이지)
+    inline constexpr bool isFinalStage(int32 stageNumber)
+    {
+        return (stageNumber == getTotalStageCount());
+    }
+
+    /// @brief 파이널 스테이지의 인덱스(번호) 반환
+    inline constexpr int32 getFinalStageIndex()
+    {
+        return getTotalStageCount();
     }
 
     /// @brief 스테이지가 유효한지 확인
