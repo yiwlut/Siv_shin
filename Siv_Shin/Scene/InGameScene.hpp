@@ -131,7 +131,11 @@ private:
     double inputCooldown_;
     double moveDelay_;
     ColorF playerColor_;
-    
+
+	Optional<Point> queuedDir_; // 방향 전환 입력 버퍼
+	bool pollMoveDirection(Point& outDir, TacoDirection& outTacoDir, bool& outFacingLeft);
+	void bufferInputWhileMoving();
+
     // 소코반 맵 데이터
     int32 currentStage_;
     Array<Array<TileType>> mapData_;  // 11x11 맵

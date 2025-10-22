@@ -1337,11 +1337,67 @@ void InGameScene::update()
 }
 
 
+
+void InGameScene::bufferInputWhileMoving() {
+	// 이번 프레임 새로 눌린 방향만 큐에 저장 (.down 우선)
+	if (KeyRight.down()) {
+		queuedDir_ = Point{ 1, 0 };
+	}
+	else if (KeyLeft.down()) {
+		queuedDir_ = Point{ -1, 0 };
+	}
+	else if (KeyUp.down()) {
+		queuedDir_ = Point{ 0, -1 };
+	}
+	else if (KeyDown.down()) {
+		queuedDir_ = Point{ 0, 1 };
+	}
+}
+
+bool InGameScene::pollMoveDirection(Point& outDir, TacoDirection& outTacoDir, bool& outFacingLeft) {
+	auto set = [&](const Point& d, TacoDirection td, bool fl) {
+		outDir = d;
+		outTacoDir = td;
+		outFacingLeft = fl;
+		return true;
+		};
+
+	// 1) 버퍼 우선 소비
+	if (queuedDir_) {
+		const Point q = *queuedDir_;
+		queuedDir_.reset();
+		if (q.x > 0) return set(Point{ 1, 0 }, TacoDirection::Side, false);
+		if (q.x < 0) return set(Point{ -1, 0 }, TacoDirection::Side, true);
+		if (q.y < 0) return set(Point{ 0, -1 }, TacoDirection::Up, isFacingLeft_);
+		if (q.y > 0) return set(Point{ 0, 1 }, TacoDirection::Down, isFacingLeft_);
+	}
+
+	// 2) 이번 프레임 .down 우선 (단일 선택, 가로→세로 예시 우선순위)
+	if (KeyRight.down()) return set(Point{ 1, 0 }, TacoDirection::Side, false);
+	if (KeyLeft.down())  return set(Point{ -1, 0 }, TacoDirection::Side, true);
+	if (KeyUp.down())    return set(Point{ 0, -1 }, TacoDirection::Up, isFacingLeft_);
+	if (KeyDown.down())  return set(Point{ 0, 1 }, TacoDirection::Down, isFacingLeft_);
+
+	// 3) 누르고 있는 키(.pressed) — 쿨다운이 없을 때만
+	if (inputCooldown_ <= 0.0) {
+		if (KeyRight.pressed()) return set(Point{ 1, 0 }, TacoDirection::Side, false);
+		if (KeyLeft.pressed())  return set(Point{ -1, 0 }, TacoDirection::Side, true);
+		if (KeyUp.pressed())    return set(Point{ 0, -1 }, TacoDirection::Up, isFacingLeft_);
+		if (KeyDown.pressed())  return set(Point{ 0, 1 }, TacoDirection::Down, isFacingLeft_);
+	}
+
+	return false;
+}
+
 void InGameScene::handleInput()
 {
 	const double dt = Scene::DeltaTime();
 	inputCooldown_ = Max(0.0, inputCooldown_ - dt);
-    if (isPlayerMoving_ || isPlayingPaintAnimation_ || isSliding_) return;
+    if (isPlayerMoving_ || isPlayingPaintAnimation_ || isSliding_)
+	{
+		bufferInputWhileMoving();
+		return;
+	}
 
 	Point dir(0, 0);
 	bool moved = false;
@@ -1496,6 +1552,8 @@ void InGameScene::continueSliding()
 
     if (!isSliding_) return;
 
+	if (!isIce(playerPos_)) { isSliding_ = false; return; }
+
     const Point next = playerPos_ + slideDir_;
 
     // 다음 칸이 맵 밖이거나 벽이면 슬라이드 종료
@@ -1531,23 +1589,24 @@ void InGameScene::continueSliding()
 
 void InGameScene::slideBoxOnIce(ColorBox* box, Point dir)
 {
-    if (!box) return;
+	if (!box) return; // 안전 가드
+	Point cur = box->pos;
 
-    // 박스가 현재 있는 위치 또는 다음 위치가 얼음일 때, 벽이나 다른 박스 또는 비얼음이 나올 때까지 이동
-    Point cur = box->pos;
-    while (true) {
-        const Point nxt = cur + dir;
-        if (!isInsideMap(nxt)) break;
-        if (mapData_[nxt.y][nxt.x] == TileType::Wall) break;
-        if (getBoxAt(nxt) != nullptr) break; // 다른 박스가 막으면 중단
+	// 추가: 시작 칸이 얼음이 아니면 슬라이드 없음
+	if (!isIce(cur)) return;
 
-        // 다음 칸으로 이동
-        cur = nxt;
+	while (true)
+	{
+		const Point nxt = cur + dir;
+		if (!isInsideMap(nxt)) break;
+		if (mapData_[nxt.y][nxt.x] == TileType::Wall) break;
+		if (getBoxAt(nxt) != nullptr) break;
 
-        // 다음 칸이 얼음이 아니라면 이번 이동까지만
-        if (!isIce(cur)) break;
-    }
-    box->pos = cur;
+		cur = nxt;
+		if (!isIce(cur)) break; // 얼음이 끝나면 정지
+	}
+
+	box->pos = cur;
 }
 
 uint8 InGameScene::encodeTile_(InGameScene::TileType t) noexcept {
@@ -1600,6 +1659,7 @@ void InGameScene::updatePlayer()
             // 목표 지점에 도달
             playerPixelPos_ = targetPixelPos_;
             isPlayerMoving_ = false;
+			inputCooldown_ = 0.0;
         }
         else
         {
