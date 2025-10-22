@@ -212,6 +212,12 @@ private:
     static constexpr double UNDO_HOLD_THRESHOLD = 0.5;  // 반복 시작까지 필요한 홀드 시간 (초)
     static constexpr double UNDO_REPEAT_DELAY = 0.1;  // Undo 반복 간격 (초)
 
+	Optional<size_t> bombUndoAnchorIndex_;
+	bool willCreateBombOnPush(Point boxPos, Point dir) const;
+	struct BombUndoSpan { size_t start; size_t end; }; // [a, e] 압축 구간
+	Array<BombUndoSpan> bombUndoSpans_;               // 다중 구간 지원
+	int32 pendingBombsInSpan_ = 0;
+
 	void ensureUniqueBoxUIDs(); //초기 UID 보정
 	static uint8 encodeTile_(TileType t) noexcept; 	// TileType -> 코드 변환
 	static TileType decodeTile_(uint8 c) noexcept; 	// 코드 -> TileType 변환
