@@ -1418,6 +1418,13 @@ void InGameScene::handleInput()
 	if (!moved) return;
 
 	const Point newPos = playerPos_ + dir;
+
+	const bool enteringIce = (isIce(newPos) && !isIce(playerPos_));
+
+	if (enteringIce) {
+		saveGameState();
+	}
+
 	if (ColorBox* box = getBoxAt(newPos)) {
 		if (playerHeldItem_ != ItemType::None) {
 			if (tryChangeBoxColor(newPos, dir)) {
@@ -1493,7 +1500,9 @@ void InGameScene::handleInput()
 				movePlayerTo(newPos);
 				moves_ += 1;
 				collectItem(newPos);
-				saveGameState();
+				if (!enteringIce) {
+					saveGameState();
+				}
 				if (tacoDirection_ != newDir || isFacingLeft_ != newFacingLeft) {
 					tacoDirection_ = newDir; isFacingLeft_ = newFacingLeft;
 				}
@@ -1546,46 +1555,38 @@ bool InGameScene::isIce(Point pos) const
 
 void InGameScene::continueSliding()
 {
-    // 이미 이동 중이면 위치 보정만 계속
-    if (isPlayerMoving_) {
-        return;
-    }
+	if (isPlayerMoving_) return;
+	if (!isSliding_) return;
 
-    if (!isSliding_) return;
-
+	// 얼음이 아니면 종료 (저장 없음; 진입 시 이미 저장됨)
 	if (!isIce(playerPos_)) { isSliding_ = false; return; }
 
-    const Point next = playerPos_ + slideDir_;
+	const Point next = playerPos_ + slideDir_;
 
-    // 다음 칸이 맵 밖이거나 벽이면 슬라이드 종료
-    if (!isInsideMap(next) || mapData_[next.y][next.x] == TileType::Wall) {
-        isSliding_ = false;
-        return;
-    }
+	// 막히면 종료 (저장 없음)
+	if (!isInsideMap(next) || mapData_[next.y][next.x] == TileType::Wall) {
+		isSliding_ = false;
+		return;
+	}
 
-    // 다음 칸에 박스가 있으면 그 박스를 밀 수 있는지 확인
-    if (ColorBox* box = getBoxAt(next)) {
-        if (!canPushBox(playerPos_, box->pos, slideDir_)) {
-            isSliding_ = false;
-            return;
-        }
+	if (ColorBox* box = getBoxAt(next)) {
+		if (!canPushBox(playerPos_, box->pos, slideDir_)) {
+			isSliding_ = false;
+			return;
+		}
+		pushBox(box, slideDir_);
+		slideBoxOnIce(box, slideDir_);
+	}
 
-        // 밀기 수행
-        pushBox(box, slideDir_);
-        // 박스 얼음 슬라이드
-        slideBoxOnIce(box, slideDir_);
-    }
+	// 한 칸 전진 (저장 없음)
+	movePlayerTo(next);
+	moves_ += 1;
+	collectItem(next);
 
-    // 한 칸 전진
-    movePlayerTo(next);
-    moves_ += 1;
-    collectItem(next);
-    saveGameState();
-
-    // 다음 칸이 얼음이면 계속, 아니면 종료
-    if (!isIce(next)) {
-        isSliding_ = false;
-    }
+	// 얼음 끝나면 종료 (저장 없음)
+	if (!isIce(next)) {
+		isSliding_ = false;
+	}
 }
 
 void InGameScene::slideBoxOnIce(ColorBox* box, Point dir)
