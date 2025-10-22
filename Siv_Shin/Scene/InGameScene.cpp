@@ -449,9 +449,6 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 				if (const ColorBox* b = getBoxByUid(fx.uid)) destroyWalls8(b->pos);
 				fx.params.wallsDestroyed = true;
 
-				//되돌리기 기록 초기화
-				gameStateHistory_.clear();
-
 				// 흔들림 누적: 폭발 시작 프레임에 한 번
 				if (!fx.shakeStarted) {
 					// 폭발 중심(월드)
@@ -489,6 +486,7 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 			if (const ColorBox* b = getBoxByUid(fx.uid)) destroyWalls8(b->pos);
 			removeBoxByUid(fx.uid);
 			it = bombFXs_.erase(it);
+			gameStateHistory_.clear();
 			continue;
 		}
 
