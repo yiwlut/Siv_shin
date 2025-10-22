@@ -485,71 +485,75 @@ void InGameScene::drawBombBoxFX_Multi()
 {
 	if (bombFXs_.isEmpty()) return;
 
-	// 1. 좌표 변환은 한 번만
 	const Mat3x2 transform = camera().getMat3x2();
 	const double scale = camera().getScale();
 
-	// 2. 배칭 데이터 준비
-	Array<RectF> screenRects;
+	Array<RectF> logicRects;    // 분해 기준(기존 inner)
+	Array<RectF> drawRects;     // 실제 그릴 AABB(확장)
 	Array<BombBoxEffect::Params> batchParams;
 	Array<double> batchTimes;
 	Array<double> batchExplodeTs;
 
-	screenRects.reserve(bombFXs_.size());
+	logicRects.reserve(bombFXs_.size());
+	drawRects.reserve(bombFXs_.size());
 	batchParams.reserve(bombFXs_.size());
 	batchTimes.reserve(bombFXs_.size());
 	batchExplodeTs.reserve(bombFXs_.size());
 
-	for (auto& fx : bombFXs_)
-	{
+	for (auto& fx : bombFXs_) {
 		if (!fx.effect) continue;
-
-		// 박스가 존재하는지 확인
-		if (const ColorBox* b = getBoxByUid(fx.uid))
-		{
-			// 타일 → 월드 → 스크린 좌표 변환
+		if (const ColorBox* b = getBoxByUid(fx.uid)) {
 			const s3d::Rect boxRect(
-				b->pos.x * TILE_SIZE,
-				b->pos.y * TILE_SIZE,
-				TILE_SIZE,
-				TILE_SIZE
+				b->pos.x * TILE_SIZE, b->pos.y * TILE_SIZE,
+				TILE_SIZE, TILE_SIZE
 			);
 			const s3d::RectF inner = boxRect.stretched(-8);
 			const Vec2 worldCenter = inner.center();
 			const Vec2 screenCenter = transform.transformPoint(worldCenter);
-			const Vec2 screenHalfSize = (inner.size * 0.5) * scale;
 
-			const RectF screenRect = RectF(Arg::center = screenCenter, screenHalfSize * 2.0);
+			// 논리 반폭(스크린 px)
+			const Vec2 logicHalfScreen = (inner.size * 0.5) * scale;
 
-			// 배칭 데이터에 추가
-			screenRects.push_back(screenRect);
+			// 논리 사각형(기존과 동일)
+			const RectF logicRect(Arg::center = screenCenter, logicHalfScreen * 2.0);
+
+			// 폭발 진행도
+			double explodeT = 0.0;
+			if (fx.effect->isInExplode()) {
+				explodeT = (fx.effect->getExplodeT() / fx.params.explodeTime);
+			}
+
+			// 폭발 중에만 드로우 AABB 확장
+			RectF drawRect = logicRect;
+			if (explodeT > 0.0) {
+				// 안전 계수와 AA 패딩(튜닝 포인트)
+				constexpr float kSpreadSafety = 1.30f;   // spread 계수
+				constexpr float kAApad = 6.0f;    // 가장자리 여유
+
+				// 파편 중심 후보(pc) 분산 + 논리 반폭 + 이동 여유(spread)
+				const Vec2 pcMax = logicHalfScreen * 1.30;       // 후보 교점 분산 상한
+				const Vec2 polyMax = logicHalfScreen * 1.00;       // 조각 자체 최대 반폭 근사
+				const float spreadMargin = (float)fx.params.spread * kSpreadSafety + kAApad;
+
+				const Vec2 halfDraw = pcMax + polyMax + Vec2{ spreadMargin, spreadMargin };
+				drawRect = RectF(Arg::center = screenCenter, halfDraw * 2.0);
+			}
+
+			logicRects.push_back(logicRect);
+			drawRects.push_back(drawRect);
 			batchParams.push_back(fx.params);
 			batchTimes.push_back(fx.effect->getTime());
-
-			// explodeT 계산
-			double explodeT = 0.0;
-			if (fx.effect->isInExplode())
-			{
-				explodeT = fx.effect->getExplodeT() / fx.params.explodeTime;
-			}
 			batchExplodeTs.push_back(explodeT);
 		}
 	}
 
-	// 3. 한 번의 배칭 렌더 호출
-	if (!screenRects.isEmpty())
-	{
-		// 셰이더는 첫 번째 이펙트의 것을 사용 (모두 동일하므로)
-		if (bombFXs_[0].effect)
-		{
-			BombBoxEffect::drawBatched(
-				bombFXs_[0].effect->getPixelShader(),
-				screenRects,
-				batchParams,
-				batchTimes,
-				batchExplodeTs
-			);
-		}
+	if (!logicRects.isEmpty()) {
+		// 확장된 API 사용: 논리Rect(분해 기준) vs 드로우Rect(확장 AABB) 분리
+		BombBoxEffect::drawBatchedExpanded(
+			bombFXs_[0].effect->getPixelShader(),
+			logicRects, drawRects,
+			batchParams, batchTimes, batchExplodeTs
+		);
 	}
 }
 
@@ -732,65 +736,64 @@ void InGameScene::updateWallBreakFX()
 	wallBreakFXs.remove_if([](const WallBreakFX& e) { return e.finished; });
 }
 
-void InGameScene::drawWallBreakFX()
-{
+void InGameScene::drawWallBreakFX() {
 	if (wallBreakFXs.isEmpty()) return;
 
-	// 1. 좌표 변환 한 번만
 	const Mat3x2 transform = camera().getMat3x2();
 	const double scale = camera().getScale();
 
-	// 2. 배칭 데이터 준비
-	Array<RectF> screenRects;
+	Array<RectF> logicRects;
+	Array<RectF> drawRects;
 	Array<BombBoxEffect::Params> batchParams;
 	Array<double> batchTimes;
 	Array<double> batchExplodeTs;
 
-	screenRects.reserve(wallBreakFXs.size());
-	batchParams.reserve(wallBreakFXs.size());
-	batchTimes.reserve(wallBreakFXs.size());
-	batchExplodeTs.reserve(wallBreakFXs.size());
-
-	for (auto& fx : wallBreakFXs)
-	{
+	for (auto& fx : wallBreakFXs) {
 		if (!fx.effect || fx.finished) continue;
 
-		// 타일 → 월드 → 스크린 좌표 변환
-		const s3d::Rect tileRect(
-			fx.tilePos.x * TILE_SIZE,
-			fx.tilePos.y * TILE_SIZE,
-			TILE_SIZE,
-			TILE_SIZE
+		const Rect tileRect(
+			fx.tilePos.x * TILE_SIZE, fx.tilePos.y * TILE_SIZE,
+			TILE_SIZE, TILE_SIZE
 		);
-		const s3d::RectF inner = tileRect.stretched(-8);
+		const RectF inner = tileRect.stretched(-8);
 		const Vec2 worldCenter = inner.center();
 		const Vec2 screenCenter = transform.transformPoint(worldCenter);
-		const Vec2 screenHalfSize = (inner.size * 0.5) * scale;
+		const Vec2 logicHalf = (inner.size * 0.5) * scale;
 
-		const RectF screenRect = RectF(Arg::center = screenCenter, screenHalfSize * 2.0);
+		// 논리Rect: 기존과 동일
+		const RectF logicRect(Arg::center = screenCenter, logicHalf * 2.0);
 
-		// 배칭 데이터에 추가
-		screenRects.push_back(screenRect);
-		batchParams.push_back(fx.params);
-		batchTimes.push_back(fx.effect->getTime());
-
-		// 벽 파괴는 항상 explode 상태
+		// 진행도
 		double explodeT = 0.0;
 		if (fx.effect->isInExplode()) {
-			explodeT = (fx.effect->getExplodeT() / fx.params.explodeTime); // 0..1
+			explodeT = fx.effect->getExplodeT() / fx.params.explodeTime; // 0..1
 		}
-		batchExplodeTs.push_back(explodeT);
+
+		// 폭발 중에만 AABB 확장
+		RectF drawRect = logicRect;
+		if (explodeT > 0.0) {
+			constexpr float kSpreadSafety = 1.30f;
+			constexpr float kAApad = 6.0f;
+			const float spreadMargin = (float)fx.params.spread * kSpreadSafety + kAApad;
+
+			const Vec2 pcMax = logicHalf * 1.30;
+			const Vec2 polyMax = logicHalf * 1.00;
+			const Vec2 halfDraw = pcMax + polyMax + Vec2{ spreadMargin, spreadMargin };
+			drawRect = RectF(Arg::center = screenCenter, halfDraw * 2.0);
+		}
+
+		logicRects << logicRect;
+		drawRects << drawRect;
+		batchParams << fx.params;
+		batchTimes << fx.effect->getTime();
+		batchExplodeTs << explodeT;
 	}
 
-	// 3. 한 번의 배칭 렌더 호출
-	if (!screenRects.isEmpty() && wallBreakFXs[0].effect)
-	{
-		BombBoxEffect::drawBatched(
+	if (!logicRects.isEmpty() && wallBreakFXs[0].effect) {
+		BombBoxEffect::drawBatchedExpanded(
 			wallBreakFXs[0].effect->getPixelShader(),
-			screenRects,
-			batchParams,
-			batchTimes,
-			batchExplodeTs
+			logicRects, drawRects,
+			batchParams, batchTimes, batchExplodeTs
 		);
 	}
 }

@@ -221,3 +221,52 @@ void BombBoxEffect::drawBatched(
 		rect.draw(ColorF{ 0.0, 0.0 });
 	}
 }
+
+
+// BombBoxEffect.cpp
+void BombBoxEffect::drawBatchedExpanded(
+	const PixelShader& ps,
+	const Array<RectF>& logicRects,
+	const Array<RectF>& drawRects,
+	const Array<Params>& params,
+	const Array<double>& times,
+	const Array<double>& explodeTs
+) {
+	if (logicRects.isEmpty() || drawRects.isEmpty() || !ps) return;
+	const Size sceneSize = Scene::Size();
+	const ScopedCustomShader2D shader{ ps };
+	const Transformer2D identity{ Mat3x2::Identity(), TransformCursor::Yes };
+
+	for (size_t i = 0; i < logicRects.size(); ++i) {
+		const RectF& logic = logicRects[i];
+		const RectF& drawR = drawRects[i];
+		const Params& p = params[i];
+
+		UBO u;
+		u.rt = Float4{ (float)sceneSize.x, (float)sceneSize.y,
+					   (float)times[i], (float)explodeTs[i] };
+
+
+
+		// 셰이더의 논리 기준(폭발 분해용)은 'logic'으로 고정
+		const Vec2 logicCenter = logic.center();
+		const Vec2 logicHalf = logic.size * 0.5;
+		u.ch = Float4{ (float)logicCenter.x, (float)logicCenter.y,
+					   (float)logicHalf.x,   (float)logicHalf.y };
+
+		u.pp = Float4{ p.pulseAmp, p.pulseSpeed, p.spread, p.gravity };
+		const float tintMode = p.useWallColor ? 1.0f : 0.0f;
+		u.sd = Float4{ p.seed, 0.0f, tintMode, 0.0f };
+		u.col = Float4{ (float)p.wallColor.r, (float)p.wallColor.g,
+						(float)p.wallColor.b, 0.0f };
+
+		// sd: (seed, minThickness, tintMode, lineCount)
+		u.sd = Float4{ p.seed, 0.0f, tintMode, (float)Clamp(p.lineCount, 2, 8) };
+
+		ConstantBuffer cb = u;
+		Graphics2D::SetPSConstantBuffer(1, cb);
+
+		// 실제 프래그먼트 생성 AABB는 'drawR'(확장)로 렌더
+		drawR.draw(ColorF{ 0.0, 0.0 });
+	}
+}

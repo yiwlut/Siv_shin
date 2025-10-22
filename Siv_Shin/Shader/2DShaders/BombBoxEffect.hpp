@@ -13,6 +13,8 @@ public:
 		float  gravity = 800.0f;
 		float  seed = 0.37f;
 
+		int lineCount = 8;
+
 		//float  progress = 0.0f;
 		//float  timeSeconds = 0.0f;
 
@@ -55,6 +57,15 @@ public:
 		const Array<Params>& params,
 		const Array<double>& times,
 		const Array<double>& explodeTs
+	);
+
+	static void drawBatchedExpanded(
+	const PixelShader& ps,
+	const Array<RectF>& logicRects,   // 논리 박스(분해 기준)
+	const Array<RectF>& drawRects,    // 실제 그릴 AABB(확장)
+	const Array<BombBoxEffect::Params>& params,
+	const Array<double>& times,
+	const Array<double>& explodeTs
 	);
 
 	// 시간 정보 getter 추가
