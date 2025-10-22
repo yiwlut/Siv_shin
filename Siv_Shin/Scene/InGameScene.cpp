@@ -1420,6 +1420,7 @@ void InGameScene::handleInput()
 	const Point newPos = playerPos_ + dir;
 
 	const bool enteringIce = (isIce(newPos) && !isIce(playerPos_));
+	const bool leavingIce = (isIce(playerPos_) && !isIce(newPos));
 
 	if (enteringIce) {
 		saveGameState();
@@ -1500,12 +1501,21 @@ void InGameScene::handleInput()
 				movePlayerTo(newPos);
 				moves_ += 1;
 				collectItem(newPos);
-				if (!enteringIce) {
+
+				if (!enteringIce || leavingIce) {
 					saveGameState();
 				}
+
 				if (tacoDirection_ != newDir || isFacingLeft_ != newFacingLeft) {
 					tacoDirection_ = newDir; isFacingLeft_ = newFacingLeft;
+					tacoAnimFrame_ = 0; tacoAnimTimer_ = 0.0;
 				}
+
+				if (isIce(newPos)) {
+					isSliding_ = true;
+					slideDir_ = dir;
+				}
+
 				return;
 			}
 			return;
@@ -1522,7 +1532,11 @@ void InGameScene::handleInput()
 		inputCooldown_ = moveDelay_;
 		moves_ += 1;
 		collectItem(newPos);
-		saveGameState();
+
+		if (!enteringIce) {
+			saveGameState();
+		}
+
 		if (tacoDirection_ != newDir || isFacingLeft_ != newFacingLeft) {
 			tacoDirection_ = newDir; isFacingLeft_ = newFacingLeft;
 			tacoAnimFrame_ = 0;     tacoAnimTimer_ = 0.0;
@@ -1558,12 +1572,13 @@ void InGameScene::continueSliding()
 	if (isPlayerMoving_) return;
 	if (!isSliding_) return;
 
-	// 얼음이 아니면 종료 (저장 없음; 진입 시 이미 저장됨)
-	if (!isIce(playerPos_)) { isSliding_ = false; return; }
+	if (!isIce(playerPos_)) {
+		isSliding_ = false;
+		return;
+	}
 
 	const Point next = playerPos_ + slideDir_;
 
-	// 막히면 종료 (저장 없음)
 	if (!isInsideMap(next) || mapData_[next.y][next.x] == TileType::Wall) {
 		isSliding_ = false;
 		return;
@@ -1578,14 +1593,14 @@ void InGameScene::continueSliding()
 		slideBoxOnIce(box, slideDir_);
 	}
 
-	// 한 칸 전진 (저장 없음)
 	movePlayerTo(next);
 	moves_ += 1;
 	collectItem(next);
 
-	// 얼음 끝나면 종료 (저장 없음)
+	// 얼음에서 나올 때 상태 저장
 	if (!isIce(next)) {
 		isSliding_ = false;
+		saveGameState();  // 얼음에서 벗어날 때 저장
 	}
 }
 
