@@ -443,25 +443,21 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 
 		fx.effect->update(dt);
 
-		if (!fx.params.wallsDestroyed && fx.effect->isPulsing())
-		{
+		if (!fx.params.wallsDestroyed && fx.effect->isPulsing()) {
 			const double elapsed = fx.effect->getTime();
 			const double threshold = (fx.params.pulseDuration * fx.params.pulseCount);
 			if (elapsed >= threshold) {
 				fx.effect->trigger();
 				if (const ColorBox* b = getBoxByUid(fx.uid)) destroyWalls8(b->pos);
 				fx.params.wallsDestroyed = true;
-
 				if (!fx.shakeStarted) {
 					if (const ColorBox* b = getBoxByUid(fx.uid)) {
 						const Vec2 worldCenter = tileToPixel(b->pos) + Vec2(TILE_SIZE * 0.5, TILE_SIZE * 0.5);
 						const Vec2 camC = camera().getCenter();
 						const double dist = (worldCenter - camC).length();
 						const double scale = camera().getScale();
-						double basePx = 10.0;
-						double maxR = 900.0 / Max(0.001, scale);
-						double falloff = Saturate(1.0 - dist / maxR);
-						double intenWorld = (basePx * falloff) / Max(0.001, scale);
+						const double falloff = Saturate(1.0 - dist / (900.0 / Max(0.001, scale)));
+						const double intenWorld = (10.0 * falloff) / Max(0.001, scale);
 						accShakeIntensityWorld += intenWorld;
 						maxShakeDuration = Max(maxShakeDuration, Min(0.35, fx.params.explodeTime));
 						fx.shakeStarted = true;
@@ -480,24 +476,20 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 			if (const ColorBox* b = getBoxByUid(fx.uid)) destroyWalls8(b->pos);
 			removeBoxByUid(fx.uid);
 
-			// 폭발 FX 제거
-			it = bombFXs_.erase(it);
-
-			// 히스토리 삭제 금지(기존 clear 제거) + 압축 구간 확정
-			// 모든 활성 폭탄 FX가 사라졌고, 생성 직전 앵커가 있다면 이번 프레임을 e로 스냅샷하고 [a,e] 등록
-			const bool anyActive = std::any_of(bombFXs_.begin(), bombFXs_.end(),
-											   [](const BombBoxInstance& inst) { return inst.effect && !inst.effect->exploded(); });
-			if (!anyActive && bombUndoAnchorIndex_.has_value())
-			{
-				saveGameState(); // e 시점 스냅샷
-				const size_t e = gameStateHistory_.size() - 1;
-				const size_t a = *bombUndoAnchorIndex_;
-				bombUndoSpans_.push_back(BombUndoSpan{ a, e });
-				bombUndoAnchorIndex_.reset();
+			if (bombUndoAnchorIndex_.has_value() && pendingBombsInSpan_ > 0) {
+				pendingBombsInSpan_ -= 1;
+				if (pendingBombsInSpan_ == 0) {
+					saveGameState();
+					const size_t e = gameStateHistory_.size() - 1;
+					const size_t a = *bombUndoAnchorIndex_;
+					bombUndoSpans_.push_back(BombUndoSpan{ a, e, bombUidsInAnchor_ });
+					bombUndoAnchorIndex_.reset(); bombUidsInAnchor_.clear();
+				}
 			}
+
+			it = bombFXs_.erase(it);
 			continue;
 		}
-
 		++it;
 	}
 
@@ -506,6 +498,7 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 		camera().shake(maxShakeDuration, clampedIntensity);
 	}
 }
+
 
 
 void InGameScene::drawBombBoxFX_Multi()
@@ -1410,7 +1403,6 @@ void InGameScene::handleInput()
 	bool moved = false;
 	TacoDirection newDir = tacoDirection_;
 	bool newFacingLeft = isFacingLeft_;
-
 	auto press = [&](const Input& key, const Point& d, TacoDirection tdir, bool faceLeft = false) {
 		if (key.down() || (key.pressed() && inputCooldown_ <= 0.0)) {
 			dir = d; moved = true; newDir = tdir;
@@ -1421,7 +1413,6 @@ void InGameScene::handleInput()
 	press(KeyRight, { 1, 0 }, TacoDirection::Side, false);
 	press(KeyUp, { 0,-1 }, TacoDirection::Up);
 	press(KeyDown, { 0, 1 }, TacoDirection::Down);
-
 	if (!moved) return;
 
 	const Point newPos = playerPos_ + dir;
@@ -1429,51 +1420,59 @@ void InGameScene::handleInput()
 	const bool leavingIce = (isIce(playerPos_) && !isIce(newPos));
 	if (enteringIce) saveGameState();
 
-	if (ColorBox* box = getBoxAt(newPos))
-	{
+	// 박스가 있는 칸
+	if (ColorBox* box = getBoxAt(newPos)) {
 		const Point next = box->pos + dir;
 		if (!canPushBox(playerPos_, box->pos, dir)) return;
 
-		if (ColorBox* targetPeek = getBoxAt(next))
-		{
+		// 합성 경로(타깃 존재)
+		if (ColorBox* targetPeek = getBoxAt(next)) {
 			bool createsBomb = false;
-			{
-				const BoxColor curC = getEffectiveBoxColor(box->uid);
-				const BoxColor tgtC = getEffectiveBoxColor(targetPeek->uid);
-				if (Optional<BoxColor> m = getMergedColor(curC, tgtC)) {
-					createsBomb = (*m == BoxColor::Black);
+			const BoxColor curC = getEffectiveBoxColor(box->uid);
+			const BoxColor tgtC = getEffectiveBoxColor(targetPeek->uid);
+			if (Optional<BoxColor> m = getMergedColor(curC, tgtC)) {
+				createsBomb = (*m == BoxColor::Black);
+			}
+			// a 앵커 세팅 및 폭탄 개수 카운트
+			if (createsBomb) {
+				if (!bombUndoAnchorIndex_.has_value()) {
+					saveGameState();                               // a
+					bombUndoAnchorIndex_ = gameStateHistory_.size() - 1;
+					pendingBombsInSpan_ = 1;
+					bombUidsInAnchor_.clear();
 				}
-				if (createsBomb) {
-					if (!bombUndoAnchorIndex_.has_value()) {
-						saveGameState();                                   // a
-						bombUndoAnchorIndex_ = gameStateHistory_.size() - 1;
-						pendingBombsInSpan_ = 1;                            // 첫 폭탄
-					}
-					else {
-						pendingBombsInSpan_ += 1;                           // 같은 구간의 추가 폭탄
-					}
+				else {
+					pendingBombsInSpan_ += 1;
 				}
 			}
 
 			// 실제 합성
 			const BoxColor currentBoxColor = getEffectiveBoxColor(box->uid);
 			const BoxColor targetBoxColor = getEffectiveBoxColor(targetPeek->uid);
-			if (Optional<BoxColor> merged = getMergedColor(currentBoxColor, targetBoxColor))
-			{
+			if (Optional<BoxColor> merged = getMergedColor(currentBoxColor, targetBoxColor)) {
 				forceMergePaintFXCompletion();
 
+				// 두 상자 제거
+				const uint64 uidA = box->uid;
+				const uint64 uidB = targetPeek->uid;
 				boxes_.remove_if([&](const ColorBox& b) {
-					return (b.pos == box->pos || b.pos == targetPeek->pos);
+					return (b.uid == uidA || b.uid == uidB);
 				});
 
+				// 새 상자 생성
 				ColorBox newBox(next, *merged, 0.0, nextBoxUID_++);
 				if (*merged == BoxColor::Black) {
 					newBox.creationTime = gameTime_;
 					bombExpiryAbs_[newBox.uid] = bombClock_ + kTotal;
 					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
+					// 앵커 진행 중이면 UID 수집
+					if (bombUndoAnchorIndex_.has_value()) {
+						bombUidsInAnchor_ << newBox.uid;
+					}
 				}
 				boxes_.push_back(newBox);
 
+				// 이펙트/사운드/점수(생략 없이 유지)
 				const Vec2 originUV = impactOriginLocalUVForDir(dir);
 				const ColorF base = getBoxColorF(targetBoxColor);
 				const ColorF result = getBoxColorF(*merged);
@@ -1484,13 +1483,11 @@ void InGameScene::handleInput()
 				mergeFX_.targetUid = newBox.uid;
 				mergeFX_.finalColor = *merged;
 				mergeFX_.commitPending = true;
-
 				g_Shaders.paintSpread().setPaintColor(result);
 				g_Shaders.paintSpread().setOriginPoint(originUV);
 				g_Shaders.paintSpread().setSpreadSpeed(2.0f);
 				g_Shaders.paintSpread().startAnimation();
 				playBoxSound(*merged);
-
 				const ColorTier tier = getColorTier(*merged);
 				if (tier == ColorTier::Secondary) score_ += 50;
 				else if (tier == ColorTier::Tertiary) score_ += 100;
@@ -1503,8 +1500,9 @@ void InGameScene::handleInput()
 				moves_ += 1;
 				collectItem(newPos);
 
+				// 폭탄 합성 입력은 사후 저장 스킵, 그 외는 저장
 				if ((!enteringIce || leavingIce) && (*merged != BoxColor::Black)) {
-					saveGameState();                                        // 폭탄 합성 입력은 사후 저장 없음
+					saveGameState();
 				}
 
 				if (tacoDirection_ != newDir || isFacingLeft_ != newFacingLeft) {
@@ -1531,15 +1529,10 @@ void InGameScene::handleInput()
 		return;
 	}
 
-	// 아이템 사용
+	// 아이템/일반 이동
 	if (playerHeldItem_ != ItemType::None) {
-		if (tryChangeBoxColor(newPos, dir)) {
-			playerHeldItem_ = ItemType::None;
-			return;
-		}
+		if (tryChangeBoxColor(newPos, dir)) { playerHeldItem_ = ItemType::None; return; }
 	}
-
-	// 빈 칸 이동
 	if (canMoveTo(newPos) || getBoxAt(newPos)) {
 		movePlayerTo(newPos);
 		inputCooldown_ = moveDelay_;
@@ -1553,6 +1546,7 @@ void InGameScene::handleInput()
 		if (isIce(newPos)) { isSliding_ = true; slideDir_ = dir; }
 	}
 }
+
 
 
 bool InGameScene::willCreateBombOnPush(Point boxPos, Point dir) const
@@ -2244,7 +2238,6 @@ void InGameScene::undoLastMove()
 
 	auto itSpan = std::find_if(bombUndoSpans_.begin(), bombUndoSpans_.end(),
 							   [&](const BombUndoSpan& s) { return s.end == curIdx; });
-
 	if (itSpan != bombUndoSpans_.end())
 	{
 		const size_t target = itSpan->start;
@@ -2255,63 +2248,55 @@ void InGameScene::undoLastMove()
 	}
 	else
 	{
-		// 일반 1스텝 되돌리기
 		gameStateHistory_.pop_back();
+
+		if (gameStateHistory_.isEmpty()) return;
+		const GameState& s = gameStateHistory_.back();
+
+		playerPos_ = s.playerPos; playerPixelPos_ = tileToPixel(playerPos_); targetPixelPos_ = playerPixelPos_;
+		isPlayerMoving_ = false; boxes_ = s.boxes; items_ = s.items; playerHeldItem_ = s.playerHeldItem;
+		moves_ = s.moves; score_ = s.score; importMapCodes_(s.mapData); gameTime_ = s.gameTime; nextBoxUID_ = s.nextBoxUID;
+
+		bombFXs_.clear(); wallBreakFXs.clear(); mergeFX_.active = false; mergeFX_.commitPending = false;
+
+		const size_t nowIdx = gameStateHistory_.size() - 1;
+		HashSet<uint64> forbid;
+		for (const auto& span : bombUndoSpans_) {
+			if (nowIdx >= span.end) {
+				for (uint64 uid : span.uids) { forbid.insert(uid); }
+			}
+		}
+
+		bombExpiryAbs_.clear();
+		for (const auto& b : boxes_) {
+			if (b.color != BoxColor::Black) continue;
+			if (forbid.contains(b.uid)) continue;
+			double remain = kTotal;
+			if (auto it = s.bombRemain.find(b.uid); it != s.bombRemain.end()) {
+				remain = it->second;
+			}
+			else {
+				const double elapsedSnap = Max(0.0, gameTime_ - b.creationTime);
+				remain = Max(0.0, kTotal - elapsedSnap);
+			}
+			bombExpiryAbs_[b.uid] = bombClock_ + remain;
+			if (auto* live = getBoxByUid(b.uid)) {
+				const double elapsedSnap = kTotal - remain;
+				live->creationTime = gameTime_ - elapsedSnap;
+			}
+		}
+
+
+		if (!forbid.empty()) {
+			boxes_.remove_if([&](const ColorBox& b) {
+				return (b.color == BoxColor::Black) && forbid.contains(b.uid);
+			});
+		}
+
+		rebuildBombFXFromState_();
 	}
-
-	// 상태 복원
-	if (gameStateHistory_.isEmpty()) return;
-	const GameState& s = gameStateHistory_.back();
-
-	playerPos_ = s.playerPos;
-	playerPixelPos_ = tileToPixel(playerPos_);
-	targetPixelPos_ = playerPixelPos_;
-	isPlayerMoving_ = false;
-
-	boxes_ = s.boxes;
-	items_ = s.items;
-	playerHeldItem_ = s.playerHeldItem;
-	moves_ = s.moves;
-	score_ = s.score;
-	importMapCodes_(s.mapData);
-	gameTime_ = s.gameTime;
-	nextBoxUID_ = s.nextBoxUID;
-
-
-	bombFXs_.clear();
-	wallBreakFXs.clear();
-	mergeFX_.active = false;
-	mergeFX_.commitPending = false;
-
-
-	bombExpiryAbs_.clear();
-	for (const auto& b : boxes_) {
-		if (b.color != BoxColor::Black) continue;
-		double remain = kTotal;
-		if (auto it = s.bombRemain.find(b.uid); it != s.bombRemain.end()) {
-			remain = it->second;
-		}
-		else {
-			const double elapsedSnap = Max(0.0, gameTime_ - b.creationTime);
-			remain = Max(0.0, kTotal - elapsedSnap);
-		}
-		bombExpiryAbs_[b.uid] = bombClock_ + remain;
-		if (auto* live = getBoxByUid(b.uid)) {
-			const double elapsedSnap = kTotal - remain;
-			live->creationTime = gameTime_ - elapsedSnap;
-		}
-	}
-
-	boxes_.remove_if([&](const ColorBox& b) {
-		if (b.color != BoxColor::Black) return false;
-		const bool tracked = (s.bombRemain.find(b.uid) != s.bombRemain.end());
-		const double elapsed = Max(0.0, gameTime_ - b.creationTime);
-		const bool expiredAtSnap = (elapsed >= kTotal - 1e-6);
-		return (!tracked && expiredAtSnap);
-	});
-
-	rebuildBombFXFromState_();
 }
+
 
 
 bool InGameScene::canUndo() const

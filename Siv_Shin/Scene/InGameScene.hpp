@@ -214,9 +214,10 @@ private:
 
 	Optional<size_t> bombUndoAnchorIndex_;
 	bool willCreateBombOnPush(Point boxPos, Point dir) const;
-	struct BombUndoSpan { size_t start; size_t end; }; // [a, e] 압축 구간
+	struct BombUndoSpan { size_t start; size_t end; Array<uint64> uids;};
 	Array<BombUndoSpan> bombUndoSpans_;               // 다중 구간 지원
 	int32 pendingBombsInSpan_ = 0;
+	Array<uint64> bombUidsInAnchor_;
 
 	void ensureUniqueBoxUIDs(); //초기 UID 보정
 	static uint8 encodeTile_(TileType t) noexcept; 	// TileType -> 코드 변환
