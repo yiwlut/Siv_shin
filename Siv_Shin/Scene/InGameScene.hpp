@@ -293,6 +293,7 @@ private:
 	bool isBombPulsing(uint64 uid) const;
 	bool shouldDrawBox(const ColorBox& box) const; // 유령 상태면 그리지 않음
 	void drawBoxes_RespectBombFX();
+	bool isBombSpanActive() const;
 
 	void rebuildBombFXFromState_();
 

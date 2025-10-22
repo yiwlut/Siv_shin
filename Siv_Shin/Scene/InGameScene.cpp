@@ -656,6 +656,17 @@ void InGameScene::drawBoxes_RespectBombFX()
 
 }
 
+bool InGameScene::isBombSpanActive() const
+{
+	if (bombUndoAnchorIndex_.has_value() || (pendingBombsInSpan_ > 0)) {
+		return true;
+	}
+	for (const auto& fx : bombFXs_) {
+		if (fx.effect && !fx.effect->exploded()) return true;
+	}
+	return false;
+}
+
 void InGameScene::rebuildBombFXFromState_() {
 	bombFXs_.clear();
 
@@ -2234,68 +2245,113 @@ void InGameScene::undoLastMove()
 
 	forceMergePaintFXCompletion();
 
-	const size_t curIdx = gameStateHistory_.size() - 1;
-
-	auto itSpan = std::find_if(bombUndoSpans_.begin(), bombUndoSpans_.end(),
-							   [&](const BombUndoSpan& s) { return s.end == curIdx; });
-	if (itSpan != bombUndoSpans_.end())
+	if (isBombSpanActive())
 	{
-		const size_t target = itSpan->start;
-		while (gameStateHistory_.size() > (target + 1)) {
-			gameStateHistory_.pop_back();
+		if (bombUndoAnchorIndex_.has_value()) {
+			const size_t a = *bombUndoAnchorIndex_;
+			while (gameStateHistory_.size() > (a + 1)) {
+				gameStateHistory_.pop_back();
+			}
 		}
-		bombUndoSpans_.erase(itSpan);
+		else {
+			if (!bombUndoSpans_.isEmpty()) {
+				const size_t a = bombUndoSpans_.back().start;
+				while (gameStateHistory_.size() > (a + 1)) {
+					gameStateHistory_.pop_back();
+				}
+			}
+			else {
+				gameStateHistory_.pop_back();
+			}
+		}
+
+		pendingBombsInSpan_ = 0;
+		bombUidsInAnchor_.clear();
+		bombUndoAnchorIndex_.reset();
 	}
 	else
 	{
-		gameStateHistory_.pop_back();
-
-		if (gameStateHistory_.isEmpty()) return;
-		const GameState& s = gameStateHistory_.back();
-
-		playerPos_ = s.playerPos; playerPixelPos_ = tileToPixel(playerPos_); targetPixelPos_ = playerPixelPos_;
-		isPlayerMoving_ = false; boxes_ = s.boxes; items_ = s.items; playerHeldItem_ = s.playerHeldItem;
-		moves_ = s.moves; score_ = s.score; importMapCodes_(s.mapData); gameTime_ = s.gameTime; nextBoxUID_ = s.nextBoxUID;
-
-		bombFXs_.clear(); wallBreakFXs.clear(); mergeFX_.active = false; mergeFX_.commitPending = false;
-
-		const size_t nowIdx = gameStateHistory_.size() - 1;
-		HashSet<uint64> forbid;
-		for (const auto& span : bombUndoSpans_) {
-			if (nowIdx >= span.end) {
-				for (uint64 uid : span.uids) { forbid.insert(uid); }
+		const size_t curIdx = gameStateHistory_.size() - 1;
+		auto itSpan = std::find_if(bombUndoSpans_.begin(), bombUndoSpans_.end(),
+								   [&](const BombUndoSpan& s) { return s.end == curIdx; });
+		if (itSpan != bombUndoSpans_.end()) {
+			const size_t a = itSpan->start;
+			while (gameStateHistory_.size() > (a + 1)) {
+				gameStateHistory_.pop_back();
 			}
+			bombUndoSpans_.erase(itSpan);
 		}
-
-		bombExpiryAbs_.clear();
-		for (const auto& b : boxes_) {
-			if (b.color != BoxColor::Black) continue;
-			if (forbid.contains(b.uid)) continue;
-			double remain = kTotal;
-			if (auto it = s.bombRemain.find(b.uid); it != s.bombRemain.end()) {
-				remain = it->second;
-			}
-			else {
-				const double elapsedSnap = Max(0.0, gameTime_ - b.creationTime);
-				remain = Max(0.0, kTotal - elapsedSnap);
-			}
-			bombExpiryAbs_[b.uid] = bombClock_ + remain;
-			if (auto* live = getBoxByUid(b.uid)) {
-				const double elapsedSnap = kTotal - remain;
-				live->creationTime = gameTime_ - elapsedSnap;
-			}
+		else {
+			gameStateHistory_.pop_back();
 		}
-
-
-		if (!forbid.empty()) {
-			boxes_.remove_if([&](const ColorBox& b) {
-				return (b.color == BoxColor::Black) && forbid.contains(b.uid);
-			});
-		}
-
-		rebuildBombFXFromState_();
 	}
+
+	if (gameStateHistory_.isEmpty()) return;
+	const GameState& s = gameStateHistory_.back();
+
+	playerPos_ = s.playerPos;
+	playerPixelPos_ = tileToPixel(playerPos_);
+	targetPixelPos_ = playerPixelPos_;
+	isPlayerMoving_ = false;
+
+	boxes_ = s.boxes;
+	items_ = s.items;
+	playerHeldItem_ = s.playerHeldItem;
+	moves_ = s.moves;
+	score_ = s.score;
+	importMapCodes_(s.mapData);
+	gameTime_ = s.gameTime;
+	nextBoxUID_ = s.nextBoxUID;
+
+	bombFXs_.clear();
+	wallBreakFXs.clear();
+	mergeFX_.active = false;
+	mergeFX_.commitPending = false;
+
+	HashSet<uint64> forbid;
+	const size_t nowIdx = gameStateHistory_.size() - 1;
+
+	for (const uint64 uid : bombUidsInAnchor_) {
+		forbid.insert(uid);
+	}
+	for (const auto& span : bombUndoSpans_) {
+		if (nowIdx >= span.end) {
+			for (const uint64 uid : span.uids) {
+				forbid.insert(uid);
+			}
+		}
+	}
+
+	bombExpiryAbs_.clear();
+	for (const auto& b : boxes_) {
+		if (b.color != BoxColor::Black) continue;
+		if (forbid.contains(b.uid)) continue;
+
+		double remain = kTotal;
+		if (auto it = s.bombRemain.find(b.uid); it != s.bombRemain.end()) {
+			remain = it->second;
+		}
+		else {
+			const double elapsedSnap = Max(0.0, gameTime_ - b.creationTime);
+			remain = Max(0.0, kTotal - elapsedSnap);
+		}
+		bombExpiryAbs_[b.uid] = bombClock_ + remain;
+
+		if (auto* live = getBoxByUid(b.uid)) {
+			const double elapsedSnap = kTotal - remain;
+			live->creationTime = gameTime_ - elapsedSnap;
+		}
+	}
+
+	if (!forbid.empty()) {
+		boxes_.remove_if([&](const ColorBox& b) {
+			return (b.color == BoxColor::Black) && forbid.contains(b.uid);
+		});
+	}
+
+	rebuildBombFXFromState_();
 }
+
 
 
 
