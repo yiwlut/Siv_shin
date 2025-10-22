@@ -428,55 +428,75 @@ void InGameScene::triggerBombBoxFXForBlack_Multi(uint64 uid, double durationSec)
 
 void InGameScene::updateBombBoxFX_Multi(double dt)
 {
+	double accShakeIntensityWorld = 0.0; // 월드 단위 (shakeOffset은 center에 더해져 scale을 거침)
+	double maxShakeDuration = 0.0;
+
 	for (auto it = bombFXs_.begin(); it != bombFXs_.end(); )
 	{
 		auto& fx = *it;
-		if (!fx.effect)
-		{
-			it = bombFXs_.erase(it);
-			continue;
-		}
+		if (!fx.effect) { it = bombFXs_.erase(it); continue; }
 
-		// 1) 매 프레임 이펙트 업데이트
+		// 1) 이펙트 업데이트
 		fx.effect->update(dt);
 
-		// 2) 펄스 종료 시 자동 트리거
+		// 2) 펄스 종료 시 폭발 트리거
 		if (!fx.params.wallsDestroyed && fx.effect->isPulsing())
 		{
-			double elapsed = fx.effect->getTime();
-			double threshold = fx.params.pulseDuration * fx.params.pulseCount;
-			if (elapsed >= threshold)
-			{
-				fx.effect->trigger();
-				// 폭발 시작 시 벽 파괴
-				if (const ColorBox* b = getBoxByUid(fx.uid))
-				{
-					destroyWalls8(b->pos);
-				}
+			const double elapsed = fx.effect->getTime();
+			const double threshold = (fx.params.pulseDuration * fx.params.pulseCount);
+			if (elapsed >= threshold) {
+				fx.effect->trigger(); // 폭발 시작
+				if (const ColorBox* b = getBoxByUid(fx.uid)) destroyWalls8(b->pos);
 				fx.params.wallsDestroyed = true;
+
+				// 흔들림 누적: 폭발 시작 프레임에 한 번
+				if (!fx.shakeStarted) {
+					// 폭발 중심(월드)
+					if (const ColorBox* b = getBoxByUid(fx.uid)) {
+						const Vec2 worldCenter = tileToPixel(b->pos) + Vec2(TILE_SIZE * 0.5, TILE_SIZE * 0.5);
+						const Vec2 camC = camera().getCenter();
+						const double dist = (worldCenter - camC).length(); // 월드 거리
+						const double scale = camera().getScale();
+
+						// 화면 픽셀 기준 기본 강도(px)
+						double basePx = 10.0; // 튜닝: 8~14 px
+						// 거리 감쇠(월드): 0~1
+						double maxR = 900.0 / Max(0.001, scale); // 화면상 약 900px 범위
+						double falloff = Saturate(1.0 - dist / maxR);
+
+						// 월드 단위로 변환(px -> world)
+						double intenWorld = (basePx * falloff) / Max(0.001, scale);
+						accShakeIntensityWorld += intenWorld;
+
+						// 지속 시간: 폭발의 빠른 임팩트에 맞춤
+						maxShakeDuration = Max(maxShakeDuration, Min(0.35, fx.params.explodeTime));
+						fx.shakeStarted = true;
+					}
+				}
 			}
 		}
 
-		// 3) 폭발 진행 중, isExploding() 전환 시 추가 파괴(안정성)
-		if (fx.params.wallsDestroyed && fx.effect->isExploding() && !fx.params.useWallColor)
-		{
-			if (const ColorBox* b = getBoxByUid(fx.uid))
-			{
-				destroyWalls8(b->pos);
-			}
-			fx.params.useWallColor = true; // 중복 방지
+		// 3) 보조 파괴 및 종료 처리(기존 로직 유지)
+		if (fx.params.wallsDestroyed && fx.effect->isExploding() && !fx.params.useWallColor) {
+			if (const ColorBox* b = getBoxByUid(fx.uid)) destroyWalls8(b->pos);
+			fx.params.useWallColor = true;
 		}
 
-		// 4) 연출 완료 시 박스 제거 및 추가 파괴
 		if (fx.effect->isInExplode() && (fx.effect->getExplodeT() >= fx.params.explodeTime)) {
-			if (const ColorBox* b = getBoxByUid(fx.uid)) {
-				destroyWalls8(b->pos);
-			}
+			if (const ColorBox* b = getBoxByUid(fx.uid)) destroyWalls8(b->pos);
 			removeBoxByUid(fx.uid);
 			it = bombFXs_.erase(it);
 			continue;
 		}
+
 		++it;
+	}
+
+	// 프레임 말에 한 번만 흔들림 시작
+	if (accShakeIntensityWorld > 0.0 && maxShakeDuration > 0.0) {
+		// 다중 폭발 시 과도한 누적 방지(루트 합산 느낌)
+		const double clampedIntensity = Min(accShakeIntensityWorld, 40.0 / Max(0.001, camera().getScale()));
+		camera().shake(maxShakeDuration, clampedIntensity);
 	}
 }
 
@@ -697,7 +717,6 @@ void InGameScene::spawnWallBreakFXAtTile(Point tile)
 	fx.effect = std::make_unique<BombBoxEffect>();
 	fx.effect->reset();
 	fx.effect->trigger();
-	//fx.effect->update(0.1);
 
 	fx.params.pulseDuration = 0.0;
 	fx.params.pulseCount = 0.0;
@@ -707,12 +726,26 @@ void InGameScene::spawnWallBreakFXAtTile(Point tile)
 	fx.params.spread = 100.0f;
 	fx.params.gravity = 600.0f;
 	fx.params.seed = static_cast<float>(Random(0.0, 1.0));
-
-	//벽 색상 설정
 	fx.params.useWallColor = true;
-	fx.params.wallColor = ColorF{ 0.3, 0.3, 0.35 };  // 벽의 색상
-
+	fx.params.wallColor = ColorF{ 0.3, 0.3, 0.35 };
 	fx.finished = false;
+	fx.shakeStarted = false;
+
+	// 소형 흔들림 즉시 트리거
+	const Vec2 worldCenter = tileToPixel(tile) + Vec2(TILE_SIZE * 0.5, TILE_SIZE * 0.5);
+	const Vec2 camC = camera().getCenter();
+	const double dist = (worldCenter - camC).length();
+	const double scale = camera().getScale();
+
+	double basePx = 5.0; // 벽 파괴는 약하게
+	double maxR = 700.0 / Max(0.001, scale);
+	double falloff = Saturate(1.0 - dist / maxR);
+	double intenWorld = (basePx * falloff) / Max(0.001, scale);
+	if (intenWorld > 0.0) {
+		camera().shake(0.20, Min(intenWorld, 24.0 / Max(0.001, scale)));
+		fx.shakeStarted = true;
+	}
+
 	wallBreakFXs.push_back(std::move(fx));
 }
 
@@ -1109,6 +1142,8 @@ void InGameScene::update()
 {
 	const double dt = Scene::DeltaTime();
 	bombClock_ += dt;
+
+	camera().update();
 
 	updateMergePaintFX();
 

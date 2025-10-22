@@ -13,7 +13,7 @@ public:
 		float  gravity = 800.0f;
 		float  seed = 0.37f;
 
-		int lineCount = 8;
+		int lineCount = 5;
 
 		//float  progress = 0.0f;
 		//float  timeSeconds = 0.0f;
