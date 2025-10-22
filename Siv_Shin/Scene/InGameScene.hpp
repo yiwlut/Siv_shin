@@ -250,6 +250,7 @@ private:
 		uint64 uid = 0;
 		std::unique_ptr<BombBoxEffect> effect;
 		BombBoxEffect::Params params;
+		bool shakeStarted = false;
 	};
 
 	// 배칭 렌더링용 구조체
@@ -290,6 +291,7 @@ private:
 		std::unique_ptr<BombBoxEffect> effect;      // 파편 효과용
 		BombBoxEffect::Params params;
 		bool finished = false;
+		bool shakeStarted = false;
 	};
 
 	Array<WallBreakFX> wallBreakFXs;  // 벽 파괴 효과 목록
