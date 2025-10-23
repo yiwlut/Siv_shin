@@ -345,6 +345,7 @@ private:
 	Optional<size_t> iceUndoAnchorIndex_;
 	Array<IceUndoSpan> iceUndoSpans_;
 
+	void startIceUndoSpanFromLastSnapshot_();
 	bool isIceSpanActive() const;
 	void startIceUndoSpanIfNeeded_();
 	void completeIceUndoSpanIfNeeded_();

@@ -1656,7 +1656,15 @@ void InGameScene::handleInput()
 		movePlayerTo(newPos);
 		moves_ += 1;
 		collectItem(newPos);
-		if (!enteringIce) saveGameState();
+
+		bool iceSpanActive = iceUndoAnchorIndex_.has_value() || isSliding_;
+		if (!iceSpanActive) {
+			for (const auto& t : iceSlideTasks_) { if (t.active) { iceSpanActive = true; break; } }
+		}
+		if (!enteringIce && !iceSpanActive) {
+			saveGameState();
+		}
+
 		if (tacoDirection_ != newDir || isFacingLeft_ != newFacingLeft) {
 			tacoDirection_ = newDir; isFacingLeft_ = newFacingLeft;
 			tacoAnimFrame_ = 0; tacoAnimTimer_ = 0.0;
@@ -1736,19 +1744,80 @@ void InGameScene::updateIceSlideTasks_(double dt)
 		ColorBox* box = getBoxByUid(t.uid);
 		if (!box) { t.active = false; continue; }
 		if (!isIce(box->pos)) { t.active = false; continue; }
-		if (!canSlideNext_(box->pos, t.dir)) { t.active = false; continue; }
+
+		const Point cur = box->pos;
+		const Point nxt = cur + t.dir;
+
+		if (!isInsideMap(nxt) || mapData_[nxt.y][nxt.x] == TileType::Wall) {
+			t.active = false; continue;
+		}
+
+		if (ColorBox* target = getBoxAt(nxt)) {
+			const BoxColor c0 = getEffectiveBoxColor(box->uid);
+			const BoxColor c1 = getEffectiveBoxColor(target->uid);
+			if (auto merged = getMergedColor(c0, c1)) {
+				const bool createsBomb = (*merged == BoxColor::Black);
+				if (createsBomb) {
+					if (!bombUndoAnchorIndex_.has_value()) {
+						saveGameState();
+						bombUndoAnchorIndex_ = gameStateHistory_.size() - 1;
+						pendingBombsInSpan_ = 1;
+						bombUidsInAnchor_.clear();
+					}
+					else {
+						pendingBombsInSpan_ += 1;
+					}
+				}
+
+				forceMergePaintFXCompletion();
+
+				const uint64 uidA = box->uid, uidB = target->uid;
+				boxes_.remove_if([&](const ColorBox& b) { return b.uid == uidA || b.uid == uidB; });
+
+				ColorBox newBox(nxt, *merged, 0.0, nextBoxUID_++);
+				if (createsBomb) {
+					newBox.creationTime = gameTime_;
+					bombExpiryAbs_[newBox.uid] = bombClock_ + kTotal;
+					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
+					if (bombUndoAnchorIndex_.has_value()) bombUidsInAnchor_ << newBox.uid;
+				}
+				boxes_.push_back(newBox);
+
+				triggerMergePaintFX_Directional(nxt, getBoxColorF(c1), getBoxColorF(*merged), t.dir);
+				playBoxSound(*merged);
+				const ColorTier tier = getColorTier(*merged);
+				if (tier == ColorTier::Secondary) score_ += 50;
+				else if (tier == ColorTier::Tertiary) score_ += 100;
+
+				if (isIce(nxt)) {
+					t.uid = newBox.uid;
+					t.cooldown = stepInterval;
+				}
+				else {
+					t.active = false;
+				}
+				continue;
+			}
+			else {
+				t.active = false;
+				continue;
+			}
+		}
 
 		pushBox(box, t.dir);
 		t.cooldown = stepInterval;
-
-		if (!isIce(box->pos)) {
-			t.active = false;
-		}
+		if (!isIce(box->pos)) t.active = false;
 	}
+
 	iceSlideTasks_.remove_if([](const IceSlideTask& x) { return !x.active; });
 
-	if (!isSliding_) {
-		completeIceUndoSpanIfNeeded_();
+	bool anyActive = false;
+	for (const auto& t : iceSlideTasks_) if (t.active) { anyActive = true; break; }
+	if (!anyActive && !isSliding_ && iceUndoAnchorIndex_.has_value()) {
+		saveGameState();
+		const size_t endIdx = gameStateHistory_.size() - 1;
+		iceUndoSpans_.push_back({ *iceUndoAnchorIndex_, endIdx });
+		iceUndoAnchorIndex_.reset();
 	}
 }
 
@@ -1875,14 +1944,55 @@ bool InGameScene::applyIceUndoSpanIfNeeded_()
 	return true;
 }
 
+
+void InGameScene::startIceUndoSpanFromLastSnapshot_()
+{
+	if (iceUndoAnchorIndex_.has_value()) return;
+	if (gameStateHistory_.empty()) {
+		saveGameState();
+		iceUndoAnchorIndex_ = 0;
+		return;
+	}
+	iceUndoAnchorIndex_ = (gameStateHistory_.size() - 1);
+}
+
 void InGameScene::slideBoxOnIce(ColorBox* box, Point dir)
 {
 	if (!box) return;
-	if (!isIce(box->pos)) return;
+	const Point after = box->pos;
+	const Point before = after - dir;
 
-	startIceUndoSpanIfNeeded_();
+	const bool enteredIce =
+		isInsideMap(after) && isIce(after) &&
+		isInsideMap(before) && !isIce(before);
 
-	startIceSlideTask_(box, dir);
+	if (enteredIce && !iceUndoAnchorIndex_.has_value()) {
+		if (gameStateHistory_.empty()) {
+			saveGameState();
+			iceUndoAnchorIndex_ = 0;
+		}
+		else {
+			iceUndoAnchorIndex_ = (gameStateHistory_.size() - 1);
+		}
+	}
+
+	bool updated = false;
+	for (auto& t : iceSlideTasks_) {
+		if (t.active && t.uid == box->uid) {
+			t.dir = dir;
+			t.cooldown = 0.0;
+			updated = true;
+			break;
+		}
+	}
+	if (!updated) {
+		IceSlideTask t;
+		t.uid = box->uid;
+		t.dir = dir;
+		t.cooldown = 0.0;
+		t.active = true;
+		iceSlideTasks_ << t;
+	}
 }
 
 uint8 InGameScene::encodeTile_(InGameScene::TileType t) noexcept {
@@ -2558,6 +2668,9 @@ void InGameScene::undoLastMove()
 	wallBreakFXs.clear();
 	mergeFX_.active = false;
 	mergeFX_.commitPending = false;
+
+	iceSlideTasks_.clear();
+	isSliding_ = false;
 
 	applyHoloFromHeldItem_();
 
