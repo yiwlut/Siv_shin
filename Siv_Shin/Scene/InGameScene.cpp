@@ -1500,6 +1500,12 @@ void InGameScene::handleInput()
 
 	// 박스가 있는 칸
 	if (ColorBox* box = getBoxAt(newPos)) {
+		if (playerHeldItem_ != ItemType::None) {
+			if (tryChangeBoxColor(newPos, dir)) {
+				playerHeldItem_ = ItemType::None;
+				return;
+			}
+		}
 		const Point next = box->pos + dir;
 		if (!canPushBox(playerPos_, box->pos, dir)) return;
 
@@ -1839,14 +1845,13 @@ void InGameScene::draw()
         
         drawMap();
         drawPlayer();
-        drawUI();
 
     }
 
 	drawBombBoxFX_Multi();
 	drawWallBreakFX();
 
-    // 카메라 변환 종료
+	drawUI();
 
     // Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리 (스크린 좌표계에서 마스크)
     if (currentStage_ == 6)
