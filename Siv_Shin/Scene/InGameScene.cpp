@@ -68,11 +68,18 @@ void InGameScene::onEnter()
 	isCleared_ = false;
 	showClearButtons_ = false;
 	showHelpScreen_ = false;
+	clearSoundPlayed_ = false;  // ★ 플래그 리셋
+
 	playerHeldItem_ = ItemType::None;
 	tacoDirection_ = TacoDirection::Down;
 	isFacingLeft_ = false;
 	tacoAnimFrame_ = 0;
 	isPlayerMoving_ = false;
+
+	// ★ 죽음 상태 초기화 추가
+	isPlayerDead_ = false;
+	deathAnimTimer_ = 0.0;
+	deathParticles_.clear();
 
 	// 클리어 이펙트 완전 초기화
 	showClearEffect_ = false;
@@ -97,7 +104,7 @@ void InGameScene::onEnter()
 	// 배경음악 재생
 	if (!bgm_.isEmpty())
 	{
-		bgm_.setVolume(0.2);
+		bgm_.setVolume(0.33);
 		bgm_.play();
 	}
 
@@ -159,6 +166,9 @@ void InGameScene::loadAssets()
     noteE5_ = Audio{ U"ArtResources/SFX/E5.wav" };
     noteG5_ = Audio{ U"ArtResources/SFX/G5.wav" };
     noteC6_ = Audio{ U"ArtResources/SFX/C6.wav" };
+
+	stageClearSound_ = Audio{ U"ArtResources/SFX/StageClear.wav" };
+	bombExplosionSound_ = Audio{ U"ArtResources/SFX/bomb.wav" };
 
     // 보스 이미지 로드 (Final stage 전용) - clock 0~2 프레임
     bossIdleFrames_.clear();
@@ -382,8 +392,6 @@ void InGameScene::updateMergePaintFX()
 	}
 }
 
-// 진행 중인 이펙트를 즉시 완료시키는 헬퍼 함수
-
 void InGameScene::forceMergePaintFXCompletion()
 {
 	if (!mergeFX_.active) return;
@@ -458,6 +466,7 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 				if (const ColorBox* b = getBoxByUid(fx.uid)) {
 					destroyWalls8(b->pos);
 
+					
 					// ★ 폭발 시 플레이어가 8방향 안에 있으면 흰색 파티클로 죽임
 					if (isPlayerInExplosionRange(b->pos) && !isPlayerDead_) {
 						isPlayerDead_ = true;
@@ -948,7 +957,7 @@ void InGameScene::pushBox(ColorBox* box, Point direction)
 void InGameScene::playBoxSound(BoxColor color)
 {
     // 볼륨 설정 (5배 증가: 0.6 * 5 = 3.0)
-    const double volume = 3.0;
+    const double volume = 2.2;
     
     switch (color)
     {
@@ -1216,6 +1225,7 @@ void InGameScene::update()
 
 					// 배경음악 재개
 					if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
+						bgm_.setVolume(0.33);  // ★ 볼륨 설정 추가
 						bgm_.play();
 					}
 
@@ -1239,6 +1249,7 @@ void InGameScene::update()
 
 						// 배경음악 재개
 						if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
+							bgm_.setVolume(0.33);
 							bgm_.play();
 						}
 
@@ -1291,10 +1302,9 @@ void InGameScene::update()
 		updateMergePaintFX();
 		return;
 	}
-	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_) {
+	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_ && !isPlayerDead_) {
 		bgm_.play();
 	}
-
 	// R로 즉시 리트라이
 	if (KeyR.down() && !isCleared_) {
 		gameTime_ = 0.0;
@@ -1304,6 +1314,10 @@ void InGameScene::update()
 		gameStateHistory_.clear();
 		undoHoldTime_ = 0.0;
 		undoCooldown_ = 0.0;
+		// ★ 죽음 상태 초기화 추가
+		isPlayerDead_ = false;
+		deathAnimTimer_ = 0.0;
+		deathParticles_.clear();
 
 		bombFXs_.clear();
 		wallBreakFXs.clear();
@@ -1430,6 +1444,9 @@ void InGameScene::update()
 		showClearEffect_ = true;
 		clearEffectTimer_ = 0.0;
 		createClearEffect();
+		if (!stageClearSound_.isEmpty()) {
+			stageClearSound_.playOneShot(0.9);
+		}
 		if (gameData_) {
 			gameData_->clearStage(currentStage_);
 		}
@@ -1582,6 +1599,9 @@ void InGameScene::handleInput()
 					bombExpiryAbs_[newBox.uid] = bombClock_ + kTotal;
 					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
 					// 앵커 진행 중이면 UID 수집
+					if (!bombExplosionSound_.isEmpty()) {
+						bombExplosionSound_.playOneShot(0.8);  // 볼륨 0.8로 재생
+					}
 					if (bombUndoAnchorIndex_.has_value()) {
 						bombUidsInAnchor_ << newBox.uid;
 					}

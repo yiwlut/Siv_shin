@@ -83,6 +83,7 @@ private:
     static constexpr int32 MAP_WIDTH = 11;  // 11x11 맵
     static constexpr int32 MAP_HEIGHT = 11;
     static constexpr double BLACK_BOX_LIFETIME = 3.5;  // 검은색 블록 수명 (초)
+	bool clearSoundPlayed_ = false;  
 
 	bool isPlayerDead_ = false;           
 	double deathAnimTimer_ = 0.0;       
@@ -438,7 +439,9 @@ private:
     Audio noteE5_;  // 노랑 (E5)
     Audio noteG5_;  // 파랑 (G5)
     Audio noteC6_;  // 빨강 및 검정 (C6)
-    
+
+	Audio stageClearSound_;  // 스테이지 클리어 사운드
+	Audio bombExplosionSound_;
     // 블록 색상에 따라 음악 재생
     void playBoxSound(BoxColor color);
     
