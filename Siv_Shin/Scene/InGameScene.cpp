@@ -103,6 +103,8 @@ void InGameScene::onEnter()
 
 	auto& holo = g_Shaders.holographic();
 	holo.setRainbowMode(false);
+	holo.setScale(0.05f);
+	holo.setSpeed(1.5f);
 	holo.setHoloColor(ColorF{ 1.0, 1.0, 1.0 });
 	holo.setIntensity(0.0f);
 }
@@ -872,7 +874,7 @@ void InGameScene::applyHoloFromHeldItem_()
 	const ColorF c = getItemColorF(playerHeldItem_);
 	holo.setRainbowMode(false);
 	holo.setHoloColor(c);
-	holo.setIntensity(0.75f);
+	holo.setIntensity(0.7f);
 }
 
 bool InGameScene::canMoveTo(Point pos) const
