@@ -317,6 +317,9 @@ private:
 	void updateWallBreakFX();
 	void drawWallBreakFX();
 
+	//holographic
+	void applyHoloFromHeldItem_();
+
     // 얼음(슬라이딩) 시스템
     bool isSliding_ = false;      // 플레이어가 현재 미끄러지는 중인지
     Point slideDir_{ 0, 0 };      // 미끄러지는 방향

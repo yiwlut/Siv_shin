@@ -860,6 +860,20 @@ void InGameScene::drawWallBreakFX() {
 	}
 }
 
+void InGameScene::applyHoloFromHeldItem_()
+{
+	auto& holo = g_Shaders.holographic();
+	if (playerHeldItem_ == ItemType::None) {
+		holo.setRainbowMode(false);
+		holo.setIntensity(0.0f);
+		return;
+	}
+
+	const ColorF c = getItemColorF(playerHeldItem_);
+	holo.setRainbowMode(false);
+	holo.setHoloColor(c);
+	holo.setIntensity(0.75f);
+}
 
 bool InGameScene::canMoveTo(Point pos) const
 {
@@ -1257,6 +1271,7 @@ void InGameScene::update()
 	updateMergePaintFX();
 	updateBombBoxFX_Multi(dt);
 	updateWallBreakFX();
+	applyHoloFromHeldItem_();
 
 	// 포커스/도움말 토글
 	const bool focused = Window::GetState().focused;
@@ -2412,6 +2427,8 @@ void InGameScene::undoLastMove()
 	mergeFX_.active = false;
 	mergeFX_.commitPending = false;
 
+	applyHoloFromHeldItem_();
+
 	HashSet<uint64> forbid;
 	const size_t nowIdx = gameStateHistory_.size() - 1;
 
@@ -2564,12 +2581,6 @@ void InGameScene::collectItem(Point pos)
         mapData_[pos.y][pos.x] = TileType::Empty;
         
         score_ += 25;  // 아이템 수집 보너스
-
-		const ColorF c = getItemColorF(item->type);
-		auto& holo = g_Shaders.holographic();
-		holo.setRainbowMode(false);
-		holo.setHoloColor(c);
-		holo.setIntensity(0.75f);
     }
 }
 
@@ -2609,7 +2620,7 @@ bool InGameScene::tryChangeBoxColor(Point pos, Point direction)
         startPaintAnimation(false);
     }
 
-	g_Shaders.holographic().setIntensity(0.0f);
+	//g_Shaders.holographic().setIntensity(0.0f);
     
     return true;
 }
