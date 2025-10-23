@@ -1929,14 +1929,10 @@ void InGameScene::draw()
 
 void InGameScene::drawBackground()
 {
-    if (!stageBackground_.isEmpty())
-    {
-        stageBackground_.resized(1024, 1024).draw(0, 0);  // 1024x1024로 크기 조정
-    }
-    else
-    {
-        Scene::SetBackground(ColorF{ 0.1, 0.1, 0.15 });
-    }
+	if (!stageBackground_.isEmpty())
+	{
+		stageBackground_.resized(Scene::Size()).draw(0, 0);
+	}
 }
 
 void InGameScene::drawMap()
