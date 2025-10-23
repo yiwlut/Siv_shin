@@ -68,18 +68,11 @@ void InGameScene::onEnter()
 	isCleared_ = false;
 	showClearButtons_ = false;
 	showHelpScreen_ = false;
-	clearSoundPlayed_ = false;  // ★ 플래그 리셋
-
 	playerHeldItem_ = ItemType::None;
 	tacoDirection_ = TacoDirection::Down;
 	isFacingLeft_ = false;
 	tacoAnimFrame_ = 0;
 	isPlayerMoving_ = false;
-
-	// ★ 죽음 상태 초기화 추가
-	isPlayerDead_ = false;
-	deathAnimTimer_ = 0.0;
-	deathParticles_.clear();
 
 	// 클리어 이펙트 완전 초기화
 	showClearEffect_ = false;
@@ -104,7 +97,7 @@ void InGameScene::onEnter()
 	// 배경음악 재생
 	if (!bgm_.isEmpty())
 	{
-		bgm_.setVolume(0.33);
+		bgm_.setVolume(0.2);
 		bgm_.play();
 	}
 
@@ -166,9 +159,6 @@ void InGameScene::loadAssets()
     noteE5_ = Audio{ U"ArtResources/SFX/E5.wav" };
     noteG5_ = Audio{ U"ArtResources/SFX/G5.wav" };
     noteC6_ = Audio{ U"ArtResources/SFX/C6.wav" };
-
-	stageClearSound_ = Audio{ U"ArtResources/SFX/StageClear.wav" };
-	bombExplosionSound_ = Audio{ U"ArtResources/SFX/bomb.wav" };
 
     // 보스 이미지 로드 (Final stage 전용) - clock 0~2 프레임
     bossIdleFrames_.clear();
@@ -392,6 +382,8 @@ void InGameScene::updateMergePaintFX()
 	}
 }
 
+// 진행 중인 이펙트를 즉시 완료시키는 헬퍼 함수
+
 void InGameScene::forceMergePaintFXCompletion()
 {
 	if (!mergeFX_.active) return;
@@ -466,7 +458,6 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 				if (const ColorBox* b = getBoxByUid(fx.uid)) {
 					destroyWalls8(b->pos);
 
-					
 					// ★ 폭발 시 플레이어가 8방향 안에 있으면 흰색 파티클로 죽임
 					if (isPlayerInExplosionRange(b->pos) && !isPlayerDead_) {
 						isPlayerDead_ = true;
@@ -474,7 +465,6 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 						createDeathEffect(true);  // ★ true = 흰색 파티클 사용
 
 						if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-							savedMusicPosition_ = bgm_.posSec();  // 현재 위치 저장
 							bgm_.stop();
 						}
 					}
@@ -958,7 +948,7 @@ void InGameScene::pushBox(ColorBox* box, Point direction)
 void InGameScene::playBoxSound(BoxColor color)
 {
     // 볼륨 설정 (5배 증가: 0.6 * 5 = 3.0)
-    const double volume = 2.2;
+    const double volume = 3.0;
     
     switch (color)
     {
@@ -1196,89 +1186,14 @@ ColorF InGameScene::getBoxColorF(BoxColor color) const
 void InGameScene::update()
 {
 	const double dt = Scene::DeltaTime();
+	bombClock_ += dt;
 
 	camera().update();
 
-	const bool focused = Window::GetState().focused;
-
-	if (!focused && !showHelpScreen_ && !isCleared_) {
-		showHelpScreen_ = true;
-		if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-			bgm_.pause();
-		}
-		if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) {
-			bombExplosionSound_.pause();
-		}
-	}
-
-	// ESC 키 처리
-	if (KeyEscape.down()) {
-		showHelpScreen_ = !showHelpScreen_;
-		if (showHelpScreen_) {
-			// 일시정지 시작
-			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-				bgm_.pause();
-			}
-			// ✅ 폭탄 생성 사운드도 멈춤
-			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) {
-				bombExplosionSound_.pause();
-			}
-		}
-		else {
-			// 일시정지 해제
-			if (!bgm_.isEmpty() && !bgm_.isPlaying() && !isPlayerDead_) {
-				bgm_.play();
-			}
-			// ✅ 폭탄 생성 사운드도 재개 (필요 시)
-			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPaused()) {
-				bombExplosionSound_.play();
-			}
-		}
-	}
-
-	// ★★★ 일시정지 중이면 여기서 완전히 멈춤 ★★★
-	if (showHelpScreen_) {
-		// 일시정지 중에는 비주얼 이펙트만 업데이트
-		updateMergePaintFX();
-		return;
-	}
-
-	// ★★★ 여기서부터는 일시정지가 아닐 때만 실행됨 ★★★
-	bombClock_ += dt;
-
-	// ★ 죽음 애니메이션 처리 (Undo와 R키 재시작 허용)
+	// ★ 죽음 애니메이션 처리 (Undo는 허용)
 	if (isPlayerDead_) {
 		deathAnimTimer_ += dt;
-		updateDeathEffect();
-
-		// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
-		if (KeyR.down()) {
-			gameTime_ = 0.0;
-			moves_ = 0;
-			score_ = 0;
-			playerHeldItem_ = ItemType::None;
-			gameStateHistory_.clear();
-			undoHoldTime_ = 0.0;
-			undoCooldown_ = 0.0;
-			isPlayerDead_ = false;
-			deathAnimTimer_ = 0.0;
-			deathParticles_.clear();
-
-			bombFXs_.clear();
-			wallBreakFXs.clear();
-			bombExpiryAbs_.clear();
-
-			loadStage(currentStage_);
-
-			// 배경음악 재생
-			if (!bgm_.isEmpty()) {
-				bgm_.setVolume(0.33);
-				bgm_.play();
-			}
-
-			updateMergePaintFX();
-			return;
-		}
+		updateDeathEffect();  // 파티클 업데이트
 
 		// ★ Undo 처리 (죽음 중에도 가능)
 		if (!isCleared_ && canUndo()) {
@@ -1299,9 +1214,8 @@ void InGameScene::update()
 					wallBreakFXs.clear();
 					bombExpiryAbs_.clear();
 
+					// 배경음악 재개
 					if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
-						bgm_.setVolume(0.33);
-						bgm_.seekTime(savedMusicPosition_);
 						bgm_.play();
 					}
 
@@ -1323,9 +1237,8 @@ void InGameScene::update()
 						wallBreakFXs.clear();
 						bombExpiryAbs_.clear();
 
+						// 배경음악 재개
 						if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
-							bgm_.setVolume(0.33);
-							bgm_.seekTime(savedMusicPosition_);
 							bgm_.play();
 						}
 
@@ -1340,36 +1253,48 @@ void InGameScene::update()
 			}
 		}
 
-		return;
+		return; // 죽음 중에는 일반 입력은 무시
 	}
 
-	// ★ 용암 체크
+	// ★ 용암 체크 (일반 업데이트 중)
 	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {
 		if (!isPlayerDead_) {
 			isPlayerDead_ = true;
 			deathAnimTimer_ = 0.0;
-			createDeathEffect(false);
+			createDeathEffect(false);  // ★ false = 용암 색상 파티클 사용 (기본값)
 
 			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-				savedMusicPosition_ = bgm_.posSec();
 				bgm_.stop();
 			}
 		}
 		return;
 	}
 
-	// ★★★ 게임 업데이트 ★★★
 	updateMergePaintFX();
 	updateBombBoxFX_Multi(dt);
 	updateWallBreakFX();
 	applyHoloFromHeldItem_();
 
-	// ★ 포커스를 되찾았을 때 음악 재개
-	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_ && !isPlayerDead_) {
+	// 포커스/도움말 토글
+	const bool focused = Window::GetState().focused;
+	if (!focused && !showHelpScreen_ && !isCleared_) {
+		showHelpScreen_ = true;
+	}
+	if (KeyEscape.down()) {
+		showHelpScreen_ = !showHelpScreen_;
+	}
+	if (showHelpScreen_) {
+		if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+			bgm_.pause();
+		}
+
+		updateMergePaintFX();
+		return;
+	}
+	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_) {
 		bgm_.play();
 	}
 
-	// ★★★ 여기서부터는 중복 제거된 부분! ★★★
 	// R로 즉시 리트라이
 	if (KeyR.down() && !isCleared_) {
 		gameTime_ = 0.0;
@@ -1379,9 +1304,6 @@ void InGameScene::update()
 		gameStateHistory_.clear();
 		undoHoldTime_ = 0.0;
 		undoCooldown_ = 0.0;
-		isPlayerDead_ = false;
-		deathAnimTimer_ = 0.0;
-		deathParticles_.clear();
 
 		bombFXs_.clear();
 		wallBreakFXs.clear();
@@ -1392,7 +1314,7 @@ void InGameScene::update()
 		return;
 	}
 
-	// Undo 흐름
+	// Undo 흐름 (살아있을 때)
 	if (!isCleared_ && canUndo()) {
 		const bool undoPressed = KeyZ.pressed() || KeyBackspace.pressed();
 		const bool undoDown = KeyZ.down() || KeyBackspace.down();
@@ -1469,8 +1391,7 @@ void InGameScene::update()
 	// 일반 업데이트
 	gameTime_ += dt;
 
-	updateIceSlideTasks_(dt);
-
+	// 얼음 미끄러짐 진행 중이면 입력을 무시하고 자동 이동만 수행
 	if (isSliding_) {
 		continueSliding();
 		updatePlayer();
@@ -1507,9 +1428,6 @@ void InGameScene::update()
 		showClearEffect_ = true;
 		clearEffectTimer_ = 0.0;
 		createClearEffect();
-		if (!stageClearSound_.isEmpty()) {
-			stageClearSound_.playOneShot(0.9);
-		}
 		if (gameData_) {
 			gameData_->clearStage(currentStage_);
 		}
@@ -1574,7 +1492,6 @@ bool InGameScene::pollMoveDirection(Point& outDir, TacoDirection& outTacoDir, bo
 void InGameScene::handleInput()
 {
 	const double dt = Scene::DeltaTime();
-	
 	inputCooldown_ = Max(0.0, inputCooldown_ - dt);
 
 	if (isPlayerMoving_ || isPlayingPaintAnimation_ || isSliding_) {
@@ -1601,15 +1518,7 @@ void InGameScene::handleInput()
 	const Point newPos = playerPos_ + dir;
 	const bool enteringIce = (isIce(newPos) && !isIce(playerPos_));
 	const bool leavingIce = (isIce(playerPos_) && !isIce(newPos));
-
-	if (enteringIce) {
-		startIceUndoSpanIfNeeded_();
-	}
-
-	//const Point newPos = playerPos_ + dir;
-	//const bool enteringIce = (isIce(newPos) && !isIce(playerPos_));
-	//const bool leavingIce = (isIce(playerPos_) && !isIce(newPos));
-	//if (enteringIce) saveGameState();
+	if (enteringIce) saveGameState();
 
 	// 박스가 있는 칸
 	if (ColorBox* box = getBoxAt(newPos)) {
@@ -1663,11 +1572,6 @@ void InGameScene::handleInput()
 					bombExpiryAbs_[newBox.uid] = bombClock_ + kTotal;
 					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
 					// 앵커 진행 중이면 UID 수집
-					if (!bombExplosionSound_.isEmpty()) {
-						bombExplosionSound_.stop();  // ✅ 기존 재생 중단
-						bombExplosionSound_.setVolume(0.6);  // ✅ 볼륨 설정
-						bombExplosionSound_.play();  // ✅ 일반 재생 (일시정지 가능)
-					}
 					if (bombUndoAnchorIndex_.has_value()) {
 						bombUidsInAnchor_ << newBox.uid;
 					}
@@ -1773,60 +1677,6 @@ void InGameScene::ensureUniqueBoxUIDs() {
 	}
 }
 
-void InGameScene::startIceSlideTask_(ColorBox* box, Point dir)
-{
-	if (!box) return;
-	for (auto& t : iceSlideTasks_) {
-		if (t.active && t.uid == box->uid) {
-			t.dir = dir;
-			t.cooldown = 0.0;
-			return;
-		}
-	}
-	IceSlideTask t;
-	t.uid = box->uid;
-	t.dir = dir;
-	t.cooldown = 0.0;
-	t.active = true;
-	iceSlideTasks_ << t;
-}
-
-void InGameScene::updateIceSlideTasks_(double dt)
-{
-	const double stepInterval = (TILE_SIZE / Max(1.0, playerMoveSpeed_));
-	for (auto& t : iceSlideTasks_) {
-		if (!t.active) continue;
-		t.cooldown = Max(0.0, t.cooldown - dt);
-		if (t.cooldown > 0.0) continue;
-
-		ColorBox* box = getBoxByUid(t.uid);
-		if (!box) { t.active = false; continue; }
-		if (!isIce(box->pos)) { t.active = false; continue; }
-		if (!canSlideNext_(box->pos, t.dir)) { t.active = false; continue; }
-
-		pushBox(box, t.dir);
-		t.cooldown = stepInterval;
-
-		if (!isIce(box->pos)) {
-			t.active = false;
-		}
-	}
-	iceSlideTasks_.remove_if([](const IceSlideTask& x) { return !x.active; });
-
-	if (!isSliding_) {
-		completeIceUndoSpanIfNeeded_();
-	}
-}
-
-bool InGameScene::canSlideNext_(Point tile, Point dir) const
-{
-	const Point nxt = tile + dir;
-	if (!isInsideMap(nxt)) return false;
-	if (mapData_[nxt.y][nxt.x] == TileType::Wall) return false;
-	if (getBoxAt(nxt) != nullptr) return false;
-	return true;
-}
-
 bool InGameScene::isIce(Point pos) const
 {
     if (!isInsideMap(pos)) return false;
@@ -1847,7 +1697,6 @@ void InGameScene::continueSliding()
 			createDeathEffect();  // ★ 파티클 생성
 
 			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-				savedMusicPosition_ = bgm_.posSec();
 				bgm_.stop();
 			}
 		}
@@ -1863,14 +1712,12 @@ void InGameScene::continueSliding()
 
 	if (!isInsideMap(next) || mapData_[next.y][next.x] == TileType::Wall) {
 		isSliding_ = false;
-		completeIceUndoSpanIfNeeded_();
 		return;
 	}
 
 	if (ColorBox* box = getBoxAt(next)) {
 		if (!canPushBox(playerPos_, box->pos, slideDir_)) {
 			isSliding_ = false;
-			completeIceUndoSpanIfNeeded_();
 			return;
 		}
 		pushBox(box, slideDir_);
@@ -1884,72 +1731,30 @@ void InGameScene::continueSliding()
 	// 얼음에서 나올 때 상태 저장
 	if (!isIce(next)) {
 		isSliding_ = false;
-		//saveGameState();
-		completeIceUndoSpanIfNeeded_();
+		saveGameState();  // 얼음에서 벗어날 때 저장
 	}
-}
-
-
-void InGameScene::startIceUndoSpanIfNeeded_()
-{
-	if (iceUndoAnchorIndex_.has_value()) return;
-
-	saveGameState();
-	iceUndoAnchorIndex_ = (gameStateHistory_.size() - 1);
-}
-
-
-void InGameScene::completeIceUndoSpanIfNeeded_()
-{
-	if (!iceUndoAnchorIndex_.has_value()) return;
-
-	if (isSliding_) return;
-	for (const auto& t : iceSlideTasks_) {
-		if (t.active) return;
-	}
-
-	saveGameState();
-	const size_t e = gameStateHistory_.size() - 1;
-	const size_t a = *iceUndoAnchorIndex_;
-	iceUndoSpans_.push_back(IceUndoSpan{ a, e });
-	iceUndoAnchorIndex_.reset();
-}
-
-bool InGameScene::isIceSpanActive() const
-{
-	if (iceUndoAnchorIndex_.has_value()) return true;
-	if (isSliding_) return true;
-	for (const auto& t : iceSlideTasks_) {
-		if (t.active) return true;
-	}
-	return false;
-}
-
-bool InGameScene::applyIceUndoSpanIfNeeded_()
-{
-	if (gameStateHistory_.size() < 2) return false;
-	const size_t curIdx = gameStateHistory_.size() - 1;
-
-	auto it = std::find_if(iceUndoSpans_.begin(), iceUndoSpans_.end(),
-		[&](const IceUndoSpan& s) { return s.end == curIdx; });
-	if (it == iceUndoSpans_.end()) return false;
-
-	const size_t a = it->start;
-	while (gameStateHistory_.size() > (a + 1)) {
-		gameStateHistory_.pop_back();
-	}
-	iceUndoSpans_.erase(it);
-	return true;
 }
 
 void InGameScene::slideBoxOnIce(ColorBox* box, Point dir)
 {
-	if (!box) return;
-	if (!isIce(box->pos)) return;
+	if (!box) return; // 안전 가드
+	Point cur = box->pos;
 
-	startIceUndoSpanIfNeeded_();
+	// 추가: 시작 칸이 얼음이 아니면 슬라이드 없음
+	if (!isIce(cur)) return;
 
-	startIceSlideTask_(box, dir);
+	while (true)
+	{
+		const Point nxt = cur + dir;
+		if (!isInsideMap(nxt)) break;
+		if (mapData_[nxt.y][nxt.x] == TileType::Wall) break;
+		if (getBoxAt(nxt) != nullptr) break;
+
+		cur = nxt;
+		if (!isIce(cur)) break; // 얼음이 끝나면 정지
+	}
+
+	box->pos = cur;
 }
 
 uint8 InGameScene::encodeTile_(InGameScene::TileType t) noexcept {
@@ -2560,8 +2365,6 @@ void InGameScene::undoLastMove()
 	if (!canUndo()) return;
 
 	forceMergePaintFXCompletion();
-
-	if (applyIceUndoSpanIfNeeded_()) return;
 
 	if (isBombSpanActive())
 	{
