@@ -474,6 +474,7 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 						createDeathEffect(true);  // ★ true = 흰색 파티클 사용
 
 						if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+							savedMusicPosition_ = bgm_.posSec();  // 현재 위치 저장
 							bgm_.stop();
 						}
 					}
@@ -1195,14 +1196,89 @@ ColorF InGameScene::getBoxColorF(BoxColor color) const
 void InGameScene::update()
 {
 	const double dt = Scene::DeltaTime();
-	bombClock_ += dt;
 
 	camera().update();
 
-	// ★ 죽음 애니메이션 처리 (Undo는 허용)
+	const bool focused = Window::GetState().focused;
+
+	if (!focused && !showHelpScreen_ && !isCleared_) {
+		showHelpScreen_ = true;
+		if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+			bgm_.pause();
+		}
+		if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) {
+			bombExplosionSound_.pause();
+		}
+	}
+
+	// ESC 키 처리
+	if (KeyEscape.down()) {
+		showHelpScreen_ = !showHelpScreen_;
+		if (showHelpScreen_) {
+			// 일시정지 시작
+			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+				bgm_.pause();
+			}
+			// ✅ 폭탄 생성 사운드도 멈춤
+			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) {
+				bombExplosionSound_.pause();
+			}
+		}
+		else {
+			// 일시정지 해제
+			if (!bgm_.isEmpty() && !bgm_.isPlaying() && !isPlayerDead_) {
+				bgm_.play();
+			}
+			// ✅ 폭탄 생성 사운드도 재개 (필요 시)
+			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPaused()) {
+				bombExplosionSound_.play();
+			}
+		}
+	}
+
+	// ★★★ 일시정지 중이면 여기서 완전히 멈춤 ★★★
+	if (showHelpScreen_) {
+		// 일시정지 중에는 비주얼 이펙트만 업데이트
+		updateMergePaintFX();
+		return;
+	}
+
+	// ★★★ 여기서부터는 일시정지가 아닐 때만 실행됨 ★★★
+	bombClock_ += dt;
+
+	// ★ 죽음 애니메이션 처리 (Undo와 R키 재시작 허용)
 	if (isPlayerDead_) {
 		deathAnimTimer_ += dt;
-		updateDeathEffect();  // 파티클 업데이트
+		updateDeathEffect();
+
+		// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
+		if (KeyR.down()) {
+			gameTime_ = 0.0;
+			moves_ = 0;
+			score_ = 0;
+			playerHeldItem_ = ItemType::None;
+			gameStateHistory_.clear();
+			undoHoldTime_ = 0.0;
+			undoCooldown_ = 0.0;
+			isPlayerDead_ = false;
+			deathAnimTimer_ = 0.0;
+			deathParticles_.clear();
+
+			bombFXs_.clear();
+			wallBreakFXs.clear();
+			bombExpiryAbs_.clear();
+
+			loadStage(currentStage_);
+
+			// 배경음악 재생
+			if (!bgm_.isEmpty()) {
+				bgm_.setVolume(0.33);
+				bgm_.play();
+			}
+
+			updateMergePaintFX();
+			return;
+		}
 
 		// ★ Undo 처리 (죽음 중에도 가능)
 		if (!isCleared_ && canUndo()) {
@@ -1223,9 +1299,9 @@ void InGameScene::update()
 					wallBreakFXs.clear();
 					bombExpiryAbs_.clear();
 
-					// 배경음악 재개
 					if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
-						bgm_.setVolume(0.33);  // ★ 볼륨 설정 추가
+						bgm_.setVolume(0.33);
+						bgm_.seekTime(savedMusicPosition_);
 						bgm_.play();
 					}
 
@@ -1247,9 +1323,9 @@ void InGameScene::update()
 						wallBreakFXs.clear();
 						bombExpiryAbs_.clear();
 
-						// 배경음악 재개
 						if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
 							bgm_.setVolume(0.33);
+							bgm_.seekTime(savedMusicPosition_);
 							bgm_.play();
 						}
 
@@ -1264,47 +1340,36 @@ void InGameScene::update()
 			}
 		}
 
-		return; // 죽음 중에는 일반 입력은 무시
+		return;
 	}
 
-	// ★ 용암 체크 (일반 업데이트 중)
+	// ★ 용암 체크
 	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {
 		if (!isPlayerDead_) {
 			isPlayerDead_ = true;
 			deathAnimTimer_ = 0.0;
-			createDeathEffect(false);  // ★ false = 용암 색상 파티클 사용 (기본값)
+			createDeathEffect(false);
 
 			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+				savedMusicPosition_ = bgm_.posSec();
 				bgm_.stop();
 			}
 		}
 		return;
 	}
 
+	// ★★★ 게임 업데이트 ★★★
 	updateMergePaintFX();
 	updateBombBoxFX_Multi(dt);
 	updateWallBreakFX();
 	applyHoloFromHeldItem_();
 
-	// 포커스/도움말 토글
-	const bool focused = Window::GetState().focused;
-	if (!focused && !showHelpScreen_ && !isCleared_) {
-		showHelpScreen_ = true;
-	}
-	if (KeyEscape.down()) {
-		showHelpScreen_ = !showHelpScreen_;
-	}
-	if (showHelpScreen_) {
-		if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-			bgm_.pause();
-		}
-
-		updateMergePaintFX();
-		return;
-	}
+	// ★ 포커스를 되찾았을 때 음악 재개
 	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_ && !isPlayerDead_) {
 		bgm_.play();
 	}
+
+	// ★★★ 여기서부터는 중복 제거된 부분! ★★★
 	// R로 즉시 리트라이
 	if (KeyR.down() && !isCleared_) {
 		gameTime_ = 0.0;
@@ -1314,7 +1379,6 @@ void InGameScene::update()
 		gameStateHistory_.clear();
 		undoHoldTime_ = 0.0;
 		undoCooldown_ = 0.0;
-		// ★ 죽음 상태 초기화 추가
 		isPlayerDead_ = false;
 		deathAnimTimer_ = 0.0;
 		deathParticles_.clear();
@@ -1328,7 +1392,7 @@ void InGameScene::update()
 		return;
 	}
 
-	// Undo 흐름 (살아있을 때)
+	// Undo 흐름
 	if (!isCleared_ && canUndo()) {
 		const bool undoPressed = KeyZ.pressed() || KeyBackspace.pressed();
 		const bool undoDown = KeyZ.down() || KeyBackspace.down();
@@ -1405,7 +1469,7 @@ void InGameScene::update()
 	// 일반 업데이트
 	gameTime_ += dt;
 
-	// 얼음 미끄러짐 진행 중이면 입력을 무시하고 자동 이동만 수행
+	// 얼음 미끄러짐
 	if (isSliding_) {
 		continueSliding();
 		updatePlayer();
@@ -1509,6 +1573,7 @@ bool InGameScene::pollMoveDirection(Point& outDir, TacoDirection& outTacoDir, bo
 void InGameScene::handleInput()
 {
 	const double dt = Scene::DeltaTime();
+	
 	inputCooldown_ = Max(0.0, inputCooldown_ - dt);
 
 	if (isPlayerMoving_ || isPlayingPaintAnimation_ || isSliding_) {
@@ -1590,7 +1655,9 @@ void InGameScene::handleInput()
 					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
 					// 앵커 진행 중이면 UID 수집
 					if (!bombExplosionSound_.isEmpty()) {
-						bombExplosionSound_.playOneShot(0.8);  // 볼륨 0.8로 재생
+						bombExplosionSound_.stop();  // ✅ 기존 재생 중단
+						bombExplosionSound_.setVolume(0.6);  // ✅ 볼륨 설정
+						bombExplosionSound_.play();  // ✅ 일반 재생 (일시정지 가능)
 					}
 					if (bombUndoAnchorIndex_.has_value()) {
 						bombUidsInAnchor_ << newBox.uid;
@@ -1717,6 +1784,7 @@ void InGameScene::continueSliding()
 			createDeathEffect();  // ★ 파티클 생성
 
 			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+				savedMusicPosition_ = bgm_.posSec();
 				bgm_.stop();
 			}
 		}

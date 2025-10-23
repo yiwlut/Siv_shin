@@ -412,7 +412,8 @@ private:
     
     // 배경음악
     Audio bgm_;  // 배경음악
-    
+	double savedMusicPosition_ = 0.0;
+
     // 블록 밀기 효과음
     Audio noteE5_;  // 노랑 (E5)
     Audio noteG5_;  // 파랑 (G5)
