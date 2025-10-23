@@ -2590,20 +2590,32 @@ bool InGameScene::tryChangeBoxColor(Point pos, Point direction)
     if (!box || playerHeldItem_ == ItemType::None)
         return false;
     
-    BoxColor newColor = itemTypeToBoxColor(playerHeldItem_);
-    
+	const BoxColor prevColor = box->color;
+	const BoxColor newColor = itemTypeToBoxColor(playerHeldItem_);
+
     // 이미 같은 색상이면 변경하지 않음
     if (box->color == newColor)
         return false;
     
     // 박스 색상 변경
     box->color = newColor;
-    score_ += 100;  // 색상 변경 보너스
-    
-    // 방향에 따라 페인트 애니메이션 설정
-    // 오른쪽(1,0) 또는 아래(0,1): 일반 재생
-    // 왼쪽(-1,0): 좌우반전 재생
-    // 위(0,-1): 재생 안 함
+    score_ += 100;
+
+	mergeFX_.active = true;
+	mergeFX_.baseColor = getBoxColorF(prevColor);
+	mergeFX_.paintColor = getBoxColorF(newColor);
+	mergeFX_.originUV = impactOriginLocalUVForDir(direction);
+	mergeFX_.targetUid = box->uid;
+	mergeFX_.finalColor = newColor;
+	mergeFX_.commitPending = false;
+
+	g_Shaders.paintSpread().setPaintColor(mergeFX_.paintColor);
+	g_Shaders.paintSpread().setOriginPoint(mergeFX_.originUV);
+	g_Shaders.paintSpread().setNoiseScale(1.0f);
+	g_Shaders.paintSpread().setWaveStrength(0.4f);
+	g_Shaders.paintSpread().setSpreadSpeed(0.6f);
+	g_Shaders.paintSpread().startAnimation();
+
     if (direction == Point(0, -1))
     {
         // 위쪽 방향: 애니메이션 재생 안 함
