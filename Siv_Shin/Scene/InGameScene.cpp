@@ -74,6 +74,11 @@ void InGameScene::onEnter()
 	tacoAnimFrame_ = 0;
 	isPlayerMoving_ = false;
 
+	// ★ 죽음 상태 초기화 추가
+	isPlayerDead_ = false;
+	deathAnimTimer_ = 0.0;
+	deathParticles_.clear();
+
 	// 클리어 이펙트 완전 초기화
 	showClearEffect_ = false;
 	clearEffectTimer_ = 0.0;
@@ -97,7 +102,7 @@ void InGameScene::onEnter()
 	// 배경음악 재생
 	if (!bgm_.isEmpty())
 	{
-		bgm_.setVolume(0.2);
+		bgm_.setVolume(0.4);
 		bgm_.play();
 	}
 
@@ -159,6 +164,8 @@ void InGameScene::loadAssets()
     noteE5_ = Audio{ U"ArtResources/SFX/E5.wav" };
     noteG5_ = Audio{ U"ArtResources/SFX/G5.wav" };
     noteC6_ = Audio{ U"ArtResources/SFX/C6.wav" };
+
+	stageClearSound_ = Audio{ U"ArtResources/SFX/StageClear.wav" };
 
     // 보스 이미지 로드 (Final stage 전용) - clock 0~2 프레임
     bossIdleFrames_.clear();
@@ -1216,6 +1223,7 @@ void InGameScene::update()
 
 					// 배경음악 재개
 					if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
+						bgm_.setVolume(0.4);  // ★ 볼륨 설정 추가
 						bgm_.play();
 					}
 
@@ -1239,6 +1247,7 @@ void InGameScene::update()
 
 						// 배경음악 재개
 						if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
+							bgm_.setVolume(0.4);
 							bgm_.play();
 						}
 
@@ -1291,10 +1300,9 @@ void InGameScene::update()
 		updateMergePaintFX();
 		return;
 	}
-	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_) {
+	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_ && !isPlayerDead_) {
 		bgm_.play();
 	}
-
 	// R로 즉시 리트라이
 	if (KeyR.down() && !isCleared_) {
 		gameTime_ = 0.0;
@@ -1304,6 +1312,10 @@ void InGameScene::update()
 		gameStateHistory_.clear();
 		undoHoldTime_ = 0.0;
 		undoCooldown_ = 0.0;
+		// ★ 죽음 상태 초기화 추가
+		isPlayerDead_ = false;
+		deathAnimTimer_ = 0.0;
+		deathParticles_.clear();
 
 		bombFXs_.clear();
 		wallBreakFXs.clear();
@@ -1428,6 +1440,9 @@ void InGameScene::update()
 		showClearEffect_ = true;
 		clearEffectTimer_ = 0.0;
 		createClearEffect();
+		if (!stageClearSound_.isEmpty()) {
+			stageClearSound_.playOneShot(0.5);
+		}
 		if (gameData_) {
 			gameData_->clearStage(currentStage_);
 		}
