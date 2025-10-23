@@ -10,6 +10,20 @@ HolographicShader::HolographicShader()
 		{{U"PSConstants2D", 0}, {U"HoloParams1", 1}, {U"HoloParams2", 2}, {U"DrawMode", 3}, {U"ShapeInfo", 4}} } };
 }
 
+HolographicShader::TextureScope HolographicShader::scopedTexture(const Texture& tex) const {
+	return TextureScope{ *this, tex };
+}
+
+void HolographicShader::beginTexScope(const Texture& tex) const {
+	updateEffectCBs();
+	setViewOnly();
+	beginTextureCommon(tex);
+}
+
+void HolographicShader::endScope() const {
+	endCommon();
+}
+
 void HolographicShader::updateEffectCBs() const
 {
 	const float t = static_cast<float>(Scene::Time());

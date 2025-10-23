@@ -100,6 +100,11 @@ void InGameScene::onEnter()
 		bgm_.setVolume(0.2);
 		bgm_.play();
 	}
+
+	auto& holo = g_Shaders.holographic();
+	holo.setRainbowMode(false);
+	holo.setHoloColor(ColorF{ 1.0, 1.0, 1.0 });
+	holo.setIntensity(0.0f);
 }
 
 void InGameScene::onExit()
@@ -2078,6 +2083,8 @@ void InGameScene::drawPlayer()
         const Texture& frame = (*currentFrames)[tacoAnimFrame_];
         if (!frame.isEmpty())
         {
+			const auto scope = g_Shaders.holographic().scopedTexture(frame);
+
             if (tacoDirection_ == TacoDirection::Side && isFacingLeft_)
             {
                 frame.resized(TILE_SIZE, TILE_SIZE).mirrored().draw(playerRect.pos);
@@ -2557,6 +2564,12 @@ void InGameScene::collectItem(Point pos)
         mapData_[pos.y][pos.x] = TileType::Empty;
         
         score_ += 25;  // 아이템 수집 보너스
+
+		const ColorF c = getItemColorF(item->type);
+		auto& holo = g_Shaders.holographic();
+		holo.setRainbowMode(false);
+		holo.setHoloColor(c);
+		holo.setIntensity(0.75f);
     }
 }
 
@@ -2595,6 +2608,8 @@ bool InGameScene::tryChangeBoxColor(Point pos, Point direction)
         // 오른쪽 또는 아래: 일반 애니메이션
         startPaintAnimation(false);
     }
+
+	g_Shaders.holographic().setIntensity(0.0f);
     
     return true;
 }
