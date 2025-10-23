@@ -1391,8 +1391,6 @@ void InGameScene::update()
 	// 일반 업데이트
 	gameTime_ += dt;
 
-	updateIceSlideTasks_(dt);
-
 	// 얼음 미끄러짐 진행 중이면 입력을 무시하고 자동 이동만 수행
 	if (isSliding_) {
 		continueSliding();
@@ -1520,15 +1518,7 @@ void InGameScene::handleInput()
 	const Point newPos = playerPos_ + dir;
 	const bool enteringIce = (isIce(newPos) && !isIce(playerPos_));
 	const bool leavingIce = (isIce(playerPos_) && !isIce(newPos));
-
-	if (enteringIce) {
-		startIceUndoSpanIfNeeded_();
-	}
-
-	//const Point newPos = playerPos_ + dir;
-	//const bool enteringIce = (isIce(newPos) && !isIce(playerPos_));
-	//const bool leavingIce = (isIce(playerPos_) && !isIce(newPos));
-	//if (enteringIce) saveGameState();
+	if (enteringIce) saveGameState();
 
 	// 박스가 있는 칸
 	if (ColorBox* box = getBoxAt(newPos)) {
@@ -1687,60 +1677,6 @@ void InGameScene::ensureUniqueBoxUIDs() {
 	}
 }
 
-void InGameScene::startIceSlideTask_(ColorBox* box, Point dir)
-{
-	if (!box) return;
-	for (auto& t : iceSlideTasks_) {
-		if (t.active && t.uid == box->uid) {
-			t.dir = dir;
-			t.cooldown = 0.0;
-			return;
-		}
-	}
-	IceSlideTask t;
-	t.uid = box->uid;
-	t.dir = dir;
-	t.cooldown = 0.0;
-	t.active = true;
-	iceSlideTasks_ << t;
-}
-
-void InGameScene::updateIceSlideTasks_(double dt)
-{
-	const double stepInterval = (TILE_SIZE / Max(1.0, playerMoveSpeed_));
-	for (auto& t : iceSlideTasks_) {
-		if (!t.active) continue;
-		t.cooldown = Max(0.0, t.cooldown - dt);
-		if (t.cooldown > 0.0) continue;
-
-		ColorBox* box = getBoxByUid(t.uid);
-		if (!box) { t.active = false; continue; }
-		if (!isIce(box->pos)) { t.active = false; continue; }
-		if (!canSlideNext_(box->pos, t.dir)) { t.active = false; continue; }
-
-		pushBox(box, t.dir);
-		t.cooldown = stepInterval;
-
-		if (!isIce(box->pos)) {
-			t.active = false;
-		}
-	}
-	iceSlideTasks_.remove_if([](const IceSlideTask& x) { return !x.active; });
-
-	if (!isSliding_) {
-		completeIceUndoSpanIfNeeded_();
-	}
-}
-
-bool InGameScene::canSlideNext_(Point tile, Point dir) const
-{
-	const Point nxt = tile + dir;
-	if (!isInsideMap(nxt)) return false;
-	if (mapData_[nxt.y][nxt.x] == TileType::Wall) return false;
-	if (getBoxAt(nxt) != nullptr) return false;
-	return true;
-}
-
 bool InGameScene::isIce(Point pos) const
 {
     if (!isInsideMap(pos)) return false;
@@ -1776,14 +1712,12 @@ void InGameScene::continueSliding()
 
 	if (!isInsideMap(next) || mapData_[next.y][next.x] == TileType::Wall) {
 		isSliding_ = false;
-		completeIceUndoSpanIfNeeded_();
 		return;
 	}
 
 	if (ColorBox* box = getBoxAt(next)) {
 		if (!canPushBox(playerPos_, box->pos, slideDir_)) {
 			isSliding_ = false;
-			completeIceUndoSpanIfNeeded_();
 			return;
 		}
 		pushBox(box, slideDir_);
@@ -1797,72 +1731,30 @@ void InGameScene::continueSliding()
 	// 얼음에서 나올 때 상태 저장
 	if (!isIce(next)) {
 		isSliding_ = false;
-		//saveGameState();
-		completeIceUndoSpanIfNeeded_();
+		saveGameState();  // 얼음에서 벗어날 때 저장
 	}
-}
-
-
-void InGameScene::startIceUndoSpanIfNeeded_()
-{
-	if (iceUndoAnchorIndex_.has_value()) return;
-
-	saveGameState();
-	iceUndoAnchorIndex_ = (gameStateHistory_.size() - 1);
-}
-
-
-void InGameScene::completeIceUndoSpanIfNeeded_()
-{
-	if (!iceUndoAnchorIndex_.has_value()) return;
-
-	if (isSliding_) return;
-	for (const auto& t : iceSlideTasks_) {
-		if (t.active) return;
-	}
-
-	saveGameState();
-	const size_t e = gameStateHistory_.size() - 1;
-	const size_t a = *iceUndoAnchorIndex_;
-	iceUndoSpans_.push_back(IceUndoSpan{ a, e });
-	iceUndoAnchorIndex_.reset();
-}
-
-bool InGameScene::isIceSpanActive() const
-{
-	if (iceUndoAnchorIndex_.has_value()) return true;
-	if (isSliding_) return true;
-	for (const auto& t : iceSlideTasks_) {
-		if (t.active) return true;
-	}
-	return false;
-}
-
-bool InGameScene::applyIceUndoSpanIfNeeded_()
-{
-	if (gameStateHistory_.size() < 2) return false;
-	const size_t curIdx = gameStateHistory_.size() - 1;
-
-	auto it = std::find_if(iceUndoSpans_.begin(), iceUndoSpans_.end(),
-		[&](const IceUndoSpan& s) { return s.end == curIdx; });
-	if (it == iceUndoSpans_.end()) return false;
-
-	const size_t a = it->start;
-	while (gameStateHistory_.size() > (a + 1)) {
-		gameStateHistory_.pop_back();
-	}
-	iceUndoSpans_.erase(it);
-	return true;
 }
 
 void InGameScene::slideBoxOnIce(ColorBox* box, Point dir)
 {
-	if (!box) return;
-	if (!isIce(box->pos)) return;
+	if (!box) return; // 안전 가드
+	Point cur = box->pos;
 
-	startIceUndoSpanIfNeeded_();
+	// 추가: 시작 칸이 얼음이 아니면 슬라이드 없음
+	if (!isIce(cur)) return;
 
-	startIceSlideTask_(box, dir);
+	while (true)
+	{
+		const Point nxt = cur + dir;
+		if (!isInsideMap(nxt)) break;
+		if (mapData_[nxt.y][nxt.x] == TileType::Wall) break;
+		if (getBoxAt(nxt) != nullptr) break;
+
+		cur = nxt;
+		if (!isIce(cur)) break; // 얼음이 끝나면 정지
+	}
+
+	box->pos = cur;
 }
 
 uint8 InGameScene::encodeTile_(InGameScene::TileType t) noexcept {
@@ -2473,8 +2365,6 @@ void InGameScene::undoLastMove()
 	if (!canUndo()) return;
 
 	forceMergePaintFXCompletion();
-
-	if (applyIceUndoSpanIfNeeded_()) return;
 
 	if (isBombSpanActive())
 	{

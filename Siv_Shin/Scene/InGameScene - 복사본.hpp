@@ -320,39 +320,17 @@ private:
 	//holographic
 	void applyHoloFromHeldItem_();
 
-
-	struct IceSlideTask {
-		uint64 uid = 0;
-		Point  dir{ 0, 0 };
-		double cooldown = 0.0;
-		bool   active = false;
-	};
-
-	Array<IceSlideTask> iceSlideTasks_;
-
-
-    bool isSliding_ = false;      
-    Point slideDir_{ 0, 0 };
-	void startIceSlideTask_(ColorBox* box, Point dir);
-	void updateIceSlideTasks_(double dt);
-	bool canSlideNext_(Point tile, Point dir) const;
-    bool isIce(Point pos) const;
-    void continueSliding();
-    void slideBoxOnIce(ColorBox* box, Point dir);
-
-	struct IceUndoSpan { size_t start = 0, end = 0; };
-	Optional<size_t> iceUndoAnchorIndex_;
-	Array<IceUndoSpan> iceUndoSpans_;
-
-	bool isIceSpanActive() const;
-	void startIceUndoSpanIfNeeded_();
-	void completeIceUndoSpanIfNeeded_();
-	bool applyIceUndoSpanIfNeeded_();
+    // 얼음(슬라이딩) 시스템
+    bool isSliding_ = false;      // 플레이어가 현재 미끄러지는 중인지
+    Point slideDir_{ 0, 0 };      // 미끄러지는 방향
+    bool isIce(Point pos) const;  // 얼음 타일 여부
+    void continueSliding();       // 미끄러짐 자동 진행
+    void slideBoxOnIce(ColorBox* box, Point dir); // 박스 얼음 슬라이드
 
 public:
     InGameScene();
-    InGameScene(int32 stageNumber);
-    InGameScene(int32 stageNumber, GameData* gameData);
+    InGameScene(int32 stageNumber);  // 스테이지 번호를 받는 생성자
+    InGameScene(int32 stageNumber, GameData* gameData);  // 게임 데이터도 받는 생성자
     ~InGameScene() override = default;
 
     void update() override;
