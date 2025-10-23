@@ -21,6 +21,18 @@ public:
 	bool  isRainbow() const noexcept { return m_rainbow; }
 	ColorF getHoloColor() const noexcept { return m_color; }
 
+	struct TextureScope {
+		const HolographicShader& self;
+		explicit TextureScope(const HolographicShader& s, const Texture& tex) : self(s) {
+			self.beginTexScope(tex);
+		}
+		~TextureScope() { self.endScope(); }
+	};
+
+	[[nodiscard]] TextureScope scopedTexture(const Texture& tex) const;
+	void beginTexScope(const Texture& tex) const;
+	void endScope() const;
+
 protected:
 	void updateEffectCBs() const override;
 
