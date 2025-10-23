@@ -30,10 +30,10 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 , paintAnimFrame_(0)
 , playerAnimTimer_(0.0)
 , currentPlayerFrame_(0)
-, gameFont_(20)  // 폰트 크기 증가
-, debugFont_(16)  // 폰트 크기 증가
-, clearFont_(64, Typeface::Bold)  // 폰트 크기 증가
-, buttonFont_(24)  // 클리어 버튼용 폰트 추가
+, gameFont_(FontMethod::MSDF, 20, U"ArtResources/Fonts/DarumaDropOne-Regular.ttf")  // ★ 수정
+, debugFont_(FontMethod::MSDF, 16, U"ArtResources/Fonts/Tetsubin Gothic.otf")        // ★ 수정
+, clearFont_(FontMethod::MSDF, 64, U"ArtResources/Fonts/DarumaDropOne-Regular.ttf", FontStyle::Bold)  // ★ 수정
+, buttonFont_(FontMethod::MSDF, 24, U"ArtResources/Fonts/DarumaDropOne-Regular.ttf")  // ★ 수정
 , gameTime_(0.0)
 , score_(0)
 , moves_(0)
@@ -448,7 +448,20 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 			const double threshold = (fx.params.pulseDuration * fx.params.pulseCount);
 			if (elapsed >= threshold) {
 				fx.effect->trigger();
-				if (const ColorBox* b = getBoxByUid(fx.uid)) destroyWalls8(b->pos);
+				if (const ColorBox* b = getBoxByUid(fx.uid)) {
+					destroyWalls8(b->pos);
+
+					// ★ 폭발 시 플레이어가 8방향 안에 있으면 흰색 파티클로 죽임
+					if (isPlayerInExplosionRange(b->pos) && !isPlayerDead_) {
+						isPlayerDead_ = true;
+						deathAnimTimer_ = 0.0;
+						createDeathEffect(true);  // ★ true = 흰색 파티클 사용
+
+						if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+							bgm_.stop();
+						}
+					}
+				}
 				fx.params.wallsDestroyed = true;
 				if (!fx.shakeStarted) {
 					if (const ColorBox* b = getBoxByUid(fx.uid)) {
@@ -1131,7 +1144,7 @@ ColorF InGameScene::getBoxColorF(BoxColor color) const
     switch (color)
     {
     case BoxColor::Red:
-        return ColorF{ 0.6, 0.3, 0.3 };      // 빨강 (채도 낮춤)
+        return ColorF{ 0.66, 0.25, 0.25 };      // 빨강 (채도 낮춤)
     case BoxColor::Yellow:
         return ColorF{ 1.0, 1.0, 0.5 };      // 노랑 (채도 절반)
     case BoxColor::Blue:
@@ -1156,12 +1169,89 @@ void InGameScene::update()
 
 	camera().update();
 
-	updateMergePaintFX();
+	// ★ 죽음 애니메이션 처리 (Undo는 허용)
+	if (isPlayerDead_) {
+		deathAnimTimer_ += dt;
+		updateDeathEffect();  // 파티클 업데이트
 
+		// ★ Undo 처리 (죽음 중에도 가능)
+		if (!isCleared_ && canUndo()) {
+			const bool undoPressed = KeyZ.pressed() || KeyBackspace.pressed();
+			const bool undoDown = KeyZ.down() || KeyBackspace.down();
+			if (undoPressed) {
+				undoHoldTime_ += dt;
+				if (undoDown) {
+					// Undo 실행 시 죽음 상태 해제
+					isPlayerDead_ = false;
+					deathAnimTimer_ = 0.0;
+					deathParticles_.clear();
+
+					undoLastMove();
+					undoCooldown_ = UNDO_REPEAT_DELAY;
+
+					bombFXs_.clear();
+					wallBreakFXs.clear();
+					bombExpiryAbs_.clear();
+
+					// 배경음악 재개
+					if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
+						bgm_.play();
+					}
+
+					updateMergePaintFX();
+					return;
+				}
+				if (undoHoldTime_ >= UNDO_HOLD_THRESHOLD) {
+					undoCooldown_ -= dt;
+					if (undoCooldown_ <= 0.0) {
+						// Undo 실행 시 죽음 상태 해제
+						isPlayerDead_ = false;
+						deathAnimTimer_ = 0.0;
+						deathParticles_.clear();
+
+						undoLastMove();
+						undoCooldown_ = UNDO_REPEAT_DELAY;
+
+						bombFXs_.clear();
+						wallBreakFXs.clear();
+						bombExpiryAbs_.clear();
+
+						// 배경음악 재개
+						if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
+							bgm_.play();
+						}
+
+						updateMergePaintFX();
+						return;
+					}
+				}
+			}
+			else {
+				undoHoldTime_ = 0.0;
+				undoCooldown_ = 0.0;
+			}
+		}
+
+		return; // 죽음 중에는 일반 입력은 무시
+	}
+
+	// ★ 용암 체크 (일반 업데이트 중)
+	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {
+		if (!isPlayerDead_) {
+			isPlayerDead_ = true;
+			deathAnimTimer_ = 0.0;
+			createDeathEffect(false);  // ★ false = 용암 색상 파티클 사용 (기본값)
+
+			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+				bgm_.stop();
+			}
+		}
+		return;
+	}
+
+	updateMergePaintFX();
 	updateBombBoxFX_Multi(dt);
 	updateWallBreakFX();
-
-
 
 	// 포커스/도움말 토글
 	const bool focused = Window::GetState().focused;
@@ -1175,17 +1265,13 @@ void InGameScene::update()
 		if (!bgm_.isEmpty() && bgm_.isPlaying()) {
 			bgm_.pause();
 		}
-		
-		updateMergePaintFX(); 
+
+		updateMergePaintFX();
 		return;
 	}
 	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_) {
 		bgm_.play();
 	}
-
-
-
-
 
 	// R로 즉시 리트라이
 	if (KeyR.down() && !isCleared_) {
@@ -1197,18 +1283,16 @@ void InGameScene::update()
 		undoHoldTime_ = 0.0;
 		undoCooldown_ = 0.0;
 
-		// 폭탄 이펙트 및 벽 파괴 이펙트 초기화
 		bombFXs_.clear();
 		wallBreakFXs.clear();
 		bombExpiryAbs_.clear();
 
 		loadStage(currentStage_);
-		// 조기 return 보호
-		updateMergePaintFX(); 
+		updateMergePaintFX();
 		return;
 	}
 
-	// Undo 흐름
+	// Undo 흐름 (살아있을 때)
 	if (!isCleared_ && canUndo()) {
 		const bool undoPressed = KeyZ.pressed() || KeyBackspace.pressed();
 		const bool undoDown = KeyZ.down() || KeyBackspace.down();
@@ -1218,13 +1302,11 @@ void InGameScene::update()
 				undoLastMove();
 				undoCooldown_ = UNDO_REPEAT_DELAY;
 
-				// 폭탄 이펙트 및 벽 파괴 이펙트 초기화
 				bombFXs_.clear();
 				wallBreakFXs.clear();
 				bombExpiryAbs_.clear();
 
-				// 조기 return 보호
-				updateMergePaintFX(); 
+				updateMergePaintFX();
 				return;
 			}
 			if (undoHoldTime_ >= UNDO_HOLD_THRESHOLD) {
@@ -1233,13 +1315,11 @@ void InGameScene::update()
 					undoLastMove();
 					undoCooldown_ = UNDO_REPEAT_DELAY;
 
-					// 폭탄 이펙트 및 벽 파괴 이펙트 초기화
 					bombFXs_.clear();
 					wallBreakFXs.clear();
 					bombExpiryAbs_.clear();
 
-					// 조기 return 보호
-					updateMergePaintFX(); 
+					updateMergePaintFX();
 					return;
 				}
 			}
@@ -1282,55 +1362,44 @@ void InGameScene::update()
 			updateClearEffect();
 		}
 
-		// 조기 return 보호
-		updateMergePaintFX(); 
+		updateMergePaintFX();
 		return;
 	}
 
 	// 일반 업데이트
 	gameTime_ += dt;
 
-    // 얼음 미끄러짐 진행 중이면 입력을 무시하고 자동 이동만 수행
-    if (isSliding_) {
-        continueSliding();
-        updatePlayer();
-        updateAnimations();
-        updatePaintAnimation();
-        updateMergePaintFX();
-        updateBlackBoxes();
-        if (!isCleared_ && isGameClear()) {
-            isCleared_ = true;
-            score_ += 1000;
-            showClearEffect_ = true;
-            clearEffectTimer_ = 0.0;
-            createClearEffect();
-            if (gameData_) {
-                gameData_->clearStage(currentStage_);
-            }
-        }
-        if (showClearEffect_ && !isCleared_) {
-            updateClearEffect();
-        }
-        return;
-    }
+	// 얼음 미끄러짐 진행 중이면 입력을 무시하고 자동 이동만 수행
+	if (isSliding_) {
+		continueSliding();
+		updatePlayer();
+		updateAnimations();
+		updatePaintAnimation();
+		updateMergePaintFX();
+		updateBlackBoxes();
+		if (!isCleared_ && isGameClear()) {
+			isCleared_ = true;
+			score_ += 1000;
+			showClearEffect_ = true;
+			clearEffectTimer_ = 0.0;
+			createClearEffect();
+			if (gameData_) {
+				gameData_->clearStage(currentStage_);
+			}
+		}
+		if (showClearEffect_ && !isCleared_) {
+			updateClearEffect();
+		}
+		return;
+	}
 
-	// 입력 → 합성 성공 분기에서 즉시 setOriginPoint + startAnimation 호출되어야 함
 	handleInput();
-
-	// 플레이어 및 일반 애니메이션
 	updatePlayer();
 	updateAnimations();
-
-	// 별도 타코 페인트 애니메이션 (UI/연출용)
 	updatePaintAnimation();
-
-	// 진행 갱신을 한 번 더 보장 (다중 호출 안전)
 	updateMergePaintFX();
-
-	// 블랙 박스 등 기타 업데이트
 	updateBlackBoxes();
 
-	// 클리어 판정
 	if (!isCleared_ && isGameClear()) {
 		isCleared_ = true;
 		score_ += 1000;
@@ -1346,8 +1415,6 @@ void InGameScene::update()
 		updateClearEffect();
 	}
 }
-
-
 
 void InGameScene::bufferInputWhileMoving() {
 	// 이번 프레임 새로 눌린 방향만 큐에 저장 (.down 우선)
@@ -1592,6 +1659,21 @@ void InGameScene::continueSliding()
 {
 	if (isPlayerMoving_) return;
 	if (!isSliding_) return;
+
+	// ★ 용암 체크
+	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {
+		if (!isPlayerDead_) {  // 한 번만
+			isPlayerDead_ = true;
+			deathAnimTimer_ = 0.0;
+			isSliding_ = false;
+			createDeathEffect();  // ★ 파티클 생성
+
+			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+				bgm_.stop();
+			}
+		}
+		return;
+	}
 
 	if (!isIce(playerPos_)) {
 		isSliding_ = false;
@@ -1872,6 +1954,14 @@ void InGameScene::drawMap()
 				tileRect.draw(ColorF{ 0.615, 0.988, 0.976, 0.6 });
 				tileRect.drawFrame(2, 0, ColorF{ 0.8, 1.0, 1.0, 0.8 });
 				break;
+			case TileType::Lava: 
+			{
+				double pulse = 0.5 + 0.5 * sin(gameTime_ * 3.0);
+				ColorF lavaColor{ 0.9, 0.2 + 0.2 * pulse, 0.0, 0.8 };
+				tileRect.draw(lavaColor);
+				tileRect.drawFrame(2, 0, ColorF{ 1.0, 0.5, 0.0 });
+			}
+			break;
 			case TileType::RedGoal:
 				tileRect.draw(ColorF{ 0.9, 0.2, 0.2, 0.3 });
 				Circle{ tileRect.center(), 12 }.drawFrame(3, ColorF{ 0.9, 0.2, 0.2 });
@@ -1943,6 +2033,12 @@ void InGameScene::drawMap()
 
 void InGameScene::drawPlayer()
 {
+	/// 죽음 애니메이션
+	if (isPlayerDead_) {
+		// ★ Circle 대신 파티클 이펙트 사용
+		drawDeathEffect();
+		return;
+	}
     // 페인트 애니메이션이 재생 중이면 페인트 애니메이션을 그림
     if (isPlayingPaintAnimation_)
     {
@@ -2650,7 +2746,77 @@ void InGameScene::drawStars(int32 starCount, Vec2 centerPos) const
         }
     }
 }
+bool InGameScene::isPlayerInExplosionRange(Point bombPos) const
+{
+	const Array<Point> directions = {
+		Point{-1, -1}, Point{0, -1}, Point{1, -1},  // 위쪽 3칸
+		Point{-1,  0}, Point{0,  0}, Point{1,  0},  // 좌우 + 중앙
+		Point{-1,  1}, Point{0,  1}, Point{1,  1}   // 아래쪽 3칸
+	};
 
+	for (const auto& dir : directions) {
+		Point checkPos = bombPos + dir;
+		if (checkPos == playerPos_) {
+			return true;
+		}
+	}
+	return false;
+}
+void InGameScene::createDeathEffect(bool useWhiteParticles)
+{
+	deathParticles_.clear();
+	isWhiteParticleDeath_ = useWhiteParticles;  // ★ 플래그 저장
+
+	const Vec2 center = playerPixelPos_;
+
+	// 정확히 8방향으로 1개씩 파티클 생성 (총 8개)
+	const Array<Vec2> directions = {
+		Vec2{-1, -1}.normalized(),  // 좌상 (대각선)
+		Vec2{ 0, -1},                // 상
+		Vec2{ 1, -1}.normalized(),  // 우상 (대각선)
+		Vec2{-1,  0},                // 좌
+		Vec2{ 1,  0},                // 우
+		Vec2{-1,  1}.normalized(),  // 좌하 (대각선)
+		Vec2{ 0,  1},                // 하
+		Vec2{ 1,  1}.normalized()   // 우하 (대각선)
+	};
+
+	// ★ 폭탄 폭발용 흰색 팔레트와 용암용 색상 팔레트 분리
+	const Array<ColorF> whiteColors = {
+		ColorF{1.0, 1.0, 1.0},      // 순백
+		ColorF{0.95, 0.95, 1.0},    // 약간 푸른 흰색
+		ColorF{1.0, 0.95, 0.85},    // 약간 노란 흰색
+		ColorF{0.9, 0.9, 0.9},      // 밝은 회색
+	};
+
+	const Array<ColorF> lavaColors = {
+		ColorF{1.0, 0.3, 0.0},  // 주황
+		ColorF{1.0, 0.5, 0.0},  // 밝은 주황
+		ColorF{1.0, 0.8, 0.0},  // 노랑
+		ColorF{0.9, 0.2, 0.0},  // 진한 빨강
+	};
+
+	// ★ 사용할 색상 팔레트 선택
+	const Array<ColorF>& colorPalette = useWhiteParticles ? whiteColors : lavaColors;
+
+	// 각 방향마다 정확히 1개의 파티클 생성
+	for (const auto& dir : directions)
+	{
+		DeathParticle particle;
+
+		const double speed = Random(200.0, 350.0);  // 속도 범위
+
+		particle.pos = center;
+		particle.velocity = dir * speed;  // 정확한 방향으로 발사
+
+		// ★ 색상 팔레트에서 선택
+		particle.color = colorPalette[Random(0, (int32)colorPalette.size() - 1)];
+		particle.life = particle.maxLife = Random(0.7, 1.3);  // 수명
+		particle.size = Random(6.0, 12.0);  // 크기
+
+		deathParticles_.push_back(particle);
+	}
+}
 void InGameScene::createClearEffect()
 {
     clearParticles_.clear();
@@ -2703,23 +2869,22 @@ void InGameScene::createClearEffect()
             clearParticles_.push_back(particle);
         }
     }
-    
-    // 추가로 반짝이는 작은 파티클들
-    for (int32 i = 0; i < 100; i++)
-    {
-        ClearParticle sparkle;
-        sparkle.pos = Vec2(Random(0, (int)Scene::Size().x), Random(0, (int)Scene::Size().y));
-        sparkle.velocity = Vec2(Random(-50.0, 50.0), Random(-100.0, 50.0));
-        sparkle.color = ColorF{1.0, 1.0, 1.0, 0.8};
-        sparkle.life = sparkle.maxLife = Random(2.0, 4.0);
-        sparkle.size = Random(1.0, 3.0);
-        sparkle.rotation = 0;
-        sparkle.rotationSpeed = Random(-10.0, 10.0);
-        
-        clearParticles_.push_back(sparkle);
-    }
 }
+void InGameScene::updateDeathEffect()
+{
+	const double deltaTime = Scene::DeltaTime();
 
+	for (auto& particle : deathParticles_)
+	{
+		particle.pos += particle.velocity * deltaTime;
+		particle.life -= deltaTime;
+		particle.velocity *= 0.95;  // 천천히 감속
+		double alpha = particle.life / particle.maxLife;
+		particle.color.a = alpha;
+	}
+	// 수명이 다한 파티클 제거
+	deathParticles_.remove_if([](const DeathParticle& p) { return p.life <= 0; });
+}
 void InGameScene::updateClearEffect()
 {
     const double deltaTime = Scene::DeltaTime();
@@ -2779,7 +2944,16 @@ void InGameScene::updateClearEffect()
     // 수명이 다한 파티클 제거
     clearParticles_.remove_if([](const ClearParticle& p) { return p.life <= 0; });
 }
+void InGameScene::drawDeathEffect()
+{
+	// Additive 블렌드로 빛나는 효과
+	ScopedRenderStates2D blend{ BlendState::Additive };
 
+	for (const auto& particle : deathParticles_)
+	{
+		Circle{ particle.pos, particle.size }.draw(particle.color);
+	}
+}
 void InGameScene::drawClearEffect()
 {
     // Additive 블렌드 상태로 설정하여 빛나는 효과
@@ -2951,6 +3125,7 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 			switch (ch) {
 			case U'#': mapData_[y][x] = TileType::Wall; break;
             case U'i': mapData_[y][x] = TileType::Ice; break;
+			case U'L': mapData_[y][x] = TileType::Lava; break;
 
 			case U'T':
 				playerPos_ = pos;

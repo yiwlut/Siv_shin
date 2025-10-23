@@ -79,33 +79,37 @@ struct GameState
 class InGameScene : public GameScene
 {
 private:
-    // 게임 상수 - 11x11 그리드로 확장, 1024x1024 해상도에 맞춤
     static constexpr int32 TILE_SIZE = 80;  // 타일 크기 증가 (1024/11 ≈ 93, 여백 고려하여 80)
     static constexpr int32 MAP_WIDTH = 11;  // 11x11 맵
     static constexpr int32 MAP_HEIGHT = 11;
     static constexpr double BLACK_BOX_LIFETIME = 3.5;  // 검은색 블록 수명 (초)
+
+	bool isPlayerDead_ = false;           
+	double deathAnimTimer_ = 0.0;       
+	static constexpr double DEATH_ANIM_DURATION = 1.5;
 
 	uint64 nextBoxUID_ = 1;
 
     // 소코반 타일 타입
     enum class TileType
     {
-        Empty,       // 빈 공간
-        Wall,        // 벽
-        RedGoal,     // r - 빨강 목표
-        YellowGoal,  // y - 노랑 목표
-        BlueGoal,    // b - 파랑 목표
-        OrangeGoal,  // o - 주황 목표
-        GreenGoal,   // g - 초록 목표
-        VioletGoal,  // v - 보라 목표
-        BlackGoal,   // k - 검정 목표
-        Ice,         // i - 얼음 바닥 (미끄럼)
-        RedItem,     // ㅃ - 빨강 아이템
-        OrangeItem,  // ㅈ - 주황 아이템
-        YellowItem,  // ㄴ - 노랑 아이템
-        GreenItem,   // ㅊ - 초록 아이템
-        BlueItem,    // ㅍ - 파랑 아이템
-        VioletItem   // ㅂ - 보라 아이템
+        Empty,     
+        Wall,      
+        RedGoal,     
+        YellowGoal,  
+        BlueGoal,  
+        OrangeGoal,  
+        GreenGoal,  
+        VioletGoal, 
+        BlackGoal,  
+        Ice,
+		Lava,
+        RedItem,    
+        OrangeItem, 
+        YellowItem,  
+        GreenItem,   
+        BlueItem,    
+        VioletItem 
     };
     
     // Taco 플레이어 방향
@@ -425,14 +429,33 @@ private:
         double rotation;
         double rotationSpeed;
     };
+
+	struct DeathParticle
+	{
+		Vec2 pos;
+		Vec2 velocity;
+		ColorF color;
+		double life;
+		double maxLife;
+		double size;
+	};
+
+	Array<DeathParticle> deathParticles_;
+	bool isWhiteParticleDeath_ = false;
     Array<ClearParticle> clearParticles_;
     double clearEffectTimer_ = 0.0;
     bool showClearEffect_ = false;
-    
+
+
     // 클리어 이펙트 관련 메서드
     void createClearEffect();
     void updateClearEffect();
     void drawClearEffect();
+
+	void createDeathEffect(bool useWhiteParticles = false);
+	void updateDeathEffect();     
+	void drawDeathEffect();
+	bool isPlayerInExplosionRange(Point bombPos) const;
 
 	static CustomCamera2D& camInstance();                    
 	CustomCamera2D& camera();           
