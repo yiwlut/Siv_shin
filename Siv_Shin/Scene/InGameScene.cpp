@@ -2671,6 +2671,9 @@ void InGameScene::undoLastMove()
 
 	forceMergePaintFXCompletion();
 
+	if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) {
+		bombExplosionSound_.stop();
+	}
 	if (applyIceUndoSpanIfNeeded_()) return;
 
 	if (isBombSpanActive())
