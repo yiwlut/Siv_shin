@@ -2,11 +2,11 @@
 #include "StageData.hpp"
 
 StageSelectScene::StageSelectScene()
-	: titleFont_(FontMethod::MSDF, 48, U"ArtResources/Fonts/Tetsubin Gothic.otf")  // ★ 일본어 폰트로 변경
-	, stageFont_(FontMethod::MSDF, 24, U"ArtResources/Fonts/Tetsubin Gothic.otf")  // ★ 일본어 폰트로 변경
-	, infoFont_(FontMethod::MSDF, 16, U"ArtResources/Fonts/Tetsubin Gothic.otf")   // ★ 일본어 폰트로 변경
-	, stageNumberFont_(48, U"ArtResources/Fonts/Tetsubin Gothic.otf")              // ★ 일본어 폰트로 변경
-	, bgm_(U"ArtResources/BGM/DeepSea1.mp3", Loop::Yes)
+	: titleFont_(FontMethod::MSDF, 48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
+	, stageFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
+	, infoFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))   // ★ 일본어 폰트로 변경
+	, stageNumberFont_(48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))              // ★ 일본어 폰트로 변경
+	, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)
 {
 	currentScene_ = SceneType::StageSelect;
 	loadStageTextures();
@@ -14,11 +14,11 @@ StageSelectScene::StageSelectScene()
 }
 
 StageSelectScene::StageSelectScene(GameData* gameData)
-	: titleFont_(FontMethod::MSDF, 48, U"ArtResources/Fonts/Tetsubin Gothic.otf")  // ★ 일본어 폰트로 변경
-	, stageFont_(FontMethod::MSDF, 24, U"ArtResources/Fonts/Tetsubin Gothic.otf")  // ★ 일본어 폰트로 변경
-	, infoFont_(FontMethod::MSDF, 16, U"ArtResources/Fonts/Tetsubin Gothic.otf")   // ★ 일본어 폰트로 변경
-	, stageNumberFont_(48, U"ArtResources/Fonts/Tetsubin Gothic.otf")              // ★ 일본어 폰트로 변경
-	, bgm_(U"ArtResources/BGM/DeepSea1.mp3", Loop::Yes)
+	: titleFont_(FontMethod::MSDF, 48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
+	, stageFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
+	, infoFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))   // ★ 일본어 폰트로 변경
+	, stageNumberFont_(48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))              // ★ 일본어 폰트로 변경
+	, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)
 	, gameData_(gameData)
 {
 	currentScene_ = SceneType::StageSelect;
@@ -126,7 +126,7 @@ void StageSelectScene::loadStageTextures()
         for (int32 frameIndex = 0; frameIndex < 3; frameIndex++)
         {
             // 파일 경로: ArtResources/Texture2D/stage/stage_1-0.png, stage_1-1.png, etc.
-            const String texturePath = U"ArtResources/Texture2D/stage/stage_{}-{}.png"_fmt(stageNumber, frameIndex);
+            const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_{}-{}.png"_fmt(stageNumber, frameIndex));
             
             Texture frameTexture(texturePath);
             

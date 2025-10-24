@@ -3,10 +3,10 @@
 
 HolographicShader::HolographicShader()
 {
-	m_vs = VertexShader{ GLSL{ U"engine/shader/myShader/holographic_time.vert",
+	m_vs = VertexShader{ GLSL{ Resource(U"engine/shader/myShader/holographic_time.vert"),
 		{{U"VSConstants2D", 0}} } };
 
-	m_ps = PixelShader{ GLSL{ U"engine/shader/myShader/holographic_time.frag",
+	m_ps = PixelShader{ GLSL{ Resource(U"engine/shader/myShader/holographic_time.frag"),
 		{{U"PSConstants2D", 0}, {U"HoloParams1", 1}, {U"HoloParams2", 2}, {U"DrawMode", 3}, {U"ShapeInfo", 4}} } };
 }
 

@@ -4,7 +4,7 @@ SettingsScene::SettingsScene()
     : titleFont_(48, Typeface::Bold)
     , optionFont_(20)
     , backButtonFont_(24)
-    , bgm_(U"ArtResources/BGM/DeepSea1.mp3", Loop::Yes)  // 배경음악을 DeepSea1.mp3로 변경
+    , bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)  // 배경음악을 DeepSea1.mp3로 변경
 {
     currentScene_ = SceneType::Settings;
     loadSettings();

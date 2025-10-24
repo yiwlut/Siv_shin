@@ -19,7 +19,7 @@ void Main()
 		return;
 	}
 
-	g_Shaders.printStatus();
+	//g_Shaders.printStatus();
 
 	GameSceneManager sceneManager;
 	sceneManager.initialize(SceneType::MainMenu);

@@ -3,10 +3,10 @@
 
 TerastalShader::TerastalShader()
 {
-	m_vs = VertexShader{ GLSL{ U"engine/shader/myShader/terastal_effect.vert",
+	m_vs = VertexShader{ GLSL{ Resource(U"engine/shader/myShader/terastal_effect.vert"),
 		{{U"VSConstants2D", 0}} } };
 
-	m_ps = PixelShader{ GLSL{ U"engine/shader/myShader/terastal_effect.frag",
+	m_ps = PixelShader{ GLSL{ Resource(U"engine/shader/myShader/terastal_effect.frag"),
 		{{U"PSConstants2D", 0}, {U"TeraCB1", 1}, {U"TeraCB2", 2}, {U"DrawMode", 3}, {U"ShapeInfo", 4}} } };
 }
 

@@ -5,19 +5,19 @@ MainMenuScene::MainMenuScene()
 , buttonFont_(24, Typeface::Bold)
 , infoFont_(14)
 , backgroundColor_(0.0, 0.0, 0.0) // 배경색을 검정색으로 변경
-, bgm_(U"ArtResources/BGM/DeepSea1.mp3")  // 배경음악을 DeepSea1.mp3로 변경
+, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"))  // 배경음악을 DeepSea1.mp3로 변경
 {
 	// Start 버튼 애니메이션 프레임 로드 (879x566 비율)
 	startButtonFrames_ = {
-		Texture(U"ArtResources/Texture2D/Menu/Start/start_0.png"),
-		Texture(U"ArtResources/Texture2D/Menu/Start/start_1.png"),
-		Texture(U"ArtResources/Texture2D/Menu/Start/start_2.png")
+		Texture(Resource(U"ArtResources/Texture2D/Menu/Start/start_0.png")),
+		Texture(Resource(U"ArtResources/Texture2D/Menu/Start/start_1.png")),
+		Texture(Resource(U"ArtResources/Texture2D/Menu/Start/start_2.png"))
 	};
 	// Exit 버튼 애니메이션 프레임 로드
 	exitButtonFrames_ = {
-		Texture(U"ArtResources/Texture2D/Menu/Exit/exit_0.png"),
-		Texture(U"ArtResources/Texture2D/Menu/Exit/exit_1.png"),
-		Texture(U"ArtResources/Texture2D/Menu/Exit/exit_2.png")
+		Texture(Resource(U"ArtResources/Texture2D/Menu/Exit/exit_0.png")),
+		Texture(Resource(U"ArtResources/Texture2D/Menu/Exit/exit_1.png")),
+		Texture(Resource(U"ArtResources/Texture2D/Menu/Exit/exit_2.png"))
 	};
 
     currentScene_ = SceneType::MainMenu;

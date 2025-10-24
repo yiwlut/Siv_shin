@@ -2,7 +2,7 @@
 
 BombBoxEffect::BombBoxEffect() {
 	m_ps = GLSL{
-		U"engine/shader/myShader/bomb_box.frag",
+		Resource(U"engine/shader/myShader/bomb_box.frag"),
 		{ { U"PSConstants2D", 0 }, { U"BombParams", 1 } }
 	};
 	if (!m_ps) {

@@ -22,13 +22,13 @@ PaintSpreadShader::PaintSpreadShader()
 {
 	// VS/PS 로드
 	m_vs = VertexShader{ GLSL{
-		U"engine/shader/myShader/paint_spread.vert",
+		Resource(U"engine/shader/myShader/paint_spread.vert"),
 		{ { U"VSConstants2D", 0 } }
 	} };
 
 	// PS 바인딩: 0=PSConstants2D, 1=PaintParams1, 2=PaintParams2, 3=DrawMode, 4=ShapeInfo
 	m_ps = PixelShader{ GLSL{
-		U"engine/shader/myShader/paint_spread.frag",
+		Resource(U"engine/shader/myShader/paint_spread.frag"),
 		{ { U"PSConstants2D", 0 }, { U"PaintParams1", 1 }, { U"PaintParams2", 2 }, { U"DrawMode", 3 }, { U"ShapeInfo", 4 } }
 	} };
 }

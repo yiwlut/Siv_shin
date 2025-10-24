@@ -6,7 +6,7 @@ GameOverScene::GameOverScene()
     , buttonFont_(24)
     , statFont_(20)
     , helpFont_(16)
-    , bgm_(U"ArtResources/BGM/DeepSea1.mp3", Loop::Yes)  // 배경음악을 DeepSea1.mp3로 변경
+    , bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)  // 배경음악을 DeepSea1.mp3로 변경
 {
     currentScene_ = SceneType::GameOver;
     initializeUI();

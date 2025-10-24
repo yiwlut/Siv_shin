@@ -7,61 +7,61 @@ bool ShaderManager::initialize()
 {
     if (m_initialized)
     {
-        Console << U"[ShaderManager] 이미 초기화되었습니다.";
+        //Console << U"[ShaderManager] 이미 초기화되었습니다.";
         return true;
     }
     
-    Console << U"[ShaderManager] 쉐이더 로딩 시작...";
+    //Console << U"[ShaderManager] 쉐이더 로딩 시작...";
     Stopwatch stopwatch{StartImmediately::Yes};
     
     try
     {
         // HolographicShader 초기화
-        Console << U"  - HolographicShader 로딩 중...";
+        //Console << U"  - HolographicShader 로딩 중...";
         m_holographic.emplace();
         if (!m_holographic->isValid())
         {
-            Console << U"    ✗ HolographicShader 로드 실패";
+            //Console << U"    ✗ HolographicShader 로드 실패";
             return false;
         }
-        Console << U"    ✓ HolographicShader 로드 완료";
+        //Console << U"    ✓ HolographicShader 로드 완료";
         
         // TerastalShader 초기화
-        Console << U"  - TerastalShader 로딩 중...";
+        //Console << U"  - TerastalShader 로딩 중...";
         m_terastal.emplace();
         if (!m_terastal->isValid())
         {
-            Console << U"    ✗ TerastalShader 로드 실패";
+            //Console << U"    ✗ TerastalShader 로드 실패";
             return false;
         }
-        Console << U"    ✓ TerastalShader 로드 완료";
+        //Console << U"    ✓ TerastalShader 로드 완료";
         
         // PaintSpreadShader 초기화
-        Console << U"  - PaintSpreadShader 로딩 중...";
+        //Console << U"  - PaintSpreadShader 로딩 중...";
         m_paintSpread.emplace();
         if (!m_paintSpread->isValid())
         {
-            Console << U"    ✗ PaintSpreadShader 로드 실패";
+            //Console << U"    ✗ PaintSpreadShader 로드 실패";
             return false;
         }
-        Console << U"    ✓ PaintSpreadShader 로드 완료";
+        //Console << U"    ✓ PaintSpreadShader 로드 완료";
         
         // BombBoxEffect 초기화
-        Console << U"  - BombBoxEffect 로딩 중...";
+        //Console << U"  - BombBoxEffect 로딩 중...";
         m_bombBox.emplace();
-        Console << U"    ✓ BombBoxEffect 로드 완료";
+        //Console << U"    ✓ BombBoxEffect 로드 완료";
         
         stopwatch.pause();
         
-        Console << U"[ShaderManager] ✓ 모든 쉐이더 로드 완료! (소요 시간: {:.2f}s)"_fmt(stopwatch.sF());
+        //Console << U"[ShaderManager] ✓ 모든 쉐이더 로드 완료! (소요 시간: {:.2f}s)"_fmt(stopwatch.sF());
         m_initialized = true;
         return true;
     }
     catch (const Error& e)
     {
         stopwatch.pause();
-        Console << U"[ShaderManager] ✗ 쉐이더 로드 중 예외 발생: {}"_fmt(e.what());
-        Console << U"[ShaderManager] (소요 시간: {:.2f}s)"_fmt(stopwatch.sF());
+        //Console << U"[ShaderManager] ✗ 쉐이더 로드 중 예외 발생: {}"_fmt(e.what());
+        //Console << U"[ShaderManager] (소요 시간: {:.2f}s)"_fmt(stopwatch.sF());
         return false;
     }
 }
@@ -104,13 +104,13 @@ Array<String> ShaderManager::getFailedShaders() const
 
 void ShaderManager::printStatus() const
 {
-    //Console << U"========== ShaderManager 상태 ==========";
-    //Console << U"초기화:       " << (m_initialized ? U"✓" : U"✗");
-    //Console << U"Holographic:  " << ((m_holographic.has_value() && m_holographic->isValid()) ? U"✓" : U"✗");
-    //Console << U"Terastal:     " << ((m_terastal.has_value() && m_terastal->isValid()) ? U"✓" : U"✗");
-    //Console << U"PaintSpread:  " << ((m_paintSpread.has_value() && m_paintSpread->isValid()) ? U"✓" : U"✗");
-    //Console << U"BombBox:      " << (m_bombBox.has_value() ? U"✓" : U"✗");
-    //Console << U"========================================";
+    ////Console << U"========== ShaderManager 상태 ==========";
+    ////Console << U"초기화:       " << (m_initialized ? U"✓" : U"✗");
+    ////Console << U"Holographic:  " << ((m_holographic.has_value() && m_holographic->isValid()) ? U"✓" : U"✗");
+    ////Console << U"Terastal:     " << ((m_terastal.has_value() && m_terastal->isValid()) ? U"✓" : U"✗");
+    ////Console << U"PaintSpread:  " << ((m_paintSpread.has_value() && m_paintSpread->isValid()) ? U"✓" : U"✗");
+    ////Console << U"BombBox:      " << (m_bombBox.has_value() ? U"✓" : U"✗");
+    ////Console << U"========================================";
 }
 
 HolographicShader& ShaderManager::holographic()

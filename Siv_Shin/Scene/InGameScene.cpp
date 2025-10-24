@@ -30,17 +30,17 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 , paintAnimFrame_(0)
 , playerAnimTimer_(0.0)
 , currentPlayerFrame_(0)
-, gameFont_(FontMethod::MSDF, 20, U"ArtResources/Fonts/DarumaDropOne-Regular.ttf")  // ★ 수정
-, debugFont_(FontMethod::MSDF, 16, U"ArtResources/Fonts/Tetsubin Gothic.otf")        // ★ 수정
-, clearFont_(FontMethod::MSDF, 64, U"ArtResources/Fonts/DarumaDropOne-Regular.ttf", FontStyle::Bold)  // ★ 수정
-, buttonFont_(FontMethod::MSDF, 24, U"ArtResources/Fonts/DarumaDropOne-Regular.ttf")  // ★ 수정
+, gameFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"))  // ★ 수정
+, debugFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))       // ★ 수정
+, clearFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"), FontStyle::Bold)  // ★ 수정
+, buttonFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"))  // ★ 수정
 , gameTime_(0.0)
 , score_(0)
 , moves_(0)
 , isCleared_(false)
 , showClearButtons_(false)  // 클리어 버튼 표시 상태 초기화
 , showHelpScreen_(false)  // 조작법 도움말 화면 초기화
-, stageBackground_(U"ArtResources/Texture2D/BG_K.png")
+, stageBackground_(Resource(U"ArtResources/Texture2D/BG_K.png"))
 , gameData_(gameData)
 , undoHoldTime_(0.0)  // Undo 홀드 시간 초기화
 , undoCooldown_(0.0)  // Undo 쿨다운 초기화
@@ -132,23 +132,23 @@ void InGameScene::loadAssets()
     tacoUpFrames_.clear();
     for (int32 i = 0; i < 2; i++)
     {
-        Texture downFrame{ U"ArtResources/Texture2D/Taco/tacoMoveDown_{}.png"_fmt(i) };
+        Texture downFrame{ Resource(U"ArtResources/Texture2D/Taco/tacoMoveDown_{}.png"_fmt(i)) };
         if (!downFrame.isEmpty()) tacoDownFrames_.push_back(downFrame);
-        Texture sideFrame{ U"ArtResources/Texture2D/Taco/tacoMoveSide_{}.png"_fmt(i) };
+        Texture sideFrame{ Resource(U"ArtResources/Texture2D/Taco/tacoMoveSide_{}.png"_fmt(i)) };
         if (!sideFrame.isEmpty()) tacoSideFrames_.push_back(sideFrame);
-        Texture upFrame{ U"ArtResources/Texture2D/Taco/tacoMoveUp_{}.png"_fmt(i) };
+        Texture upFrame{ Resource(U"ArtResources/Texture2D/Taco/tacoMoveUp_{}.png"_fmt(i)) };
         if (!upFrame.isEmpty()) tacoUpFrames_.push_back(upFrame);
     }
     
     // 타코 점수 이미지 로드
-    tacoScoreTexture_ = Texture{ U"ArtResources/Texture2D/Menu/Score/tacoScoreOn.png" };
-    tacoScoreOffTexture_ = Texture{ U"ArtResources/Texture2D/Menu/Score/tacoScoreOff.png" };
+    tacoScoreTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOn.png") };
+    tacoScoreOffTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOff.png") };
     
     // 타코 페인트 애니메이션 프레임 로드 (tacoPaint_0.png ~ tacoPaint_4.png)
     tacoPaintFrames_.clear();
     for (int32 i = 0; i < PAINT_ANIM_FRAME_COUNT; i++)
     {
-        Texture paintFrame{ U"ArtResources/Texture2D/Taco/Color/tacoPaint_{}.png"_fmt(i) };
+        Texture paintFrame{ Resource(U"ArtResources/Texture2D/Taco/Color/tacoPaint_{}.png"_fmt(i)) };
         if (!paintFrame.isEmpty())
         {
             tacoPaintFrames_.push_back(paintFrame);
@@ -160,21 +160,21 @@ void InGameScene::loadAssets()
     }
     
     // 배경음악 로드
-    bgm_ = Audio{ U"ArtResources/BGM/HappyOcean.mp3", Loop::Yes };
+    bgm_ = Audio{ Resource(U"ArtResources/BGM/HappyOcean.mp3"), Loop::Yes };
     
     // 블록 밀기 효과음 로드
-    noteE5_ = Audio{ U"ArtResources/SFX/E5.wav" };
-    noteG5_ = Audio{ U"ArtResources/SFX/G5.wav" };
-    noteC6_ = Audio{ U"ArtResources/SFX/C6.wav" };
+    noteE5_ = Audio{ Resource(U"ArtResources/SFX/E5.wav") };
+    noteG5_ = Audio{ Resource(U"ArtResources/SFX/G5.wav") };
+    noteC6_ = Audio{ Resource(U"ArtResources/SFX/C6.wav") };
 
-	stageClearSound_ = Audio{ U"ArtResources/SFX/StageClear.wav" };
-	bombExplosionSound_ = Audio{ U"ArtResources/SFX/bomb.wav" };
+	stageClearSound_ = Audio{ Resource(U"ArtResources/SFX/StageClear.wav") };
+	bombExplosionSound_ = Audio{ Resource(U"ArtResources/SFX/bomb.wav") };
 
     // 보스 이미지 로드 (Final stage 전용) - clock 0~2 프레임
     bossIdleFrames_.clear();
     for (int32 i = 0; i < 3; ++i)
     {
-        Texture f{ U"ArtResources/Texture2D/Boss/boss_clock_{}.png"_fmt(i) };
+        Texture f{ Resource(U"ArtResources/Texture2D/Boss/boss_clock_{}.png"_fmt(i)) };
         if (!f.isEmpty()) bossIdleFrames_.push_back(f);
     }
     bossAnimFrame_ = 0;
