@@ -11,21 +11,21 @@ namespace StageData
 
 	//7x7
     inline const Array<String> STAGE_1 = {
-        U"#######", 
-        U"###b###",
-        U"###B###",
-        U"T R Y o",  
-        U"###G###",
-        U"###g###",  
-        U"#######",
+		U"   v   ",
+		U"       ",
+		U"      ",
+		U"   V   ",
+        U"   Y   ",
+		U"   T   ",
+		U"       ",
 
     };
 
 
 	inline const Array<String> STAGE_1_TILES = {
 		U"       ",  // 첫 줄은 변경 없음
-		U"       ",
-		U"       ",
+		U"iiiiii ",
+		U"iiiiii ",
 		U"iiiiii ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
 		U"       ",
 		U"       ",

@@ -1964,13 +1964,101 @@ void InGameScene::continueSliding()
 	}
 
 	if (ColorBox* box = getBoxAt(next)) {
+		// 밀 수 있는지 확인
 		if (!canPushBox(playerPos_, box->pos, slideDir_)) {
 			isSliding_ = false;
 			return;
 		}
+
+		// ★★★ 핵심 수정: 상자를 밀기 전에 목적지 확인 ★★★
+		const Point boxNextPos = box->pos + slideDir_;
+
+		// 목적지에 다른 상자가 있는지 확인
+		if (ColorBox* targetBox = getBoxAt(boxNextPos)) {
+			const BoxColor c0 = getEffectiveBoxColor(box->uid);
+			const BoxColor c1 = getEffectiveBoxColor(targetBox->uid);
+
+			// 합칠 수 있는지 확인
+			if (auto merged = getMergedColor(c0, c1)) {
+				const bool createsBomb = (*merged == BoxColor::Black);
+
+				if (createsBomb) {
+					if (!bombUndoAnchorIndex_.has_value()) {
+						saveGameState();
+						bombUndoAnchorIndex_ = gameStateHistory_.size() - 1;
+						pendingBombsInSpan_ = 1;
+						bombUidsInAnchor_.clear();
+					}
+					else {
+						pendingBombsInSpan_ += 1;
+					}
+				}
+
+				forceMergePaintFXCompletion();
+
+				const uint64 uidA = box->uid;
+				const uint64 uidB = targetBox->uid;
+				boxes_.remove_if([uidA, uidB](const auto& b) {
+					return b.uid == uidA || b.uid == uidB;
+				});
+
+				ColorBox newBox(boxNextPos, *merged, 0.0, nextBoxUID_++);
+
+				if (createsBomb) {
+					newBox.creationTime = gameTime_;
+					bombExpiryAbs_[newBox.uid] = bombClock_ + kTotal;
+					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
+
+					if (!bombExplosionSound_.isEmpty()) {
+						bombExplosionSound_.stop();
+						bombExplosionSound_.setVolume(0.6);
+						bombExplosionSound_.play();
+					}
+
+					if (bombUndoAnchorIndex_.has_value()) {
+						bombUidsInAnchor_ << newBox.uid;
+					}
+				}
+
+				boxes_.push_back(newBox);
+				triggerMergePaintFX_Directional(boxNextPos, getBoxColorF(c1), getBoxColorF(*merged), slideDir_);
+				playBoxSound(*merged);
+
+				const ColorTier tier = getColorTier(*merged);
+				if (tier == ColorTier::Secondary) {
+					score_ += 50;
+				}
+				else if (tier == ColorTier::Tertiary) {
+					score_ += 100;
+				}
+
+				// 플레이어 이동
+				movePlayerTo(next);
+				moves_ += 1;
+				collectItem(next);
+
+				// 다음 위치가 얼음이 아니면 멈춤
+				if (!isIce(next)) {
+					isSliding_ = false;
+					saveGameState();
+					completeIceUndoSpanIfNeeded_();
+				}
+
+				return;
+			}
+			else {
+				// 합칠 수 없으면 멈춤
+				isSliding_ = false;
+				completeIceUndoSpanIfNeeded_();
+				return;
+			}
+		}
+
+		// 빈 칸으로 상자 밀기 (기존 로직)
 		pushBox(box, slideDir_);
 		slideBoxOnIce(box, slideDir_);
 	}
+
 
 	movePlayerTo(next);
 	moves_ += 1;
