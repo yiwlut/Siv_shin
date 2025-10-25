@@ -53,7 +53,6 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
     targetPixelPos_ = playerPixelPos_;
     
     loadAssets();
-    loadStage(currentStage_);
     initializeClearButtons();  // 클리어 버튼 초기화
     
     // 초기 게임 상태 저장
@@ -210,6 +209,10 @@ void InGameScene::loadStage(int32 stageNumber)
 
 	// 가변 크기 파서 호출
 	loadStageFromText_VarSize(mapText);
+
+	const Array<String> tileOverlay = StageData::getStageTileOverlay(stageNumber);
+	applyTileOverlay(tileOverlay);
+
 
 	// 맵 크기에 맞춘 고정 카메라 적용
 	onStageLoaded_FixedCamera();
@@ -3711,4 +3714,204 @@ void InGameScene::drawWorldWithCamera(const std::function<void()>& worldDraw,
 	const auto _t = camera().createTransformer();
 	worldDraw();
 	uiDraw();
+}
+
+
+//void InGameScene::loadStageFromText(const StageData::StageMap& stageMap) {
+//	for (auto& row : mapData_)
+//	{
+//		row.assign(getMapWidth(), TileType::Empty);
+//	}
+//
+//	const Array<String>& baseLayer = stageMap.baseLayer;
+//	const Array<String>& objectLayer = stageMap.objectLayer;
+//
+//	int32 height = Min((int32)objectLayer.size(), getMapHeight());
+//
+//	// 1단계: 바닥 타일 레이어 로드
+//	for (int32 y = 0; y < height; y++) {
+//		if (y >= (int32)baseLayer.size()) {
+//			// 바닥 레이어가 없으면 기본 타일로
+//			for (int32 x = 0; x < getMapWidth(); x++) {
+//				mapData_[y][x] = TileType::Empty;
+//			}
+//			continue;
+//		}
+//
+//		const String& line = baseLayer[y];
+//		for (int32 x = 0; x < Min((int32)line.length(), getMapWidth()); x++) {
+//			char32 ch = line[x];
+//
+//			switch (ch) {
+//			case U'#': mapData_[y][x] = TileType::Wall; break;
+//			case U'i': mapData_[y][x] = TileType::Ice; break;
+//			case U'l': mapData_[y][x] = TileType::Lava; break;
+//			case U' ':
+//			case U'.':
+//			default:
+//				mapData_[y][x] = TileType::Empty; // 기본 타일
+//				break;
+//			}
+//		}
+//	}
+//
+//	// 2단계: 오브젝트 레이어 로드
+//	for (int32 y = 0; y < height; y++) {
+//		const String& line = objectLayer[y];
+//		for (int32 x = 0; x < Min((int32)line.length(), getMapWidth()); x++) {
+//			char32 ch = line[x];
+//			Point pos(x, y);
+//
+//			switch (ch) {
+//			case U'#':
+//				mapData_[y][x] = TileType::Wall;
+//				break;
+//
+//				// 플레이어
+//			case U'T':
+//				playerPos_ = pos;
+//				playerPixelPos_ = tileToPixel(pos);
+//				targetPixelPos_ = playerPixelPos_;
+//				isPlayerMoving_ = false;
+//				break;
+//
+//				// 상자들
+//			case U'R':
+//				boxes_.push_back(ColorBox{ pos, BoxColor::Red, 0.0, nextBoxUID_++ });
+//				break;
+//			case U'Y':
+//				boxes_.push_back(ColorBox{ pos, BoxColor::Yellow, 0.0, nextBoxUID_++ });
+//				break;
+//			case U'B':
+//				boxes_.push_back(ColorBox{ pos, BoxColor::Blue, 0.0, nextBoxUID_++ });
+//				break;
+//			case U'O':
+//				boxes_.push_back(ColorBox{ pos, BoxColor::Orange, 0.0, nextBoxUID_++ });
+//				break;
+//			case U'G':
+//				boxes_.push_back(ColorBox{ pos, BoxColor::Green, 0.0, nextBoxUID_++ });
+//				break;
+//			case U'V':
+//				boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ });
+//				break;
+//			case U'K':
+//				boxes_.push_back(ColorBox{ pos, BoxColor::Black, 0.0, nextBoxUID_++ });
+//				break;
+//
+//				// 골 지점들
+//			case U'r':
+//				redGoalPositions_.push_back(pos);
+//				mapData_[y][x] = TileType::RedGoal;
+//				break;
+//			case U'y':
+//				yellowGoalPositions_.push_back(pos);
+//				mapData_[y][x] = TileType::YellowGoal;
+//				break;
+//			case U'b':
+//				blueGoalPositions_.push_back(pos);
+//				mapData_[y][x] = TileType::BlueGoal;
+//				break;
+//			case U'o':
+//				orangeGoalPositions_.push_back(pos);
+//				mapData_[y][x] = TileType::OrangeGoal;
+//				break;
+//				break;
+//			case U'g':
+//				greenGoalPositions_.push_back(pos);
+//				mapData_[y][x] = TileType::GreenGoal;
+//				break;
+//			case U'v':
+//				violetGoalPositions_.push_back(pos);
+//				mapData_[y][x] = TileType::VioletGoal;
+//				break;
+//			case U'k':
+//				blackGoalPositions_.push_back(pos);
+//				mapData_[y][x] = TileType::BlackGoal;
+//				break;
+//
+//				// 아이템들
+//			case U'1': case U'2': case U'3':
+//			case U'4': case U'5': case U'6':
+//			case U'7': case U'8': case U'9':
+//			{
+//				int32 itemNum = (ch - U'0');
+//				ItemType itemType = static_cast<ItemType>(itemNum);
+//				items_.push_back(GameItem{ pos, itemType });
+//				break;
+//			}
+//
+//			// 빈 칸은 무시 (바닥 타일 유지)
+//			case U' ':
+//			case U'.':
+//			default:
+//				break;
+//			}
+//		}
+//	}
+//
+//	//initialState = captureGameState();
+//}
+
+void InGameScene::setTileAt(Point pos, TileType type) {
+	if (!isInsideMap(pos)) {
+		return;
+	}
+	mapData_[pos.y][pos.x] = type;
+}
+
+void InGameScene::setTileAt(int32 x, int32 y, TileType type) {
+	setTileAt(Point(x, y), type);
+}
+
+InGameScene::TileType InGameScene::getTileAt(Point pos) const {
+	if (!isInsideMap(pos)) {
+		return TileType::Empty;
+	}
+	return mapData_[pos.y][pos.x];
+}
+
+InGameScene::TileType InGameScene::getTileAt(int32 x, int32 y) const {
+	return getTileAt(Point(x, y));
+}
+
+void InGameScene::applyTileOverlay(const Array<String>& overlayData) {
+	if (overlayData.isEmpty()) {
+		return;
+	}
+
+	int32 height = Min((int32)overlayData.size(), getMapHeight());
+
+	for (int32 y = 0; y < height; y++) {
+		const String& line = overlayData[y];
+		int32 width = Min((int32)line.length(), getMapWidth());
+
+		for (int32 x = 0; x < width; x++) {
+			char32 ch = line[x];
+
+			// 빈칸이면 스킵 (변경하지 않음)
+			if (ch == U' ' || ch == U'.') {
+				continue;
+			}
+
+			// 타일 타입 변환
+			TileType newTile = TileType::Empty;
+			switch (ch) {
+			case U'i':  // 얼음
+				newTile = TileType::Ice;
+				break;
+			case U'l':  // 용암
+				newTile = TileType::Lava;
+				break;
+			case U'#':  // 벽
+				newTile = TileType::Wall;
+				break;
+				// 필요한 다른 타일 타입 추가
+			default:
+				continue;  // 알 수 없는 문자는 스킵
+			}
+
+			// 타일 변경
+			setTileAt(x, y, newTile);
+		}
+	}
 }

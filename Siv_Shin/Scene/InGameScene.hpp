@@ -352,6 +352,7 @@ private:
 	void completeIceUndoSpanIfNeeded_();
 	bool applyIceUndoSpanIfNeeded_();
 
+	void applyTileOverlay(const Array<String>& overlayData);
 public:
     InGameScene();
     InGameScene(int32 stageNumber);
@@ -366,11 +367,17 @@ public:
     // 게임 데이터 설정
     void setGameData(GameData* gameData) { gameData_ = gameData; }
 
+	void setTileAt(Point pos, TileType type);
+	void setTileAt(int32 x, int32 y, TileType type);
+	TileType getTileAt(Point pos) const;
+	TileType getTileAt(int32 x, int32 y) const;
+
 private:
     void loadAssets();
     void loadStage(int32 stageNumber);
     void loadStageFromText(const Array<String>& mapText);  // 텍스트 맵 로더
-    
+	//void loadStageFromText(const StageData::StageMap& stageMap);
+
     bool canMoveTo(Point pos) const;
     ColorBox* getBoxAt(Point pos);
     const ColorBox* getBoxAt(Point pos) const;
