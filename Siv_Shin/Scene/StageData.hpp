@@ -10,6 +10,35 @@ namespace StageData
 	};
 
 	inline const Array<String> STAGE_1 = {
+			U"   ####    ",
+			U" ##        ",
+			U" #   R ##  ",
+			U"#     #8O# ",
+			U"# V   ##  #",
+			U"# R##b##Y #",
+			U"#  ##     #",
+			U" # 7#   T #",
+			U"  ## O   # ",
+			U"        ## ",
+			U"    ####   ",
+	};
+
+
+	inline const Array<String> STAGE_1_TILES = {
+			U"           ",
+			U"           ",
+			U"           ",
+			U"    ii     ",
+			U"   iii     ",
+			U"           ",
+			U"     iii   ",
+			U"     ii    ",
+			U"           ",
+			U"           ",
+			U"           ",
+	};
+
+	inline const Array<String> STAGE_1 = {
 			U"#    T #",
 			U"# R   B#",
 			U"###### #",
@@ -21,16 +50,16 @@ namespace StageData
 	};
 
 
-	inline const Array<String> STAGE_1_TILES = {
-			U"   ii   ",  // 첫 줄은 변경 없음
-			U" iiiii  ",
-			U"      i ",
-			U"  iii i ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
-			U" iiii   ",
-			U" iiiii  ",
-			U"  iii   ",
-		U"        ",
-	};
+	//inline const Array<String> STAGE_1_TILES = {
+	//		U"   ii   ",  // 첫 줄은 변경 없음
+	//		U" iiiii  ",
+	//		U"      i ",
+	//		U"  iii i ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
+	//		U" iiii   ",
+	//		U" iiiii  ",
+	//		U"  iii   ",
+	//		U"        ",
+	//};
 
 	//7x7
  //   inline const Array<String> STAGE_1 = {
