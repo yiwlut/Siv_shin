@@ -127,10 +127,10 @@ namespace StageData
 
 	// 10x5 Final Boss Stage (always referenced as FINAL_STAGE)
     inline const Array<String> FINAL_STAGE = {
-		U"   iiii   ",
-		U"  BiiiiR  ",
-		U"   ii i   ",
-		U"  roybg T ",
+		U"     iiii     ",
+		U"    BiiiiR    ",
+		U"     ii i     ",
+		U"    roybg T   ",
 		U"          "
 	};
 

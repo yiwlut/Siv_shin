@@ -44,6 +44,7 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 , gameData_(gameData)
 , undoHoldTime_(0.0)  // Undo 홀드 시간 초기화
 , undoCooldown_(0.0)  // Undo 쿨다운 초기화
+, playerHealth_(MAX_HEALTH)  
 {
     currentScene_ = SceneType::InGame;
     // Print << U"InGameScene created with stage number: {}"_fmt(stageNumber);
@@ -69,6 +70,7 @@ void InGameScene::onEnter()
 	showHelpScreen_ = false;
 	clearSoundPlayed_ = false;  // ★ 플래그 리셋
 
+	playerHealth_ = MAX_HEALTH;  // Final Stage 체력 초기화
 	playerHeldItem_ = ItemType::None;
 	tacoDirection_ = TacoDirection::Down;
 	isFacingLeft_ = false;
@@ -100,6 +102,9 @@ void InGameScene::onEnter()
 	bombUndoAnchorIndex_.reset();
 	pendingBombsInSpan_ = 0;
 
+	bossProjectiles_.clear();
+	bossExplosionParticles_.clear();
+	bossAttackTimer_ = 0.0;
 	// ★ 배경음악 재생 (Final Stage는 보스 BGM)
 	if (StageData::isFinalStage(currentStage_))
 	{
@@ -158,7 +163,9 @@ void InGameScene::loadAssets()
     // 타코 점수 이미지 로드
     tacoScoreTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOn.png") };
     tacoScoreOffTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOff.png") };
-    
+
+	heartFullTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOn.png") };
+	heartEmptyTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOff.png") };
     // 타코 페인트 애니메이션 프레임 로드 (tacoPaint_0.png ~ tacoPaint_4.png)
     tacoPaintFrames_.clear();
     for (int32 i = 0; i < PAINT_ANIM_FRAME_COUNT; i++)
@@ -1337,10 +1344,19 @@ void InGameScene::update()
 					wallBreakFXs.clear();
 					bombExpiryAbs_.clear();
 
-					if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
-						bgm_.setVolume(0.33);
-						bgm_.seekTime(savedMusicPosition_);
-						bgm_.play();
+					if (StageData::isFinalStage(currentStage_)) {
+						if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying()) {
+							bossBgm_.setVolume(0.4);
+							bossBgm_.seekTime(savedMusicPosition_);
+							bossBgm_.play();
+						}
+					}
+					else {
+						if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
+							bgm_.setVolume(0.33);
+							bgm_.seekTime(savedMusicPosition_);
+							bgm_.play();
+						}
 					}
 
 					updateMergePaintFX();
@@ -1386,14 +1402,22 @@ void InGameScene::update()
 		if (!isPlayerDead_) {
 			isPlayerDead_ = true;
 			deathAnimTimer_ = 0.0;
-			createDeathEffect(false);
+			createDeathEffect(true);  // ★ true = 흰색 파티클 사용
 
-			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-				savedMusicPosition_ = bgm_.posSec();
-				bgm_.stop();
+			// ★ 보스 스테이지면 bossBgm 저장, 아니면 bgm 저장
+			if (StageData::isFinalStage(currentStage_)) {
+				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
+					savedMusicPosition_ = bossBgm_.posSec();
+					bossBgm_.stop();
+				}
+			}
+			else {
+				if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+					savedMusicPosition_ = bgm_.posSec();
+					bgm_.stop();
+				}
 			}
 		}
-		return;
 	}
 
 	// ★★★ 게임 업데이트 ★★★
@@ -1402,13 +1426,27 @@ void InGameScene::update()
 	updateWallBreakFX();
 	applyHoloFromHeldItem_();
 
+	// ★ 보스 공격 업데이트
+	if (StageData::isFinalStage(currentStage_) && !isPlayerDead_ && !isCleared_)
+	{
+		updateBossAttack(dt);
+		updateBossProjectiles(dt);
+	}
+	updateBossExplosions(dt);  // 폭발은 항상 업데이트
+
 	if (focused && !isCleared_ && !isPlayerDead_)
 	{
 		if (StageData::isFinalStage(currentStage_))
 		{
+			// ★ 보스 스테이지에서는 bossBgm만 재생
 			if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying())
 			{
 				bossBgm_.play();
+			}
+			// ★ HappyOcean.mp3가 재생 중이면 정지
+			if (!bgm_.isEmpty() && bgm_.isPlaying())
+			{
+				bgm_.stop();
 			}
 		}
 		else
@@ -1960,15 +1998,23 @@ void InGameScene::continueSliding()
 
 	// ★ 용암 체크
 	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {
-		if (!isPlayerDead_) {  // 한 번만
+		if (!isPlayerDead_) {
 			isPlayerDead_ = true;
 			deathAnimTimer_ = 0.0;
-			isSliding_ = false;
-			createDeathEffect();  // ★ 파티클 생성
+			createDeathEffect(false);
 
-			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-				savedMusicPosition_ = bgm_.posSec();
-				bgm_.stop();
+			// ★ 보스 스테이지면 bossBgm 저장, 아니면 bgm 저장
+			if (StageData::isFinalStage(currentStage_)) {
+				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
+					savedMusicPosition_ = bossBgm_.posSec();
+					bossBgm_.stop();
+				}
+			}
+			else {
+				if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+					savedMusicPosition_ = bgm_.posSec();
+					bgm_.stop();
+				}
 			}
 		}
 		return;
@@ -2231,6 +2277,9 @@ void InGameScene::draw()
 
 	drawUI();
 
+	// ★ 보스 공격 그리기 (카메라 변환 밖, 스크린 좌표)
+	drawBossProjectiles();
+	drawBossExplosions();
     // Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리 (스크린 좌표계에서 마스크)
     if (currentStage_ == 6)
     {
@@ -2470,11 +2519,43 @@ void InGameScene::drawPlayer()
         }
     }
     
-    // Fallback - 픽셀 위치의 중심에 그리기
     Circle{ playerPixelPos_, TILE_SIZE / 2 - 8 }.draw(playerColor_);
     Circle{ playerPixelPos_, TILE_SIZE / 2 - 8 }.drawFrame(3, 0, ColorF{ 1.0, 1.0, 1.0, 0.9 });
     Circle{ playerPixelPos_, 8 }.draw(ColorF{ 1.0, 1.0, 1.0, 0.8 });
 }
+void InGameScene::drawHealthUI()
+{
+	if (!StageData::isFinalStage(currentStage_)) return;
+
+	const int32 heartSize = 40;
+	const int32 heartSpacing = 50;
+	const int32 startX = Scene::Width() - (MAX_HEALTH * heartSpacing) - 20;
+	const int32 startY = 20;
+
+	for (int32 i = 0; i < MAX_HEALTH; i++)
+	{
+		const int32 x = startX + (i * heartSpacing);
+		const int32 y = startY;
+
+		if (i < playerHealth_)
+		{
+			// 남은 체력: 가득 찬 하트
+			if (!heartFullTexture_.isEmpty())
+			{
+				heartFullTexture_.resized(heartSize, heartSize).draw(x, y);
+			}
+		}
+		else
+		{
+			// 잃은 체력: 빈 하트
+			if (!heartEmptyTexture_.isEmpty())
+			{
+				heartEmptyTexture_.resized(heartSize, heartSize).draw(x, y);
+			}
+		}
+	}
+}
+
 
 void InGameScene::drawUI()
 {
@@ -2523,7 +2604,14 @@ void InGameScene::drawUI()
     Rect{ 0, 940, 1024, 84 }.draw(ColorF{ 0, 0, 0, 0.5 });
     debugFont_(U"Arrow: Move/Push | ESC: Menu | R: Retry | Z/Backspace: Undo").draw(Vec2{ 16, 950 }, ColorF{ 0.8, 0.8, 0.9 });
     debugFont_(U"ROYGBVK: Match colors to goals (lowercase)! | Undo: {}/{}"_fmt(gameStateHistory_.size() - 1, MAX_UNDO_STEPS)).draw(Vec2{ 16, 975 }, ColorF{ 0.9, 0.9, 0.9 });
+
+	if (StageData::isFinalStage(currentStage_))
+	{
+		drawHealthUI();
+	}
 }
+
+
 
 void InGameScene::drawHelpScreen()
 {
@@ -2661,6 +2749,175 @@ void InGameScene::updateBlackBoxes()
 	//for (const uint64 uid : toTrigger) {
 	//	triggerBombBoxFXForBlack_Multi(uid, BLACK_BOX_LIFETIME);
 	//}
+}
+
+void InGameScene::updateBossAttack(double dt)
+{
+	if (!StageData::isFinalStage(currentStage_)) return;
+
+	bossAttackTimer_ += dt;
+
+	// 3초마다 공 발사
+	if (bossAttackTimer_ >= BOSS_ATTACK_INTERVAL)
+	{
+		bossAttackTimer_ = 0.0;
+		spawnBossProjectile();
+	}
+}
+
+void InGameScene::spawnBossProjectile()
+{
+	// 보스 이미지 중앙에서 발사
+	const int32 screenW = Scene::Width();
+	const int32 screenH = Scene::Height();
+	const Vec2 bossPos = Vec2(screenW / 2.0, screenH / 4.0);  // 상단 중앙
+
+	// 플레이어 픽셀 위치로 변환 (카메라 변환 적용)
+	const Mat3x2 transform = camera().getMat3x2();
+	const Vec2 playerScreenPos = transform.transformPoint(playerPixelPos_);
+
+	// 방향 벡터 계산
+	Vec2 direction = (playerScreenPos - bossPos).normalized();
+	double speed = 400.0;  // 공 속도
+
+	BossProjectile proj;
+	proj.pos = bossPos;
+	proj.velocity = direction * speed;
+	proj.color = ColorF{ 0.8, 0.2, 0.9, 1.0 };  // 보라색
+	proj.size = 40.0;  // ⬅️ 20.0 → 40.0으로 변경 (2배)
+	proj.active = true;
+	proj.exploded = false;
+
+	bossProjectiles_.push_back(proj);
+}
+
+void InGameScene::updateBossProjectiles(double dt)
+{
+	for (auto& proj : bossProjectiles_)
+	{
+		if (!proj.active) continue;
+
+		proj.pos += proj.velocity * dt;
+
+		// 플레이어와 충돌 체크 (스크린 좌표)
+		const Mat3x2 transform = camera().getMat3x2();
+		const Vec2 playerScreenPos = transform.transformPoint(playerPixelPos_);
+
+		const double dist = (proj.pos - playerScreenPos).length();
+
+		if (dist < 40.0)  // 충돌 반경
+		{
+			// 폭발 생성
+			createBossExplosion(proj.pos, proj.color);
+			proj.active = false;
+			proj.exploded = true;
+
+			// ★ 플레이어 사망 처리 (체력 깎임과 동시에 죽음)
+			if (!isPlayerDead_)
+			{
+				playerHealth_ -= 1;  // 체력 감소
+
+				// ★ 즉시 죽음 상태로 전환
+				isPlayerDead_ = true;
+				deathAnimTimer_ = 0.0;
+				createDeathEffect(false);
+
+				// 배경음악 정지
+				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
+				{
+					savedMusicPosition_ = bossBgm_.posSec();
+					bossBgm_.stop();
+				}
+			}
+		}
+
+		// 화면 밖으로 나가면 제거
+		if (proj.pos.x < -100 || proj.pos.x > Scene::Width() + 100 ||
+			proj.pos.y < -100 || proj.pos.y > Scene::Height() + 100)
+		{
+			proj.active = false;
+		}
+	}
+
+	// 비활성화된 발사체 제거
+	bossProjectiles_.remove_if([](const BossProjectile& p) { return !p.active; });
+}
+
+void InGameScene::createBossExplosion(Vec2 pos, ColorF color)
+{
+	// 6방향으로 파티클 발사 (육각형 패턴, 중력 없음)
+	const Array<double> angles = {
+		0.0,                    // 우
+		Math::Pi / 3.0,         // 우상
+		2.0 * Math::Pi / 3.0,   // 좌상
+		Math::Pi,               // 좌
+		4.0 * Math::Pi / 3.0,   // 좌하
+		5.0 * Math::Pi / 3.0    // 우하
+	};
+
+	const Array<ColorF> explosionColors = {
+		ColorF{1.0, 0.3, 0.9},  // 보라
+		ColorF{1.0, 0.5, 0.9},  // 밝은 보라
+		ColorF{0.8, 0.2, 1.0},  // 진보라
+		ColorF{1.0, 0.7, 0.9},  // 연보라
+	};
+
+	for (const auto& angle : angles)
+	{
+		BossExplosionParticle particle;
+
+		const double speed = Random(150.0, 250.0);
+		particle.pos = pos;
+		particle.velocity = Vec2(Math::Cos(angle) * speed, Math::Sin(angle) * speed);
+		particle.color = explosionColors[Random(0, (int32)explosionColors.size() - 1)];
+		particle.life = particle.maxLife = Random(0.8, 1.5);
+		particle.size = Random(8.0, 15.0);
+
+		bossExplosionParticles_.push_back(particle);
+	}
+}
+
+void InGameScene::updateBossExplosions(double dt)
+{
+	for (auto& particle : bossExplosionParticles_)
+	{
+		particle.pos += particle.velocity * dt;
+		particle.life -= dt;
+
+		// 중력 없음 (등속 직선 운동)
+		// particle.velocity *= 0.98;  // 약간의 감속만 (선택사항)
+
+		// 알파값 조정
+		double alpha = particle.life / particle.maxLife;
+		particle.color.a = alpha;
+	}
+
+	// 수명이 다한 파티클 제거
+	bossExplosionParticles_.remove_if([](const BossExplosionParticle& p) { return p.life <= 0; });
+}
+
+void InGameScene::drawBossProjectiles()
+{
+	ScopedRenderStates2D blend{ BlendState::Additive };
+
+	for (const auto& proj : bossProjectiles_)
+	{
+		if (!proj.active) continue;
+
+		// 공 그리기 (빛나는 효과)
+		Circle{ proj.pos, proj.size }.draw(proj.color);
+		Circle{ proj.pos, proj.size * 0.6 }.draw(ColorF{ 1.0, 1.0, 1.0, 0.8 });
+	}
+}
+
+void InGameScene::drawBossExplosions()
+{
+	ScopedRenderStates2D blend{ BlendState::Additive };
+
+	for (const auto& particle : bossExplosionParticles_)
+	{
+		Circle{ particle.pos, particle.size }.draw(particle.color);
+	}
 }
 
 Vec2 InGameScene::tileToPixel(Point tilePos) const

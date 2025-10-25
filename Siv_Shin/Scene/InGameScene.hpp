@@ -416,6 +416,7 @@ private:
     void drawMap();
     void drawPlayer();
     void drawUI();
+	void drawHealthUI();  
     void handleInput();
     
     // 조작법 도움말 관련
@@ -479,8 +480,41 @@ private:
 		double size;
 	};
 
+	// ★ 보스 공 발사 구조체
+	struct BossProjectile
+	{
+		Vec2 pos;
+		Vec2 velocity;
+		ColorF color;
+		double size;
+		bool active;
+		bool exploded;
+	};
+
+	// ★ 보스 공 폭발 파티클
+	struct BossExplosionParticle
+	{
+		Vec2 pos;
+		Vec2 velocity;
+		ColorF color;
+		double life;
+		double maxLife;
+		double size;
+	};
+
 	Array<DeathParticle> deathParticles_;
 	bool isWhiteParticleDeath_ = false;
+
+	Array<BossProjectile> bossProjectiles_;
+	Array<BossExplosionParticle> bossExplosionParticles_;
+	double bossAttackTimer_ = 0.0;
+	const double BOSS_ATTACK_INTERVAL = 3.0;  // 3초마다 공격
+
+	int32 playerHealth_ = 3;                    // 현재 체력 (Final Stage 전용)
+	static constexpr int32 MAX_HEALTH = 3;      // 최대 체력
+	Texture heartFullTexture_;                  // 가득 찬 하트 텍스처
+	Texture heartEmptyTexture_;
+
     Array<ClearParticle> clearParticles_;
     double clearEffectTimer_ = 0.0;
     bool showClearEffect_ = false;
@@ -492,8 +526,16 @@ private:
     void drawClearEffect();
 
 	void createDeathEffect(bool useWhiteParticles = false);
-	void updateDeathEffect();     
+	void updateDeathEffect();
 	void drawDeathEffect();
+
+	void updateBossAttack(double dt);
+	void spawnBossProjectile();
+	void updateBossProjectiles(double dt);
+	void createBossExplosion(Vec2 pos, ColorF color);
+	void updateBossExplosions(double dt);
+	void drawBossProjectiles();
+	void drawBossExplosions();
 	bool isPlayerInExplosionRange(Point bombPos) const;
 
 	static CustomCamera2D& camInstance();                    
