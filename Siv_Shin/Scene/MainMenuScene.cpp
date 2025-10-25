@@ -1,19 +1,16 @@
 ﻿#include "MainMenuScene.hpp"
 
 MainMenuScene::MainMenuScene()
-: titleFont_(48, Typeface::Bold)
-, buttonFont_(24, Typeface::Bold)
+: titleFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/TetsubinGothic.otf")), buttonFont_(24, Typeface::Bold)
 , infoFont_(14)
-, backgroundColor_(0.0, 0.0, 0.0) // 배경색을 검정색으로 변경
-, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"))  // 배경음악을 DeepSea1.mp3로 변경
+, backgroundColor_(0.0, 0.0, 0.0) 
+, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"))  
 {
-	// Start 버튼 애니메이션 프레임 로드 (879x566 비율)
 	startButtonFrames_ = {
 		Texture(Resource(U"ArtResources/Texture2D/Menu/Start/start_0.png")),
 		Texture(Resource(U"ArtResources/Texture2D/Menu/Start/start_1.png")),
 		Texture(Resource(U"ArtResources/Texture2D/Menu/Start/start_2.png"))
 	};
-	// Exit 버튼 애니메이션 프레임 로드
 	exitButtonFrames_ = {
 		Texture(Resource(U"ArtResources/Texture2D/Menu/Exit/exit_0.png")),
 		Texture(Resource(U"ArtResources/Texture2D/Menu/Exit/exit_1.png")),
@@ -28,12 +25,11 @@ void MainMenuScene::onEnter()
 {
     titleAnimTimer_ = 0.0;
     
-    // 배경음악 시작 (무한루프)
     if (!bgm_.isEmpty())
     {
-        bgm_.setLoop(true);     // 무한루프 설정
-        bgm_.setVolume(0.28);    // 볼륨 설정 (0.07 * 4 = 0.28)
-        bgm_.play();            // 재생 시작
+        bgm_.setLoop(true);     
+        bgm_.setVolume(0.28);    
+        bgm_.play();            
     }
     
     // Print << U"메인메뉴 진입";
@@ -153,7 +149,7 @@ void MainMenuScene::draw()
     const double titlePulse = 0.9 + 0.1 * Math::Sin(titleAnimTimer_ * 2.0);
     const double titleY = centerY - 150;  // 버튼 위로 위치
     
-    titleFont_(U"Taco's \n adventure")
+    titleFont_(U"タコの伝説")  // ★ 타이틀 텍스트 변경
         .drawAt(centerX, titleY, ColorF(1.0, 1.0, 1.0));  // 동적 중앙 위치
     
     // 버튼들 그리기
