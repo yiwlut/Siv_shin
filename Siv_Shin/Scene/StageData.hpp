@@ -44,6 +44,12 @@
 
 namespace StageData
 {
+
+	struct TileModification {
+		int32 x, y;
+		char tileChar;  // 'i' = Ice, 'l' = Lava
+	};
+
 	//7x7
     inline const Array<String> STAGE_1 = {
         U"#######", 
@@ -55,6 +61,16 @@ namespace StageData
         U"#######",
 
     };
+
+	inline const Array<String> STAGE_1_TILES = {
+	U"       ",  // 첫 줄은 변경 없음
+	U"       ",
+	U"       ",
+	U"iiiiii ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
+	U"       ",
+	U"       ",
+	U"       ",
+	};
 
 	//inline const Array<String> STAGE_2 = {
 	//	U"  o",
@@ -178,6 +194,15 @@ namespace StageData
         default: return STAGE_1; // 기본값: 스테이지 1
         }
     }
+
+	inline Array<String> getStageTileOverlay(int32 stageNumber) {
+		switch (stageNumber) {
+		case 1: return STAGE_1_TILES;
+		// case 4: return STAGE_4_TILES;
+		// case 5: return STAGE_5_TILES;
+		default: return {};
+		}
+	}
 
     /// @brief 스테이지 개수 반환
     /// @return 총 스테이지 개수
