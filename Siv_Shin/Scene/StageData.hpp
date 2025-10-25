@@ -127,12 +127,60 @@ namespace StageData
 
 	// 10x5 Final Boss Stage (always referenced as FINAL_STAGE)
     inline const Array<String> FINAL_STAGE = {
-		U"     iiii     ",
-		U"    BiiiiR    ",
-		U"     ii i     ",
-		U"    roybg T   ",
-		U"          "
+		U"LL   iiii   LL",
+		U"LL  Bii iR  LL",
+		U"LL          LL",
+		U"LL  roybg T LL",
+		U"LL          LL",
+		U"LL          LL"
 	};
+
+	// 10초 경과 시 타일 오버레이 (용암 첫 상승)
+	inline const Array<String> FINAL_STAGE_P1_TILES = {
+		U"LL   iiii   LL",
+		U"LL  Lii iL  LL",
+		U"LL          LL",
+		U"LL  L  L    LL",
+		U"LL   L      LL",
+		U"LL          LL"
+	};
+
+	// 20초 경과 시 타일 오버레이 (용암 두 번째 상승)
+	inline const Array<String> FINAL_STAGE_P2_TILES = {
+		U"LL   iiii   LL",
+		U"LL   LiiL	  LL",
+		U"LLLL  LLLLLLLL",
+		U"LL  L  L    LL",
+		U"LL   L      LL",
+		U"LL          LL"
+	};
+
+	// 30초 경과 시 타일 오버레이 (용암 세 번째 상승)
+	inline const Array<String> FINAL_STAGE_P3_TILES = {
+		U"LL   iiii   LL",
+		U"LL  LiiL    LL",
+		U"LLLLLLLLLLLLLL",
+		U"LL  LLLLLLL LL",
+		U"LL   L      LL",
+		U"LL          LL"
+	};
+
+	inline Array<String> getFinalStageTileOverlay(double elapsedTime)
+	{
+		if (elapsedTime >= 30.0)
+		{
+			return FINAL_STAGE_P3_TILES;
+		}
+		else if (elapsedTime >= 20.0)
+		{
+			return FINAL_STAGE_P2_TILES;
+		}
+		else if (elapsedTime >= 10.0)
+		{
+			return FINAL_STAGE_P1_TILES;
+		}
+		return Array<String>{}; 
+	}
 
     inline Array<String> getStageMap(int32 stageNumber)
     {

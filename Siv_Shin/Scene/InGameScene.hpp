@@ -57,25 +57,6 @@ struct ColorBox
 	uint64 uid = 0;
 };
 
-
-
-// 게임 상태 저장 구조체 (Undo용)
-struct GameState
-{
-    Point playerPos;
-    Array<ColorBox> boxes;
-    Array<GameItem> items;  // 아이템 상태도 저장
-    ItemType playerHeldItem; // 플레이어가 가진 아이템도 저장
-    int32 moves;
-    int32 score;
-
-	Array<Array<uint8>> mapData;
-	double gameTime = 0.0;
-	uint64 nextBoxUID = 1;
-
-	HashTable<uint64, double> bombRemain;
-};
-
 class InGameScene : public GameScene
 {
 private:
@@ -214,21 +195,7 @@ private:
 	bool isFailed_;          // 실패 여부 (체력 0)
 	bool showFailedButtons_; // 실패 화면 버튼 표시 여부
     
-    // Undo 시스템
-    Array<GameState> gameStateHistory_;  // 게임 상태 기록
-    static constexpr int32 MAX_UNDO_STEPS = 9990;  // 최대 되돌리기 단계
-    double undoHoldTime_ = 0.0;  // Undo 키를 누르고 있는 시간
-    double undoCooldown_ = 0.0;  // Undo 쿨다운 타이머 (반복용)
-    static constexpr double UNDO_HOLD_THRESHOLD = 0.5;  // 반복 시작까지 필요한 홀드 시간 (초)
-    static constexpr double UNDO_REPEAT_DELAY = 0.1;  // Undo 반복 간격 (초)
-
-	Optional<size_t> bombUndoAnchorIndex_;
 	bool willCreateBombOnPush(Point boxPos, Point dir) const;
-	struct BombUndoSpan { size_t start; size_t end; Array<uint64> uids;};
-	Array<BombUndoSpan> bombUndoSpans_;               // 다중 구간 지원
-	int32 pendingBombsInSpan_ = 0;
-	Array<uint64> bombUidsInAnchor_;
-
 	void ensureUniqueBoxUIDs(); //초기 UID 보정
 	static uint8 encodeTile_(TileType t) noexcept; 	// TileType -> 코드 변환
 	static TileType decodeTile_(uint8 c) noexcept; 	// 코드 -> TileType 변환
@@ -327,36 +294,17 @@ private:
 	void applyHoloFromHeldItem_();
 
 
-	struct IceSlideTask {
-		uint64 uid = 0;
-		Point  dir{ 0, 0 };
-		double cooldown = 0.0;
-		bool   active = false;
-	};
-
-	Array<IceSlideTask> iceSlideTasks_;
-
 
     bool isSliding_ = false;      
     Point slideDir_{ 0, 0 };
 	void startIceSlideTask_(ColorBox* box, Point dir);
-	void updateIceSlideTasks_(double dt);
 	bool canSlideNext_(Point tile, Point dir) const;
     bool isIce(Point pos) const;
     void continueSliding();
     void slideBoxOnIce(ColorBox* box, Point dir);
 
-	struct IceUndoSpan { size_t start = 0, end = 0; };
-	Optional<size_t> iceUndoAnchorIndex_;
-	Array<IceUndoSpan> iceUndoSpans_;
-
-	void startIceUndoSpanFromLastSnapshot_();
-	bool isIceSpanActive() const;
-	void startIceUndoSpanIfNeeded_();
-	void completeIceUndoSpanIfNeeded_();
-	bool applyIceUndoSpanIfNeeded_();
-
 	void applyTileOverlay(const Array<String>& overlayData);
+
 public:
     InGameScene();
     InGameScene(int32 stageNumber);
@@ -404,7 +352,10 @@ private:
     const GameItem* getItemAt(Point pos) const;
     void collectItem(Point pos);
     bool tryChangeBoxColor(Point pos, Point direction);
-    
+
+	void updateFinalStageTileOverlay();
+	void checkPlayerLavaCollision();
+	void checkBoxesLavaCollision();
     // 페인트 애니메이션
     void startPaintAnimation(bool mirrored);  // 페인트 애니메이션 시작
     void updatePaintAnimation(); // 페인트 애니메이션 업데이트
@@ -427,9 +378,6 @@ private:
     void drawHelpScreen();
     
     // Undo 시스템
-    void saveGameState();
-    void undoLastMove();
-    bool canUndo() const;
     
     // 클리어 화면 관련
     void initializeClearButtons();
@@ -462,7 +410,13 @@ private:
 	Audio bombExplosionSound_;
     // 블록 색상에 따라 음악 재생
     void playBoxSound(BoxColor color);
-    
+
+	struct IceSlideTask {
+		uint64 uid = 0;
+		Point dir{ 0, 0 };
+		double cooldown = 0.0;
+		bool active = false;
+	};
     // 클리어 이펙트
     struct ClearParticle
     {
@@ -508,6 +462,8 @@ private:
 		double size;
 	};
 
+	Array<IceSlideTask> iceSlideTasks_;
+
 	Array<DeathParticle> deathParticles_;
 	bool isWhiteParticleDeath_ = false;
 
@@ -525,6 +481,7 @@ private:
     double clearEffectTimer_ = 0.0;
     bool showClearEffect_ = false;
 
+	void updateIceSlideTasks_(double dt);
 
     // 클리어 이펙트 관련 메서드
     void createClearEffect();
