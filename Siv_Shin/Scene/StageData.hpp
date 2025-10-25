@@ -9,28 +9,51 @@ namespace StageData
 		char tileChar;  // 'i' = Ice, 'l' = Lava
 	};
 
-	//7x7
-    inline const Array<String> STAGE_1 = {
-        U"#######", 
-        U"###b###",
-        U"###B###",
-        U"T R Y o",  
-        U"###G###",
-        U"###g###",  
-        U"#######",
-
-    };
+	inline const Array<String> STAGE_1 = {
+			U"#    T #",
+			U"# R   B#",
+			U"###### #",
+			U"##   #O#",
+			U" GV  ###",
+			U"        ",
+			U"     Y  ",
+			U"  r     ",
+	};
 
 
 	inline const Array<String> STAGE_1_TILES = {
-		U"       ",  // 첫 줄은 변경 없음
-		U"       ",
-		U"       ",
-		U"iiiiii ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
-		U"       ",
-		U"       ",
-		U"       ",
+			U"   ii   ",  // 첫 줄은 변경 없음
+			U" iiiii  ",
+			U"      i ",
+			U"  iii i ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
+			U" iiii   ",
+			U" iiiii  ",
+			U"  iii   ",
+		U"        ",
 	};
+
+	//7x7
+ //   inline const Array<String> STAGE_1 = {
+ //       U"#######", 
+ //       U"###b###",
+ //       U"###B###",
+ //       U"T R Y o",  
+ //       U"###G###",
+ //       U"###g###",  
+ //       U"#######",
+
+ //   };
+
+
+	//inline const Array<String> STAGE_1_TILES = {
+	//	U"       ",  // 첫 줄은 변경 없음
+	//	U"       ",
+	//	U"       ",
+	//	U"iiiiii ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
+	//	U"       ",
+	//	U"       ",
+	//	U"       ",
+	//};
 
 	//inline const Array<String> STAGE_2 = {
 	//	U"  o",
