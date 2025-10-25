@@ -40,11 +40,12 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 , isCleared_(false)
 , showClearButtons_(false)  // 클리어 버튼 표시 상태 초기화
 , showHelpScreen_(false)  // 조작법 도움말 화면 초기화
+, isFailed_(false)
+, showFailedButtons_(false)
 , stageBackground_(Resource(U"ArtResources/Texture2D/BG_K.png"))
 , gameData_(gameData)
 , undoHoldTime_(0.0)  // Undo 홀드 시간 초기화
 , undoCooldown_(0.0)  // Undo 쿨다운 초기화
-, playerHealth_(MAX_HEALTH)  
 {
     currentScene_ = SceneType::InGame;
     // Print << U"InGameScene created with stage number: {}"_fmt(stageNumber);
@@ -68,21 +69,21 @@ void InGameScene::onEnter()
 	isCleared_ = false;
 	showClearButtons_ = false;
 	showHelpScreen_ = false;
-	clearSoundPlayed_ = false;  // ★ 플래그 리셋
+	clearSoundPlayed_ = false;
 
-	playerHealth_ = MAX_HEALTH;  // Final Stage 체력 초기화
+	isFailed_ = false;
+	showFailedButtons_ = false;
+
 	playerHeldItem_ = ItemType::None;
 	tacoDirection_ = TacoDirection::Down;
 	isFacingLeft_ = false;
 	tacoAnimFrame_ = 0;
 	isPlayerMoving_ = false;
 
-	// ★ 죽음 상태 초기화 추가
 	isPlayerDead_ = false;
 	deathAnimTimer_ = 0.0;
 	deathParticles_.clear();
 
-	// 클리어 이펙트 완전 초기화
 	showClearEffect_ = false;
 	clearEffectTimer_ = 0.0;
 	clearParticles_.clear();
@@ -1232,6 +1233,119 @@ void InGameScene::update()
 
 	const bool focused = Window::GetState().focused;
 
+	// ★ StageFailed 상태: R키만 동작, Z키는 불가, ESC도 불가
+	if (isFailed_ && showFailedButtons_)
+	{
+		// R키로 리트라이
+		if (KeyR.down()) {
+			isFailed_ = false;
+			showFailedButtons_ = false;
+			isPlayerDead_ = false;
+			deathAnimTimer_ = 0.0;
+			deathParticles_.clear();
+			gameTime_ = 0.0;
+			moves_ = 0;
+			score_ = 0;
+			playerHealth_ = MAX_HEALTH;
+			gameStateHistory_.clear();
+			bombUndoAnchorIndex_.reset();
+			bombUndoSpans_.clear();
+			pendingBombsInSpan_ = 0;
+
+			loadStage(currentStage_);
+
+			if (StageData::isFinalStage(currentStage_))
+			{
+				if (!bossBgm_.isEmpty())
+				{
+					bossBgm_.setVolume(0.4);
+					bossBgm_.play();
+				}
+			}
+			else
+			{
+				if (!bgm_.isEmpty())
+				{
+					bgm_.setVolume(0.33);
+					bgm_.play();
+				}
+			}
+
+			updateMergePaintFX();
+			return;
+		}
+		// StageFailed 상태에서는 다른 입력 처리 없음
+		updateMergePaintFX();
+		return;
+	}
+
+	// ★ 죽음 애니메이션 처리 (Undo와 R키 재시작 허용)
+	// ★ 죽음 애니메이션 처리 (R키만 허용, Undo 불가)
+	if (isPlayerDead_) {
+		deathAnimTimer_ += dt;
+		updateDeathEffect();
+
+		// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
+		if (KeyR.down()) {
+			gameTime_ = 0.0;
+			moves_ = 0;
+			score_ = 0;
+			playerHeldItem_ = ItemType::None;
+			gameStateHistory_.clear();
+			undoHoldTime_ = 0.0;
+			undoCooldown_ = 0.0;
+			isPlayerDead_ = false;
+			deathAnimTimer_ = 0.0;
+			deathParticles_.clear();
+
+			isFailed_ = false;
+			showFailedButtons_ = false;
+
+			bombFXs_.clear();
+			wallBreakFXs.clear();
+			bombExpiryAbs_.clear();
+
+			loadStage(currentStage_);
+
+			if (StageData::isFinalStage(currentStage_))
+			{
+				if (!bossBgm_.isEmpty())
+				{
+					bossBgm_.setVolume(0.4);
+					bossBgm_.play();
+				}
+			}
+			else
+			{
+				if (!bgm_.isEmpty())
+				{
+					bgm_.setVolume(0.33);
+					bgm_.play();
+				}
+			}
+
+			updateMergePaintFX();
+			return;
+		}
+
+		// ★ 죽음 중에는 Undo 불가 - Z키 입력 무시
+		// (코드 제거 - Undo 처리 완전 삭제)
+
+		// ★ Final Stage에서 즉시 StageFailed 표시
+		if (StageData::isFinalStage(currentStage_) && !isFailed_)
+		{
+			isFailed_ = true;
+			showFailedButtons_ = true;
+
+			if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
+			{
+				bossBgm_.stop();
+			}
+		}
+
+		// ★ ESC 키도 불가 (다른 입력 완전 차단)
+		return;
+	}
 	if (!focused && !showHelpScreen_ && !isCleared_) {
 		showHelpScreen_ = true;
 		if (!bgm_.isEmpty() && bgm_.isPlaying()) {
@@ -1291,111 +1405,7 @@ void InGameScene::update()
 	// ★★★ 여기서부터는 일시정지가 아닐 때만 실행됨 ★★★
 	bombClock_ += dt;
 
-	// ★ 죽음 애니메이션 처리 (Undo와 R키 재시작 허용)
-	if (isPlayerDead_) {
-		deathAnimTimer_ += dt;
-		updateDeathEffect();
 
-		// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
-		if (KeyR.down()) {
-			gameTime_ = 0.0;
-			moves_ = 0;
-			score_ = 0;
-			playerHeldItem_ = ItemType::None;
-			gameStateHistory_.clear();
-			undoHoldTime_ = 0.0;
-			undoCooldown_ = 0.0;
-			isPlayerDead_ = false;
-			deathAnimTimer_ = 0.0;
-			deathParticles_.clear();
-
-			bombFXs_.clear();
-			wallBreakFXs.clear();
-			bombExpiryAbs_.clear();
-
-			loadStage(currentStage_);
-
-			// 배경음악 재생
-			if (!bgm_.isEmpty()) {
-				bgm_.setVolume(0.33);
-				bgm_.play();
-			}
-
-			updateMergePaintFX();
-			return;
-		}
-
-		// ★ Undo 처리 (죽음 중에도 가능)
-		if (!isCleared_ && canUndo()) {
-			const bool undoPressed = KeyZ.pressed() || KeyBackspace.pressed();
-			const bool undoDown = KeyZ.down() || KeyBackspace.down();
-			if (undoPressed) {
-				undoHoldTime_ += dt;
-				if (undoDown) {
-					// Undo 실행 시 죽음 상태 해제
-					isPlayerDead_ = false;
-					deathAnimTimer_ = 0.0;
-					deathParticles_.clear();
-
-					undoLastMove();
-					undoCooldown_ = UNDO_REPEAT_DELAY;
-
-					bombFXs_.clear();
-					wallBreakFXs.clear();
-					bombExpiryAbs_.clear();
-
-					if (StageData::isFinalStage(currentStage_)) {
-						if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying()) {
-							bossBgm_.setVolume(0.4);
-							bossBgm_.seekTime(savedMusicPosition_);
-							bossBgm_.play();
-						}
-					}
-					else {
-						if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
-							bgm_.setVolume(0.33);
-							bgm_.seekTime(savedMusicPosition_);
-							bgm_.play();
-						}
-					}
-
-					updateMergePaintFX();
-					return;
-				}
-				if (undoHoldTime_ >= UNDO_HOLD_THRESHOLD) {
-					undoCooldown_ -= dt;
-					if (undoCooldown_ <= 0.0) {
-						// Undo 실행 시 죽음 상태 해제
-						isPlayerDead_ = false;
-						deathAnimTimer_ = 0.0;
-						deathParticles_.clear();
-
-						undoLastMove();
-						undoCooldown_ = UNDO_REPEAT_DELAY;
-
-						bombFXs_.clear();
-						wallBreakFXs.clear();
-						bombExpiryAbs_.clear();
-
-						if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
-							bgm_.setVolume(0.33);
-							bgm_.seekTime(savedMusicPosition_);
-							bgm_.play();
-						}
-
-						updateMergePaintFX();
-						return;
-					}
-				}
-			}
-			else {
-				undoHoldTime_ = 0.0;
-				undoCooldown_ = 0.0;
-			}
-		}
-
-		return;
-	}
 
 	// ★ 용암 체크
 	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {
@@ -1458,9 +1468,8 @@ void InGameScene::update()
 		}
 	}
 
-	// ★★★ 여기서부터는 중복 제거된 부분! ★★★
-	// R로 즉시 리트라이
-	if (KeyR.down() && !isCleared_) {
+	// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
+	if (KeyR.down()) {
 		gameTime_ = 0.0;
 		moves_ = 0;
 		score_ = 0;
@@ -1472,11 +1481,34 @@ void InGameScene::update()
 		deathAnimTimer_ = 0.0;
 		deathParticles_.clear();
 
+		isFailed_ = false;
+		showFailedButtons_ = false;
+		playerHealth_ = MAX_HEALTH;
+
 		bombFXs_.clear();
 		wallBreakFXs.clear();
 		bombExpiryAbs_.clear();
 
 		loadStage(currentStage_);
+
+		// ★ 배경음악 재생 (Final Stage 구분) ★
+		if (StageData::isFinalStage(currentStage_))
+		{
+			if (!bossBgm_.isEmpty())
+			{
+				bossBgm_.setVolume(0.4);
+				bossBgm_.play();
+			}
+		}
+		else
+		{
+			if (!bgm_.isEmpty())
+			{
+				bgm_.setVolume(0.33);
+				bgm_.play();
+			}
+		}
+
 		updateMergePaintFX();
 		return;
 	}
@@ -2346,6 +2378,12 @@ void InGameScene::draw()
         
         gameFont_(U"Press Space or Enter").drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 + 150, ColorF{ 0.8, 0.8, 0.8 });
     }
+
+	if (isFailed_ && showFailedButtons_)
+	{
+		drawFailedScreen();
+		return;  // Failed 화면이 표시 중이면 다른 UI는 그리지 않음
+	}
     
     // 클리어 이펙트 그리기 (가장 마지막에 - 모든 UI 위에, 카메라 변환 밖에서)
     if (showClearEffect_)
@@ -2523,39 +2561,6 @@ void InGameScene::drawPlayer()
     Circle{ playerPixelPos_, TILE_SIZE / 2 - 8 }.drawFrame(3, 0, ColorF{ 1.0, 1.0, 1.0, 0.9 });
     Circle{ playerPixelPos_, 8 }.draw(ColorF{ 1.0, 1.0, 1.0, 0.8 });
 }
-void InGameScene::drawHealthUI()
-{
-	if (!StageData::isFinalStage(currentStage_)) return;
-
-	const int32 heartSize = 40;
-	const int32 heartSpacing = 50;
-	const int32 startX = Scene::Width() - (MAX_HEALTH * heartSpacing) - 20;
-	const int32 startY = 20;
-
-	for (int32 i = 0; i < MAX_HEALTH; i++)
-	{
-		const int32 x = startX + (i * heartSpacing);
-		const int32 y = startY;
-
-		if (i < playerHealth_)
-		{
-			// 남은 체력: 가득 찬 하트
-			if (!heartFullTexture_.isEmpty())
-			{
-				heartFullTexture_.resized(heartSize, heartSize).draw(x, y);
-			}
-		}
-		else
-		{
-			// 잃은 체력: 빈 하트
-			if (!heartEmptyTexture_.isEmpty())
-			{
-				heartEmptyTexture_.resized(heartSize, heartSize).draw(x, y);
-			}
-		}
-	}
-}
-
 
 void InGameScene::drawUI()
 {
@@ -2605,10 +2610,6 @@ void InGameScene::drawUI()
     debugFont_(U"Arrow: Move/Push | ESC: Menu | R: Retry | Z/Backspace: Undo").draw(Vec2{ 16, 950 }, ColorF{ 0.8, 0.8, 0.9 });
     debugFont_(U"ROYGBVK: Match colors to goals (lowercase)! | Undo: {}/{}"_fmt(gameStateHistory_.size() - 1, MAX_UNDO_STEPS)).draw(Vec2{ 16, 975 }, ColorF{ 0.9, 0.9, 0.9 });
 
-	if (StageData::isFinalStage(currentStage_))
-	{
-		drawHealthUI();
-	}
 }
 
 
@@ -2799,7 +2800,6 @@ void InGameScene::updateBossProjectiles(double dt)
 
 		proj.pos += proj.velocity * dt;
 
-		// 플레이어와 충돌 체크 (스크린 좌표)
 		const Mat3x2 transform = camera().getMat3x2();
 		const Vec2 playerScreenPos = transform.transformPoint(playerPixelPos_);
 
@@ -2815,9 +2815,6 @@ void InGameScene::updateBossProjectiles(double dt)
 			// ★ 플레이어 사망 처리 (체력 깎임과 동시에 죽음)
 			if (!isPlayerDead_)
 			{
-				playerHealth_ -= 1;  // 체력 감소
-
-				// ★ 즉시 죽음 상태로 전환
 				isPlayerDead_ = true;
 				deathAnimTimer_ = 0.0;
 				createDeathEffect(false);
@@ -2839,7 +2836,6 @@ void InGameScene::updateBossProjectiles(double dt)
 		}
 	}
 
-	// 비활성화된 발사체 제거
 	bossProjectiles_.remove_if([](const BossProjectile& p) { return !p.active; });
 }
 
@@ -3652,6 +3648,101 @@ void InGameScene::drawClearEffect()
         }
     }
 }
+void InGameScene::drawFailedScreen()
+{
+	// 배경 오버레이 표시
+	Rect{ 0, 0, Scene::Size().x, Scene::Size().y }.draw(ColorF{ 0, 0, 0, 0.8 });
+
+	// "STAGE FAILED!" 텍스트 (빨간색)
+	clearFont_(U"STAGE FAILED!")
+		.drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 200, ColorF{ 1.0, 0.3, 0.3 });
+
+	// Move 횟수 표시
+	gameFont_(U"Moves: {}"_fmt(moves_))
+		.drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0, ColorF{ 0.8, 0.8, 0.8 });
+
+	// 버튼 영역
+	const double centerX = Scene::Size().x / 2.0;
+	const double centerY = Scene::Size().y / 2.0 + 120;
+	const double buttonWidth = 200;
+	const double buttonHeight = 50;
+	const double buttonMargin = 20;
+
+	// Retry 버튼 (왼쪽)
+	Rect retryButtonRect{
+		static_cast<int32>(centerX - buttonWidth - buttonMargin / 2),
+		static_cast<int32>(centerY - buttonHeight / 2),
+		static_cast<int32>(buttonWidth),
+		static_cast<int32>(buttonHeight)
+	};
+
+	ColorF retryColor = retryButtonRect.mouseOver() ? ColorF{ 0.7, 0.4, 0.3 } : ColorF{ 0.6, 0.3, 0.2 };
+	retryButtonRect.draw(retryColor);
+	retryButtonRect.drawFrame(3, Palette::White);
+
+	ColorF retryTextColor = retryButtonRect.mouseOver() ? Palette::Yellow : Palette::White;
+	buttonFont_(U"Retry").drawAt(retryButtonRect.center(), retryTextColor);
+
+	// Stage Select 버튼 (오른쪽)
+	Rect stageSelectButtonRect{
+		static_cast<int32>(centerX + buttonMargin / 2),
+		static_cast<int32>(centerY - buttonHeight / 2),
+		static_cast<int32>(buttonWidth),
+		static_cast<int32>(buttonHeight)
+	};
+
+	ColorF stageSelectColor = stageSelectButtonRect.mouseOver() ? ColorF{ 0.3, 0.5, 0.7 } : ColorF{ 0.2, 0.4, 0.6 };
+	stageSelectButtonRect.draw(stageSelectColor);
+	stageSelectButtonRect.drawFrame(3, Palette::White);
+
+	ColorF stageSelectTextColor = stageSelectButtonRect.mouseOver() ? Palette::Yellow : Palette::White;
+	buttonFont_(U"Stage Select").drawAt(stageSelectButtonRect.center(), stageSelectTextColor);
+
+	// 버튼 클릭 처리
+	if (retryButtonRect.leftClicked())
+	{
+		// 현재 스테이지 다시 시작
+		isFailed_ = false;
+		showFailedButtons_ = false;
+		isPlayerDead_ = false;  // ★ 추가
+		deathAnimTimer_ = 0.0;   // ★ 추가
+		deathParticles_.clear(); // ★ 추가
+		gameTime_ = 0.0;
+		moves_ = 0;
+		score_ = 0;
+		gameStateHistory_.clear();
+		bombUndoAnchorIndex_.reset();
+		bombUndoSpans_.clear();
+		pendingBombsInSpan_ = 0;
+
+		loadStage(currentStage_);
+
+		// ★ 배경음악 재생 (Final Stage 구분) ★
+		if (StageData::isFinalStage(currentStage_))
+		{
+			if (!bossBgm_.isEmpty())
+			{
+				bossBgm_.setVolume(0.4);
+				bossBgm_.play();
+			}
+		}
+		else
+		{
+			if (!bgm_.isEmpty())
+			{
+				bgm_.setVolume(0.33);
+				bgm_.play();
+			}
+		}
+	}
+	else if (stageSelectButtonRect.leftClicked())
+	{
+		changeScene(SceneType::StageSelect);
+	}
+
+	gameFont_(U"Press R to Retry")
+		.drawAt(Scene::Size().x / 2.0, Scene::Size().y - 100, ColorF{ 0.7, 0.7, 0.7 });
+}
 
 void InGameScene::startPaintAnimation(bool mirrored)
 {
@@ -3972,142 +4063,6 @@ void InGameScene::drawWorldWithCamera(const std::function<void()>& worldDraw,
 	worldDraw();
 	uiDraw();
 }
-
-
-//void InGameScene::loadStageFromText(const StageData::StageMap& stageMap) {
-//	for (auto& row : mapData_)
-//	{
-//		row.assign(getMapWidth(), TileType::Empty);
-//	}
-//
-//	const Array<String>& baseLayer = stageMap.baseLayer;
-//	const Array<String>& objectLayer = stageMap.objectLayer;
-//
-//	int32 height = Min((int32)objectLayer.size(), getMapHeight());
-//
-//	// 1단계: 바닥 타일 레이어 로드
-//	for (int32 y = 0; y < height; y++) {
-//		if (y >= (int32)baseLayer.size()) {
-//			// 바닥 레이어가 없으면 기본 타일로
-//			for (int32 x = 0; x < getMapWidth(); x++) {
-//				mapData_[y][x] = TileType::Empty;
-//			}
-//			continue;
-//		}
-//
-//		const String& line = baseLayer[y];
-//		for (int32 x = 0; x < Min((int32)line.length(), getMapWidth()); x++) {
-//			char32 ch = line[x];
-//
-//			switch (ch) {
-//			case U'#': mapData_[y][x] = TileType::Wall; break;
-//			case U'i': mapData_[y][x] = TileType::Ice; break;
-//			case U'l': mapData_[y][x] = TileType::Lava; break;
-//			case U' ':
-//			case U'.':
-//			default:
-//				mapData_[y][x] = TileType::Empty; // 기본 타일
-//				break;
-//			}
-//		}
-//	}
-//
-//	// 2단계: 오브젝트 레이어 로드
-//	for (int32 y = 0; y < height; y++) {
-//		const String& line = objectLayer[y];
-//		for (int32 x = 0; x < Min((int32)line.length(), getMapWidth()); x++) {
-//			char32 ch = line[x];
-//			Point pos(x, y);
-//
-//			switch (ch) {
-//			case U'#':
-//				mapData_[y][x] = TileType::Wall;
-//				break;
-//
-//				// 플레이어
-//			case U'T':
-//				playerPos_ = pos;
-//				playerPixelPos_ = tileToPixel(pos);
-//				targetPixelPos_ = playerPixelPos_;
-//				isPlayerMoving_ = false;
-//				break;
-//
-//				// 상자들
-//			case U'R':
-//				boxes_.push_back(ColorBox{ pos, BoxColor::Red, 0.0, nextBoxUID_++ });
-//				break;
-//			case U'Y':
-//				boxes_.push_back(ColorBox{ pos, BoxColor::Yellow, 0.0, nextBoxUID_++ });
-//				break;
-//			case U'B':
-//				boxes_.push_back(ColorBox{ pos, BoxColor::Blue, 0.0, nextBoxUID_++ });
-//				break;
-//			case U'O':
-//				boxes_.push_back(ColorBox{ pos, BoxColor::Orange, 0.0, nextBoxUID_++ });
-//				break;
-//			case U'G':
-//				boxes_.push_back(ColorBox{ pos, BoxColor::Green, 0.0, nextBoxUID_++ });
-//				break;
-//			case U'V':
-//				boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ });
-//				break;
-//			case U'K':
-//				boxes_.push_back(ColorBox{ pos, BoxColor::Black, 0.0, nextBoxUID_++ });
-//				break;
-//
-//				// 골 지점들
-//			case U'r':
-//				redGoalPositions_.push_back(pos);
-//				mapData_[y][x] = TileType::RedGoal;
-//				break;
-//			case U'y':
-//				yellowGoalPositions_.push_back(pos);
-//				mapData_[y][x] = TileType::YellowGoal;
-//				break;
-//			case U'b':
-//				blueGoalPositions_.push_back(pos);
-//				mapData_[y][x] = TileType::BlueGoal;
-//				break;
-//			case U'o':
-//				orangeGoalPositions_.push_back(pos);
-//				mapData_[y][x] = TileType::OrangeGoal;
-//				break;
-//				break;
-//			case U'g':
-//				greenGoalPositions_.push_back(pos);
-//				mapData_[y][x] = TileType::GreenGoal;
-//				break;
-//			case U'v':
-//				violetGoalPositions_.push_back(pos);
-//				mapData_[y][x] = TileType::VioletGoal;
-//				break;
-//			case U'k':
-//				blackGoalPositions_.push_back(pos);
-//				mapData_[y][x] = TileType::BlackGoal;
-//				break;
-//
-//				// 아이템들
-//			case U'1': case U'2': case U'3':
-//			case U'4': case U'5': case U'6':
-//			case U'7': case U'8': case U'9':
-//			{
-//				int32 itemNum = (ch - U'0');
-//				ItemType itemType = static_cast<ItemType>(itemNum);
-//				items_.push_back(GameItem{ pos, itemType });
-//				break;
-//			}
-//
-//			// 빈 칸은 무시 (바닥 타일 유지)
-//			case U' ':
-//			case U'.':
-//			default:
-//				break;
-//			}
-//		}
-//	}
-//
-//	//initialState = captureGameState();
-//}
 
 void InGameScene::setTileAt(Point pos, TileType type) {
 	if (!isInsideMap(pos)) {

@@ -120,7 +120,8 @@ private:
         Side,
         Up
     };
-    
+
+
     // 배경 이미지
     Texture stageBackground_;
     // 보스 이미지 (Final stage 전용) - 3프레임 애니메이션
@@ -209,6 +210,9 @@ private:
     bool isCleared_;  // 클리어 여부
     bool showClearButtons_;  // 클리어 버튼 표시 여부
     bool showHelpScreen_;  // 조작법 도움말 화면 표시 여부
+
+	bool isFailed_;          // 실패 여부 (체력 0)
+	bool showFailedButtons_; // 실패 화면 버튼 표시 여부
     
     // Undo 시스템
     Array<GameState> gameStateHistory_;  // 게임 상태 기록
@@ -433,7 +437,9 @@ private:
     void drawClearButtons();
     void updateClearButton(ClearButton& button);
     void drawClearButton(const ClearButton& button);
-    
+
+	void drawFailedScreen();      // 실패 화면 그리기
+	void updateFailedButtons();   // 실패 버튼 업데이트
     // 점수 시스템
     int32 calculateStars(int32 moves) const;  // Move 횟수에 따른 별점 계산
     void drawStars(int32 starCount, Vec2 centerPos) const;  // 별점 그리기
