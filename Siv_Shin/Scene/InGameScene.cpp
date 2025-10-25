@@ -889,16 +889,67 @@ void InGameScene::applyHoloFromHeldItem_()
 
 bool InGameScene::canMoveTo(Point pos) const
 {
-    if (pos.x < 0 || pos.x >= getMapWidth() || pos.y < 0 || pos.y >= getMapHeight())
-        return false;
-    
-    if (mapData_[pos.y][pos.x] == TileType::Wall)
-        return false;
-    
-    if (getBoxAt(pos) != nullptr)
-        return false;
-    
-    return true;
+	if (pos.x < 0 || pos.x >= getMapWidth() || pos.y < 0 || pos.y >= getMapHeight())
+		return false;
+
+	if (mapData_[pos.y][pos.x] == TileType::Wall)
+		return false;
+
+	if (getBoxAt(pos) != nullptr)
+		return false;
+
+	// 미끄러지는 중인 박스들의 목표 위치 확인
+	for (const auto& task : iceSlideTasks_)
+	{
+		if (!task.active) continue;
+
+		// 현재 박스의 위치와 방향을 기반으로 최종 도착 위치 예측
+		if (const ColorBox* box = getBoxByUid_const(task.uid))
+		{
+			Point currentPos = box->pos;
+			Point testPos = currentPos;
+
+			// 박스가 최종적으로 멈출 위치까지 계산
+			while (true)
+			{
+				Point nextPos = testPos + task.dir;
+
+				// 맵 밖이거나 벽이면 현재 위치에서 멈춤
+				if (!isInsideMap(nextPos) || mapData_[nextPos.y][nextPos.x] == TileType::Wall)
+				{
+					if (testPos == pos) return false; // 최종 위치가 플레이어가 가려는 위치와 같음
+					break;
+				}
+
+				// 다른 박스가 있으면 현재 위치에서 멈춤
+				if (getBoxAt(nextPos) != nullptr)
+				{
+					if (testPos == pos) return false;
+					break;
+				}
+
+				testPos = nextPos;
+
+				// 얼음이 아니면 이 위치에서 멈춤
+				if (!isIce(testPos))
+				{
+					if (testPos == pos) return false;
+					break;
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+// const 버전의 getBoxByUid 추가 (헬퍼 함수)
+const ColorBox* InGameScene::getBoxByUid_const(uint64 uid) const
+{
+	for (const auto& b : boxes_) {
+		if (b.uid == uid) return &b;
+	}
+	return nullptr;
 }
 
 ColorBox* InGameScene::getBoxAt(Point pos)
@@ -1065,19 +1116,93 @@ void InGameScene::updateIceSlideTasks_(double dt)
 
 		task.cooldown -= dt;
 
-		// 쿨다운이 끝나고 계속 미끄러질 수 있으면 진행
 		if (task.cooldown <= 0.0)
 		{
 			if (ColorBox* box = getBoxByUid(task.uid))
 			{
-				if (canSlideNext_(box->pos, task.dir))
+				const Point nextPos = box->pos + task.dir;
+
+				// 다음 위치에 다른 박스가 있는지 확인
+				if (ColorBox* targetBox = getBoxAt(nextPos))
 				{
-					box->pos = box->pos + task.dir;
-					task.cooldown = 0.05; // 미끄러짐 간격 (5ms)
+					// 합성 가능한지 확인
+					const BoxColor currentColor = getEffectiveBoxColor(box->uid);
+					const BoxColor targetColor = getEffectiveBoxColor(targetBox->uid);
+
+					if (Optional<BoxColor> merged = getMergedColor(currentColor, targetColor))
+					{
+						// 합성 처리 (기존 코드 유지)
+						forceMergePaintFXCompletion();
+
+						const uint64 uidA = box->uid;
+						const uint64 uidB = targetBox->uid;
+						boxes_.remove_if([uidA, uidB](const ColorBox& b) {
+							return (b.uid == uidA || b.uid == uidB);
+						});
+
+						ColorBox newBox(nextPos, *merged, 0.0, nextBoxUID_++);
+
+						if (*merged == BoxColor::Black)
+						{
+							newBox.creationTime = gameTime_;
+							bombExpiryAbs_[newBox.uid] = bombClock_ + kTotal;
+							triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
+
+							if (!bombExplosionSound_.isEmpty())
+							{
+								bombExplosionSound_.stop();
+								bombExplosionSound_.setVolume(0.6);
+								bombExplosionSound_.play();
+							}
+						}
+
+						boxes_.push_back(newBox);
+
+						triggerMergePaintFX_Directional(nextPos,
+							getBoxColorF(targetColor),
+							getBoxColorF(*merged),
+							task.dir);
+
+						playBoxSound(*merged);
+
+						const ColorTier tier = getColorTier(*merged);
+						if (tier == ColorTier::Secondary) score_ += 50;
+						else if (tier == ColorTier::Tertiary) score_ += 100;
+
+						// 새로 생성된 박스도 얼음 위라면 계속 미끄러짐
+						if (isIce(nextPos))
+						{
+							if (ColorBox* newBoxPtr = getBoxAt(nextPos))
+							{
+								slideBoxOnIce(newBoxPtr, task.dir);
+							}
+						}
+
+						task.active = false;
+					}
+					else
+					{
+						// 합성 불가능하면 정지
+						task.active = false;
+					}
+				}
+				// 다음 위치가 이동 가능한 빈 공간인지 확인
+				else if (!isInsideMap(nextPos) || mapData_[nextPos.y][nextPos.x] == TileType::Wall)
+				{
+					// 벽이나 맵 밖이면 정지
+					task.active = false;
 				}
 				else
 				{
-					task.active = false;
+					// 빈 공간으로 이동
+					box->pos = nextPos;
+					task.cooldown = 0.05;
+
+					// 다음 위치가 얼음이 아니면 미끄러짐 종료
+					if (!isIce(nextPos))
+					{
+						task.active = false;
+					}
 				}
 			}
 			else
@@ -1728,6 +1853,19 @@ void InGameScene::handleInput()
 		return;
 	}
 
+	// 활성화된 얼음 미끄러짐 태스크가 있으면 입력 차단
+	bool hasActiveSlideTasks = false;
+	for (const auto& task : iceSlideTasks_) {
+		if (task.active) {
+			hasActiveSlideTasks = true;
+			break;
+		}
+	}
+
+	if (hasActiveSlideTasks) {
+		bufferInputWhileMoving();
+		return;
+	}
 	Point dir(0, 0);
 	bool moved = false;
 	TacoDirection newDir = tacoDirection_;
@@ -1963,6 +2101,19 @@ void InGameScene::continueSliding()
 		return;
 	}
 
+	if (!isIce(next)) {
+		if (ColorBox* box = getBoxAt(next)) {
+			isSliding_ = false;
+			return;
+		}
+
+		movePlayerTo(next);
+		moves_ += 1;
+		collectItem(next);
+		isSliding_ = false;
+		return;
+	}
+
 	if (ColorBox* box = getBoxAt(next)) {
 		// 밀 수 있는지 확인
 		if (!canPushBox(playerPos_, box->pos, slideDir_)) {
@@ -2018,23 +2169,28 @@ void InGameScene::continueSliding()
 				moves_ += 1;
 				collectItem(next);
 
-				// 다음 위치가 얼음이 아니면 멈춤
+				if (isIce(boxNextPos)) {
+					if (ColorBox* newBoxPtr = getBoxAt(boxNextPos)) {
+						slideBoxOnIce(newBoxPtr, slideDir_);
+					}
+				}
 				if (!isIce(next)) {
 					isSliding_ = false;
 				}
-
-				return;
-			}
-			else {
-				// 합칠 수 없으면 멈춤
-				isSliding_ = false;
 				return;
 			}
 		}
 
-		// 빈 칸으로 상자 밀기 (기존 로직)
 		pushBox(box, slideDir_);
 		slideBoxOnIce(box, slideDir_);
+		movePlayerTo(next);
+		moves_ += 1;
+		collectItem(next);
+
+		if (!isIce(next)) {
+			isSliding_ = false;
+		}
+		return;
 	}
 
 
@@ -2042,10 +2198,8 @@ void InGameScene::continueSliding()
 	moves_ += 1;
 	collectItem(next);
 
-	// 얼음에서 나올 때 상태 저장
 	if (!isIce(next)) {
 		isSliding_ = false;
-		//saveGameState();
 	}
 }
 

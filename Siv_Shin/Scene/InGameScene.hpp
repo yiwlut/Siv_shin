@@ -483,6 +483,7 @@ private:
 
 	void updateIceSlideTasks_(double dt);
 
+	const ColorBox* getBoxByUid_const(uint64 uid) const;
     // 클리어 이펙트 관련 메서드
     void createClearEffect();
     void updateClearEffect();
