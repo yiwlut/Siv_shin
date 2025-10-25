@@ -101,11 +101,22 @@ void InGameScene::onEnter()
 	bombUndoAnchorIndex_.reset();
 	pendingBombsInSpan_ = 0;
 
-	// 배경음악 재생
-	if (!bgm_.isEmpty())
+	// ★ 배경음악 재생 (Final Stage는 보스 BGM)
+	if (StageData::isFinalStage(currentStage_))
 	{
-		bgm_.setVolume(0.33);
-		bgm_.play();
+		if (!bossBgm_.isEmpty())
+		{
+			bossBgm_.setVolume(0.4);  // 보스 음악은 약간 크게
+			bossBgm_.play();
+		}
+	}
+	else
+	{
+		if (!bgm_.isEmpty())
+		{
+			bgm_.setVolume(0.33);
+			bgm_.play();
+		}
 	}
 
 	auto& holo = g_Shaders.holographic();
@@ -123,6 +134,11 @@ void InGameScene::onExit()
     {
         bgm_.stop();
     }
+	// ★ 보스 배경음악 정지
+	if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
+	{
+		bossBgm_.stop();
+	}
 }
 
 void InGameScene::loadAssets()
@@ -161,6 +177,7 @@ void InGameScene::loadAssets()
     
     // 배경음악 로드
     bgm_ = Audio{ Resource(U"ArtResources/BGM/HappyOcean.mp3"), Loop::Yes };
+	bossBgm_ = Audio{ Resource(U"ArtResources/BGM/Boss.mp3"), Loop::Yes };
     
     // 블록 밀기 효과음 로드
     noteE5_ = Audio{ Resource(U"ArtResources/SFX/E5.wav") };
@@ -170,14 +187,18 @@ void InGameScene::loadAssets()
 	stageClearSound_ = Audio{ Resource(U"ArtResources/SFX/StageClear.wav") };
 	bombExplosionSound_ = Audio{ Resource(U"ArtResources/SFX/bomb.wav") };
 
-    // 보스 이미지 로드 (Final stage 전용) - clock 0~2 프레임
-    bossIdleFrames_.clear();
-    for (int32 i = 0; i < 3; ++i)
-    {
-        Texture f{ Resource(U"ArtResources/Texture2D/Boss/boss_clock_{}.png"_fmt(i)) };
-        if (!f.isEmpty()) bossIdleFrames_.push_back(f);
-    }
-    bossAnimFrame_ = 0;
+	// ★ 보스 등장 애니메이션 로드 (boss_cloak_5.png → boss_cloak_0.png 역순)
+	bossIdleFrames_.clear();
+	for (int32 i = 5; i >= 0; --i)
+	{
+		Texture f{ Resource(U"ArtResources/Texture2D/Boss/boss_cloak_{}.png"_fmt(i)) };
+		if (!f.isEmpty())
+		{
+			bossIdleFrames_.push_back(f);
+		}
+	}
+	bossAnimFrame_ = 0;
+	bossAnimTimer_ = 0.0;
 }
 
 void InGameScene::loadStage(int32 stageNumber)
@@ -1226,8 +1247,22 @@ void InGameScene::update()
 		}
 		else {
 			// 일시정지 해제
-			if (!bgm_.isEmpty() && !bgm_.isPlaying() && !isPlayerDead_) {
-				bgm_.play();
+			if (!isPlayerDead_)
+			{
+				if (StageData::isFinalStage(currentStage_))
+				{
+					if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying())
+					{
+						bossBgm_.play();
+					}
+				}
+				else
+				{
+					if (!bgm_.isEmpty() && !bgm_.isPlaying())
+					{
+						bgm_.play();
+					}
+				}
 			}
 			// ✅ 폭탄 생성 사운드도 재개 (필요 시)
 			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPaused()) {
@@ -1364,9 +1399,22 @@ void InGameScene::update()
 	updateWallBreakFX();
 	applyHoloFromHeldItem_();
 
-	// ★ 포커스를 되찾았을 때 음악 재개
-	if (!bgm_.isEmpty() && !bgm_.isPlaying() && focused && !isCleared_ && !isPlayerDead_) {
-		bgm_.play();
+	if (focused && !isCleared_ && !isPlayerDead_)
+	{
+		if (StageData::isFinalStage(currentStage_))
+		{
+			if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying())
+			{
+				bossBgm_.play();
+			}
+		}
+		else
+		{
+			if (!bgm_.isEmpty() && !bgm_.isPlaying())
+			{
+				bgm_.play();
+			}
+		}
 	}
 
 	// ★★★ 여기서부터는 중복 제거된 부분! ★★★

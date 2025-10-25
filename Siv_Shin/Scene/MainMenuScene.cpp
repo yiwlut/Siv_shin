@@ -149,7 +149,7 @@ void MainMenuScene::draw()
     const double titlePulse = 0.9 + 0.1 * Math::Sin(titleAnimTimer_ * 2.0);
     const double titleY = centerY - 150;  // 버튼 위로 위치
     
-    titleFont_(U"タコの伝説")  // ★ 타이틀 텍스트 변경
+    titleFont_(U"タコの伝説")  
         .drawAt(centerX, titleY, ColorF(1.0, 1.0, 1.0));  // 동적 중앙 위치
     
     // 버튼들 그리기

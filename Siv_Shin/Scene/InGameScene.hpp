@@ -126,6 +126,7 @@ private:
     // 보스 이미지 (Final stage 전용) - 3프레임 애니메이션
     Array<Texture> bossIdleFrames_;
     int32 bossAnimFrame_ = 0;
+	double bossAnimTimer_;
     
     // 플레이어 - 부드러운 이동 추가
     Point playerPos_;           // 논리적 타일 위치
@@ -435,6 +436,7 @@ private:
     
     // 배경음악
     Audio bgm_;  // 배경음악
+	Audio bossBgm_;
 	double savedMusicPosition_ = 0.0;
 
     // 블록 밀기 효과음
