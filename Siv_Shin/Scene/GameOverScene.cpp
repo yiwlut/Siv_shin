@@ -1,7 +1,7 @@
 ﻿#include "GameOverScene.hpp"
 
 GameOverScene::GameOverScene()
-    : titleFont_(48, Typeface::Bold)
+    : titleFont_(48)
     , scoreFont_(32)
     , buttonFont_(24)
     , statFont_(20)

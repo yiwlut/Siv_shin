@@ -91,7 +91,8 @@ private:
         YellowItem,  
         GreenItem,   
         BlueItem,    
-        VioletItem 
+        VioletItem,
+		LavaWarning,
     };
     
     // Taco 플레이어 방향
@@ -462,6 +463,11 @@ private:
 		double size;
 	};
 
+	// 페이드 효과
+	double fadeTimer_;
+	double fadeDuration_;
+	bool isFading_;
+
 	Array<IceSlideTask> iceSlideTasks_;
 
 	Array<DeathParticle> deathParticles_;
@@ -483,6 +489,7 @@ private:
 
 	void updateIceSlideTasks_(double dt);
 
+	const ColorBox* getBoxByUid_const(uint64 uid) const;
     // 클리어 이펙트 관련 메서드
     void createClearEffect();
     void updateClearEffect();
@@ -500,6 +507,7 @@ private:
 	void drawBossProjectiles();
 	void drawBossExplosions();
 	bool isPlayerInExplosionRange(Point bombPos) const;
+
 
 	static CustomCamera2D& camInstance();                    
 	CustomCamera2D& camera();           

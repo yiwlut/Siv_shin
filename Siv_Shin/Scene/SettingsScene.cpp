@@ -1,7 +1,7 @@
 ﻿#include "SettingsScene.hpp"
 
 SettingsScene::SettingsScene()
-    : titleFont_(48, Typeface::Bold)
+    : titleFont_(48)
     , optionFont_(20)
     , backButtonFont_(24)
     , bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)  // 배경음악을 DeepSea1.mp3로 변경
