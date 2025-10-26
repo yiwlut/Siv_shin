@@ -1,6 +1,7 @@
 ﻿#include "SceneManager.hpp"
 #include "MainMenuScene.hpp"
-#include "StageSelectScene.hpp"  // 추가
+#include "OpeningScene.hpp"  // 오프닝 씬 추가
+#include "StageSelectScene.hpp"
 #include "InGameScene.hpp"
 #include "SettingsScene.hpp"
 #include "GameOverScene.hpp"
@@ -53,7 +54,9 @@ std::unique_ptr<GameScene> GameSceneManager::createScene(SceneType sceneType)
     {
     case SceneType::MainMenu:
         return std::make_unique<MainMenuScene>();
-    case SceneType::StageSelect:  // 추가
+    case SceneType::Opening:  // 오프닝 씬 추가
+        return std::make_unique<OpeningScene>();
+    case SceneType::StageSelect:
         {
             auto scene = std::make_unique<StageSelectScene>(&gameData_);
             return scene;
@@ -78,6 +81,12 @@ void GameSceneManager::changeScene(SceneType sceneType)
     if (currentScene_)
     {
         currentScene_->onExit();
+    }
+
+    // Opening 씬에서 InGame으로 전환될 때 Stage 1로 설정
+    if (currentSceneType_ == SceneType::Opening && sceneType == SceneType::InGame)
+    {
+        gameData_.currentStage = 1;
     }
 
     currentSceneType_ = sceneType;

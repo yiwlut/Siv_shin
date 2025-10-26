@@ -1,10 +1,10 @@
 ﻿#include "MainMenuScene.hpp"
 
 MainMenuScene::MainMenuScene()
-: titleFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/TetsubinGothic.otf")), buttonFont_(24, Typeface::Bold)
+: titleFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/TetsubinGothic.otf")), buttonFont_(24)
 , infoFont_(14)
 , backgroundColor_(0.0, 0.0, 0.0) 
-, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"))  
+, bgm_(Resource(U"ArtResources/BGM/HappyOcean.mp3"))  
 {
 	startButtonFrames_ = {
 		Texture(Resource(U"ArtResources/Texture2D/Menu/Start/start_0.png")),
@@ -128,7 +128,7 @@ void MainMenuScene::update()
     // 버튼 클릭 처리
     if (startButton_.rect.leftClicked())
     {
-        changeScene(SceneType::StageSelect);  // InGame 대신 StageSelect로 변경
+        changeScene(SceneType::Opening);  // StageSelect 대신 Opening으로 변경
     }
     else if (exitButton_.rect.leftClicked())
     {

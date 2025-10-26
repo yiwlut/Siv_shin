@@ -177,6 +177,9 @@
     <ClCompile Include="Scene\StageSelectScene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\OpeningScene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="App\icon.ico">
@@ -882,6 +885,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Scene\StageSelectScene.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera\CustomCamera2D.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\OpeningScene.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

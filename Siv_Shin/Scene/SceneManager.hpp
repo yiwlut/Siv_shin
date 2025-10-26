@@ -6,6 +6,7 @@
 enum class SceneType
 {
     MainMenu,
+    Opening,      // 오프닝 씬 추가
     StageSelect,  // 스테이지 선택 씬 추가
     InGame,
     Settings,

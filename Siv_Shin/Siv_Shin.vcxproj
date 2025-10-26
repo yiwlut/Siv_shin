@@ -119,6 +119,7 @@
     <ClCompile Include="Scene\GameOverScene.cpp" />
     <ClCompile Include="Scene\InGameScene.cpp" />
     <ClCompile Include="Scene\MainMenuScene.cpp" />
+    <ClCompile Include="Scene\OpeningScene.cpp" />
     <ClCompile Include="Scene\SceneManager.cpp" />
     <ClCompile Include="Scene\SettingsScene.cpp" />
     <ClCompile Include="Scene\StageSelectScene.cpp" />
@@ -340,6 +341,7 @@
     <ClInclude Include="Scene\GameOverScene.hpp" />
     <ClInclude Include="Scene\InGameScene.hpp" />
     <ClInclude Include="Scene\MainMenuScene.hpp" />
+    <ClInclude Include="Scene\OpeningScene.hpp" />
     <ClInclude Include="Scene\SceneManager.hpp" />
     <ClInclude Include="Scene\SettingsScene.hpp" />
     <ClInclude Include="Scene\StageData.hpp" />

@@ -150,22 +150,32 @@ namespace StageData
 
 	// 10x5 Final Boss Stage (always referenced as FINAL_STAGE)
     inline const Array<String> FINAL_STAGE = {
-		U"LL   iiii   LL",
-		U"LL  Bii iR  LL",
-		U"LL          LL",
-		U"LL  roybg T LL",
-		U"LL          LL",
-		U"LL          LL"
+		U"              ",
+		U"    B    R    ",
+		U"              ",
+		U"    roybg T   ",
+		U"              ",
+		U"              "
+	};
+
+	// 첫 시작 시 오버레이 
+	inline const Array<String> FINAL_STAGE_P0_TILES = {
+		U"LL   iiii !!LL",
+		U"LL  Lii iL!!LL",
+		U"LL        !!LL",
+		U"LL  L  L  !!LL",
+		U"LL   L    !!LL",
+		U"LL        !!LL"
 	};
 
 	// 10초 경과 시 타일 오버레이 (용암 첫 상승)
 	inline const Array<String> FINAL_STAGE_P1_TILES = {
-		U"LL   iiii   LL",
-		U"LL  Lii iL  LL",
-		U"LL          LL",
-		U"LL  L  L    LL",
-		U"LL   L      LL",
-		U"LL          LL"
+		U"LL   iiii LLLL",
+		U"LL  Lii iLLLLL",
+		U"LL        LLLL",
+		U"LL  L  L   LLL",
+		U"LL   L    LLLL",
+		U"LL        LLLL"
 	};
 
 	// 20초 경과 시 타일 오버레이 (용암 두 번째 상승)
@@ -201,6 +211,10 @@ namespace StageData
 		else if (elapsedTime >= 10.0)
 		{
 			return FINAL_STAGE_P1_TILES;
+		}
+		else if (elapsedTime >= 0.0)  // ★ 수정: 0초 이상일 때 P0 반환
+		{
+			return FINAL_STAGE_P0_TILES;
 		}
 		return Array<String>{}; 
 	}

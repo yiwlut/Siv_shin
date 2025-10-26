@@ -32,7 +32,7 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 , currentPlayerFrame_(0)
 , gameFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"))  // ★ 수정
 , debugFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))       // ★ 수정
-, clearFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"), FontStyle::Bold)  // ★ 수정
+, clearFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"))  // ★ 수정
 , buttonFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"))  // ★ 수정
 , gameTime_(0.0)
 , score_(0)
@@ -43,6 +43,9 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 , isFailed_(false)
 , showFailedButtons_(false)
 , stageBackground_(Resource(U"ArtResources/Texture2D/BG_K.png"))
+, fadeTimer_(0.0)
+, fadeDuration_(1.0)  // 1초 페이드
+, isFading_(true)
 , gameData_(gameData)
 {
     currentScene_ = SceneType::InGame;
@@ -55,6 +58,8 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 
 void InGameScene::onEnter()
 {
+	fadeTimer_ = 0.0;
+	isFading_ = true;
 	gameTime_ = 0.0;
 	score_ = 0;
 	moves_ = 0;
@@ -1430,7 +1435,15 @@ void InGameScene::update()
 	camera().update();
 
 	const bool focused = Window::GetState().focused;
-
+	// 페이드 업데이트
+	if (isFading_)
+	{
+		fadeTimer_ += dt;
+		if (fadeTimer_ >= fadeDuration_)
+		{
+			isFading_ = false;
+		}
+	}
 	// ★ Final Stage 시간 기반 타일 오버레이 업데이트
 	if (StageData::isFinalStage(currentStage_))
 	{
@@ -1478,13 +1491,11 @@ void InGameScene::update()
 		return;
 	}
 
-	// ★ 죽음 애니메이션 처리 (Undo와 R키 재시작 허용)
-	// ★ 죽음 애니메이션 처리 (R키만 허용, Undo 불가)
 	if (isPlayerDead_) {
 		deathAnimTimer_ += dt;
 		updateDeathEffect();
+		updateBossExplosions(dt); 
 
-		// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
 		if (KeyR.down()) {
 			gameTime_ = 0.0;
 			moves_ = 0;
@@ -1524,22 +1535,6 @@ void InGameScene::update()
 			return;
 		}
 
-		// ★ 죽음 중에는 Undo 불가 - Z키 입력 무시
-		// (코드 제거 - Undo 처리 완전 삭제)
-
-		// ★ Final Stage에서 즉시 StageFailed 표시
-		if (StageData::isFinalStage(currentStage_) && !isFailed_)
-		{
-			isFailed_ = true;
-			showFailedButtons_ = true;
-
-			if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
-			{
-				bossBgm_.stop();
-			}
-		}
-
-		// ★ ESC 키도 불가 (다른 입력 완전 차단)
 		return;
 	}
 	if (!focused && !showHelpScreen_ && !isCleared_) {
@@ -2280,128 +2275,134 @@ void InGameScene::updateAnimations()
     }
 }
 
+// draw() 함수 수정 - "R?" 텍스트 표시 부분 추가
+
 void InGameScene::draw()
 {
-    drawBackground();
-	
-    // Final stage 상단 영역에 보스 이미지 표시 (카메라 변환 밖, 화면 좌표)
-    if (StageData::isFinalStage(currentStage_) && !bossIdleFrames_.isEmpty())
-    {
-        const int32 screenW = Scene::Width();
-        const int32 screenH = Scene::Height();
-        const int32 topH = screenH / 2; // 상단 절반
+	drawBackground();
 
-        // 보스 이미지가 상단 절반 내부에 비율 유지로 최대한 크게 보이도록 리사이즈
-        const Texture& bossTex = bossIdleFrames_[bossAnimFrame_ % static_cast<int32>(bossIdleFrames_.size())];
-        const Size bossSize = bossTex.size();
-        if (bossSize.x > 0 && bossSize.y > 0)
-        {
-            const double sx = static_cast<double>(screenW) / bossSize.x;
-            const double sy = static_cast<double>(topH) / bossSize.y;
-            const double s = Min(sx, sy) * 0.9; // 약간 여백
-            const int32 drawW = static_cast<int32>(bossSize.x * s);
-            const int32 drawH = static_cast<int32>(bossSize.y * s);
-            const int32 x = (screenW - drawW) / 2;
-            const int32 y = (topH - drawH) / 2; // 상단 영역 중앙에 배치
-            bossTex.resized(drawW, drawH).draw(x, y);
-        }
-    }
-
-    // 카메라 변환 시작 (월드 렌더링 + 인게임 UI)
+	// Final stage 상단 영역에 보스 이미지 표시 (카메라 변환 밖, 화면 좌표)
+	if (StageData::isFinalStage(currentStage_) && !bossIdleFrames_.isEmpty())
 	{
-        const auto _t = camera().createTransformer();
-        
-        drawMap();
-        drawPlayer();
+		const int32 screenW = Scene::Width();
+		const int32 screenH = Scene::Height();
+		const int32 topH = screenH / 2;
 
-    }
+		const Texture& bossTex = bossIdleFrames_[bossAnimFrame_ % static_cast<int32>(bossIdleFrames_.size())];
+		const Size bossSize = bossTex.size();
+		if (bossSize.x > 0 && bossSize.y > 0)
+		{
+			const double sx = static_cast<double>(screenW) / bossSize.x;
+			const double sy = static_cast<double>(topH) / bossSize.y;
+			const double s = Min(sx, sy) * 0.9;
+			const int32 drawW = static_cast<int32>(bossSize.x * s);
+			const int32 drawH = static_cast<int32>(bossSize.y * s);
+			const int32 x = (screenW - drawW) / 2;
+			const int32 y = (topH - drawH) / 2;
+			bossTex.resized(drawW, drawH).draw(x, y);
+		}
+	}
+
+	// 카메라 변환 시작 (월드 렌더링 + 인게임 UI)
+	{
+		const auto _t = camera().createTransformer();
+
+		drawMap();
+		drawPlayer();
+	}
 
 	drawBombBoxFX_Multi();
 	drawWallBreakFX();
-
 	drawUI();
-
-	// ★ 보스 공격 그리기 (카메라 변환 밖, 스크린 좌표)
 	drawBossProjectiles();
 	drawBossExplosions();
-    // Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리 (스크린 좌표계에서 마스크)
-    if (currentStage_ == 6)
-    {
-        const Mat3x2 transform = camera().getMat3x2();
-        const Vec2 screenPos = transform.transformPoint(playerPixelPos_);
-        const double radius = 80.0; // 가시 반경 (px)
-        const double w = static_cast<double>(Scene::Width());
-        const double h = static_cast<double>(Scene::Height());
-        const double outer = std::sqrt(w * w + h * h);
 
-        // 화면 전체를 덮는 두꺼운 원 프레임을 그려 내부 원(가시영역)만 남김
-        Circle spotlight(screenPos, radius);
-        spotlight.drawFrame(0.0, Max(0.0, outer - radius), ColorF{ 0, 0, 0, 1.0 });
-    }
-    
-    // 조작법 도움말 표시 (포커스 잃었을 때도 표시) - 카메라 변환 밖에서 그리기
-    if (showHelpScreen_)
-    {
-        drawHelpScreen();
-        return;  // 도움말이 표시 중이면 다른 UI는 그리지 않음
-    }
-    
-    // 클리어 효과 - 버튼과 Move 횟수 표시 (카메라 변환 밖에서 그리기)
-    if (isCleared_ && showClearButtons_)
-    {
-        // 배경 오버레이 표시
-        Rect{ 0, 0, Scene::Size().x, Scene::Size().y }.draw(ColorF{ 0, 0, 0, 0.8 });
-        
-        // "STAGE CLEAR!" 텍스트
-        clearFont_(U"STAGE CLEAR!")
-            .drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 200, ColorF{ 1.0, 1.0, 0.5 });
-        
-        // Move 횟수 표시 (별점 이미지 아래)
-        gameFont_(U"Moves: {}"_fmt(moves_))
-            .drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 + 100, ColorF{ 1.0, 1.0, 1.0 });
-        
-        // 별점 계산 및 표시 (중앙)
-        int32 starCount = calculateStars(moves_);
-        drawStars(starCount, Vec2(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 10));
-        
-        // 별점에 따른 평가 텍스트 (별점 이미지 위)
-        String ratingText;
-        ColorF ratingColor;
-        if (starCount == 3)
-        {
-            ratingText = U"Perfect!";
-            ratingColor = ColorF{ 1.0, 1.0, 0.3 };  // 황금색
-        }
-        else if (starCount == 2)
-        {
-            ratingText = U"Great!";
-            ratingColor = ColorF{ 0.9, 0.9, 0.9 };  // 은색
-        }
-        else
-        {
-            ratingText = U"Good!";
-            ratingColor = ColorF{ 0.8, 0.5, 0.3 };  // 동색
-        }
-        
-        gameFont_(ratingText).drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 120, ratingColor);
-        
-        // 버튼 표시
-        // drawClearButtons();
-        
-        gameFont_(U"Press Space or Enter").drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 + 150, ColorF{ 0.8, 0.8, 0.8 });
-    }
-
-	if (isFailed_ && showFailedButtons_)
+	// Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리
+	if (currentStage_ == 6)
 	{
-		drawFailedScreen();
-		return;  // Failed 화면이 표시 중이면 다른 UI는 그리지 않음
+		const Mat3x2 transform = camera().getMat3x2();
+		const Vec2 screenPos = transform.transformPoint(playerPixelPos_);
+		const double radius = 80.0;
+		const double w = static_cast<double>(Scene::Width());
+		const double h = static_cast<double>(Scene::Height());
+		const double outer = std::sqrt(w * w + h * h);
+
+		Circle spotlight(screenPos, radius);
+		spotlight.drawFrame(0.0, Max(0.0, outer - radius), ColorF{ 0, 0, 0, 1.0 });
 	}
-    
-    // 클리어 이펙트 그리기 (가장 마지막에 - 모든 UI 위에, 카메라 변환 밖에서)
-    if (showClearEffect_)
-    {
-        drawClearEffect();
-    }
+
+	// 조작법 도움말 표시
+	if (showHelpScreen_)
+	{
+		drawHelpScreen();
+		return;
+	}
+
+	// 클리어 화면
+	if (isCleared_ && showClearButtons_)
+	{
+		Rect{ 0, 0, Scene::Size().x, Scene::Size().y }.draw(ColorF{ 0, 0, 0, 0.8 });
+
+		clearFont_(U"STAGE CLEAR!")
+			.drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 200, ColorF{ 1.0, 1.0, 0.5 });
+
+		gameFont_(U"Moves: {}"_fmt(moves_))
+			.drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 + 100, ColorF{ 1.0, 1.0, 1.0 });
+
+		int32 starCount = calculateStars(moves_);
+		drawStars(starCount, Vec2(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 10));
+
+		String ratingText;
+		ColorF ratingColor;
+		if (starCount == 3)
+		{
+			ratingText = U"Perfect!";
+			ratingColor = ColorF{ 1.0, 1.0, 0.3 };
+		}
+		else if (starCount == 2)
+		{
+			ratingText = U"Great!";
+			ratingColor = ColorF{ 0.9, 0.9, 0.9 };
+		}
+		else
+		{
+			ratingText = U"Good!";
+			ratingColor = ColorF{ 0.8, 0.5, 0.3 };
+		}
+		gameFont_(ratingText).drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 120, ratingColor);
+		gameFont_(U"Press Space or Enter").drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 + 150, ColorF{ 0.8, 0.8, 0.8 });
+	}
+
+	if (isPlayerDead_ && deathAnimTimer_ >= 1.5)
+	{
+		double alpha = Sin((deathAnimTimer_ - 1.5) * Math::TwoPi) * 0.5 + 0.5;
+		clearFont_(U"R?").drawAt(
+			Scene::Size().x / 2.0,
+			Scene::Size().y / 2.0,
+			ColorF{ 1.0, 1.0, 1.0, alpha }
+		);
+	}
+	// ★ 죽음 후 1.5초 뒤에 "R?" 텍스트 표시
+	if (isPlayerDead_ && deathAnimTimer_ >= 1.5)
+	{
+		double alpha = Sin((deathAnimTimer_ - 1.5) * Math::TwoPi) * 0.5 + 0.5;
+		clearFont_(U"R?").drawAt(
+			Scene::Size().x / 2.0,
+			Scene::Size().y / 2.0,
+			ColorF{ 1.0, 1.0, 1.0, alpha }
+		);
+	}
+
+	// 클리어 이펙트 그리기
+	if (showClearEffect_)
+	{
+		drawClearEffect();
+	}
+	if (isFading_)
+	{
+		const double alpha = 1.0 - (fadeTimer_ / fadeDuration_);
+		Scene::Rect().draw(ColorF{ 0.0, 0.0, 0.0, alpha });
+	}
 }
 
 void InGameScene::drawBackground()
@@ -2438,6 +2439,46 @@ void InGameScene::drawMap()
 				ColorF lavaColor{ 0.9, 0.2 + 0.2 * pulse, 0.0, 0.8 };
 				tileRect.draw(lavaColor);
 				tileRect.drawFrame(2, 0, ColorF{ 1.0, 0.5, 0.0 });
+			}
+			case TileType::LavaWarning:  // ★ 추가: 용암 예고 타일
+			{
+				// 반투명한 주황색 바닥
+				double pulse = 0.3 + 0.2 * sin(gameTime_ * 2.0);  // 천천히 깜빡임
+				ColorF warningColor{ 1.0, 0.4, 0.0, 0.3 + pulse };  // 반투명 주황색
+				tileRect.draw(warningColor);
+
+				// 경계선: 대시 패턴
+				double dashPhase = fmod(gameTime_ * 2.0, 1.0);
+				int32 dashCount = 8;
+				for (int32 i = 0; i < dashCount; i++) {
+					double ratio = (i + dashPhase) / dashCount;
+					if (fmod(ratio * 2, 1.0) < 0.5) {  // 0.5초 온, 0.5초 오프
+						int32 side = i % 4;
+						ColorF frameColor{ 1.0, 0.6, 0.0, 0.6 };
+						switch (side) {
+						case 0:  // 위
+							Line{ tileRect.tl() + Vec2(i * TILE_SIZE / 4, 0),
+								  tileRect.tl() + Vec2((i + 1) * TILE_SIZE / 4, 0) }
+							.draw(3, frameColor);
+							break;
+						case 1:  // 오른쪽
+							Line{ tileRect.tr() + Vec2(0, i * TILE_SIZE / 4),
+								  tileRect.tr() + Vec2(0, (i + 1) * TILE_SIZE / 4) }
+							.draw(3, frameColor);
+							break;
+						case 2:  // 아래
+							Line{ tileRect.bl() + Vec2(i * TILE_SIZE / 4, 0),
+								  tileRect.bl() + Vec2((i + 1) * TILE_SIZE / 4, 0) }
+							.draw(3, frameColor);
+							break;
+						case 3:  // 왼쪽
+							Line{ tileRect.tl() + Vec2(0, i * TILE_SIZE / 4),
+								  tileRect.tl() + Vec2(0, (i + 1) * TILE_SIZE / 4) }
+							.draw(3, frameColor);
+							break;
+						}
+					}
+				}
 			}
 			break;
 			case TileType::RedGoal:
@@ -2513,11 +2554,9 @@ void InGameScene::drawPlayer()
 {
 	/// 죽음 애니메이션
 	if (isPlayerDead_) {
-		// ★ Circle 대신 파티클 이펙트 사용
 		drawDeathEffect();
 		return;
 	}
-    // 페인트 애니메이션이 재생 중이면 페인트 애니메이션을 그림
     if (isPlayingPaintAnimation_)
     {
         drawPaintAnimation();
@@ -3711,6 +3750,7 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
             case U'i': mapData_[y][x] = TileType::Ice; break;
 			case U'L': mapData_[y][x] = TileType::Lava; break;
 
+			case U'!': mapData_[y][x] = TileType::LavaWarning; break;
 			case U'T':
 				playerPos_ = pos;
 				playerPixelPos_ = tileToPixel(pos);
@@ -3942,8 +3982,11 @@ void InGameScene::applyTileOverlay(const Array<String>& overlayData) {
 			case U'i':  // 얼음
 				newTile = TileType::Ice;
 				break;
-			case U'l':  // 용암
+			case U'L':  // 용암
 				newTile = TileType::Lava;
+				break;
+			case U'!':  // 용암 예고 ★ 추가
+				newTile = TileType::LavaWarning;
 				break;
 			case U'#':  // 벽
 				newTile = TileType::Wall;
