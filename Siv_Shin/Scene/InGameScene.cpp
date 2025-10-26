@@ -30,10 +30,10 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 , paintAnimFrame_(0)
 , playerAnimTimer_(0.0)
 , currentPlayerFrame_(0)
-, gameFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"))  // ★ 수정
-, debugFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))       // ★ 수정
-, clearFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"))  // ★ 수정
-, buttonFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/DarumaDropOne-Regular.ttf"))  // ★ 수정
+, gameFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 수정
+, debugFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))       // ★ 수정
+, clearFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 수정
+, buttonFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 수정
 , gameTime_(0.0)
 , score_(0)
 , moves_(0)
@@ -97,9 +97,15 @@ void InGameScene::onEnter()
 	// ★ 배경음악 재생 (Final Stage는 보스 BGM)
 	if (StageData::isFinalStage(currentStage_))
 	{
+		const Array<String> initialOverlay = StageData::getFinalStageTileOverlay(0.0);
+		if (!initialOverlay.isEmpty())
+		{
+			applyTileOverlay(initialOverlay);
+		}
+
 		if (!bossBgm_.isEmpty())
 		{
-			bossBgm_.setVolume(0.4);  // 보스 음악은 약간 크게
+			bossBgm_.setVolume(0.4);
 			bossBgm_.play();
 		}
 	}
@@ -1382,7 +1388,6 @@ void InGameScene::updateFinalStageTileOverlay()
 			applyTileOverlay(overlay);
 			lastAppliedPhase = currentPhase;
 
-			// ★ 플레이어와 박스가 용암에 닿았는지 즉시 확인
 			checkPlayerLavaCollision();
 			checkBoxesLavaCollision();
 		}
@@ -1555,6 +1560,10 @@ void InGameScene::update()
 			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
 				bgm_.pause();
 			}
+			// ★ 보스 배경음악도 멈춤
+			if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
+				bossBgm_.pause();
+			}
 			// ✅ 폭탄 생성 사운드도 멈춤
 			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) {
 				bombExplosionSound_.pause();
@@ -1592,20 +1601,13 @@ void InGameScene::update()
 		updateMergePaintFX();
 		return;
 	}
-
-	// ★★★ 여기서부터는 일시정지가 아닐 때만 실행됨 ★★★
 	bombClock_ += dt;
 
-
-
-	// ★ 용암 체크
 	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {
 		if (!isPlayerDead_) {
 			isPlayerDead_ = true;
 			deathAnimTimer_ = 0.0;
 			createDeathEffect(true);  // ★ true = 흰색 파티클 사용
-
-			// ★ 보스 스테이지면 bossBgm 저장, 아니면 bgm 저장
 			if (StageData::isFinalStage(currentStage_)) {
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
 					savedMusicPosition_ = bossBgm_.posSec();
@@ -1671,7 +1673,6 @@ void InGameScene::update()
 
 		isFailed_ = false;
 		showFailedButtons_ = false;
-		playerHealth_ = MAX_HEALTH;
 
 		bombFXs_.clear();
 		wallBreakFXs.clear();
@@ -1683,9 +1684,14 @@ void InGameScene::update()
 
 		loadStage(currentStage_);
 
-		// ★ 배경음악 재생 (Final Stage 구분) ★
 		if (StageData::isFinalStage(currentStage_))
 		{
+			const Array<String> initialOverlay = StageData::getFinalStageTileOverlay(0.0);
+			if (!initialOverlay.isEmpty())
+			{
+				applyTileOverlay(initialOverlay);
+			}
+
 			if (!bossBgm_.isEmpty())
 			{
 				bossBgm_.setVolume(0.4);
@@ -2347,10 +2353,10 @@ void InGameScene::draw()
 	{
 		Rect{ 0, 0, Scene::Size().x, Scene::Size().y }.draw(ColorF{ 0, 0, 0, 0.8 });
 
-		clearFont_(U"STAGE CLEAR!")
+		clearFont_(U"ステージクリア")
 			.drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 200, ColorF{ 1.0, 1.0, 0.5 });
 
-		gameFont_(U"Moves: {}"_fmt(moves_))
+		gameFont_(U"手数: {}"_fmt(moves_))
 			.drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 + 100, ColorF{ 1.0, 1.0, 1.0 });
 
 		int32 starCount = calculateStars(moves_);
@@ -2360,21 +2366,21 @@ void InGameScene::draw()
 		ColorF ratingColor;
 		if (starCount == 3)
 		{
-			ratingText = U"Perfect!";
+			ratingText = U"完璧!";
 			ratingColor = ColorF{ 1.0, 1.0, 0.3 };
 		}
 		else if (starCount == 2)
 		{
-			ratingText = U"Great!";
+			ratingText = U"良い!";
 			ratingColor = ColorF{ 0.9, 0.9, 0.9 };
 		}
 		else
 		{
-			ratingText = U"Good!";
+			ratingText = U"OK!";
 			ratingColor = ColorF{ 0.8, 0.5, 0.3 };
 		}
 		gameFont_(ratingText).drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 120, ratingColor);
-		gameFont_(U"Press Space or Enter").drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 + 150, ColorF{ 0.8, 0.8, 0.8 });
+		gameFont_(U"スペースかエンターを押す").drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 + 150, ColorF{ 0.8, 0.8, 0.8 });
 	}
 
 	if (isPlayerDead_ && deathAnimTimer_ >= 1.5)
@@ -2619,11 +2625,10 @@ void InGameScene::drawPlayer()
 
 void InGameScene::drawUI()
 {
-    // UI 패널 크기 반으로 축소 (300 -> 150)
     Rect{ 0, 0, 150, 180 }.draw(ColorF{ 0, 0, 0, 0.5 });
-    gameFont_(U"Stage: {}"_fmt(currentStage_)).draw(Vec2{ 16, 16 }, ColorF{ 0.8, 0.8, 1.0 });
-    gameFont_(U"Moves: {}"_fmt(moves_)).draw(Vec2{ 16, 45 }, ColorF{ 1.0, 1.0, 0.5 });
-    gameFont_(U"Time: {:.1f}s"_fmt(gameTime_)).draw(Vec2{ 16, 74 }, ColorF{ 0.5, 1.0, 0.5 });
+    gameFont_(U"ステージ: {}"_fmt(currentStage_)).draw(Vec2{ 16, 16 }, ColorF{ 0.8, 0.8, 1.0 });
+    gameFont_(U"手数: {}"_fmt(moves_)).draw(Vec2{ 16, 45 }, ColorF{ 1.0, 1.0, 0.5 });
+    gameFont_(U"時間: {:.1f}s"_fmt(gameTime_)).draw(Vec2{ 16, 74 }, ColorF{ 0.5, 1.0, 0.5 });
     
     // 목표 진행도 (모든 색상)
     int32 totalGoals = 0;
@@ -2647,17 +2652,17 @@ void InGameScene::drawUI()
         }
     }
     
-    gameFont_(U"Goals: {}/{}"_fmt(cleared, totalGoals))
+    gameFont_(U"目標: {}/{}"_fmt(cleared, totalGoals))
         .draw(Vec2{ 16, 103 }, ColorF{ 0.9, 0.9, 0.9 });
     
     // 현재 가진 아이템 표시
     if (playerHeldItem_ != ItemType::None)
     {
-        gameFont_(U"Item: Held").draw(Vec2{ 16, 132 }, getItemColorF(playerHeldItem_));
+        gameFont_(U"アイテム: 持っている").draw(Vec2{ 16, 132 }, getItemColorF(playerHeldItem_));
     }
     else
     {
-        gameFont_(U"Item: None").draw(Vec2{ 16, 132 }, ColorF{ 0.6, 0.6, 0.6 });
+        gameFont_(U"アイテム: なし").draw(Vec2{ 16, 132 }, ColorF{ 0.6, 0.6, 0.6 });
     }
 }
 
@@ -2666,25 +2671,25 @@ void InGameScene::drawHelpScreen()
     // 반투명 배경 오버레이
     Rect{ 0, 0, Scene::Size().x, Scene::Size().y }.draw(ColorF{ 0, 0, 0, 0.8 });
     
-    // 제목
-    clearFont_(U"PAUSED").drawAt(Scene::Size().x / 2.0, 100, ColorF{ 1.0, 1.0, 0.5 });
+    // 제목 (일본어)
+    clearFont_(U"中止").drawAt(Scene::Size().x / 2.0, 100, ColorF{ 1.0, 1.0, 0.5 });
     
-    // 조작법 설명
+    // 조작법 설명 (일본어로 변경)
     const double centerX = Scene::Size().x / 2.0;
     const double startY = 200;
     const double lineHeight = 50;
     
-	Array<String> helpTexts = {
-	 U"↑ ↓ ← → : Move / Push boxes",
-	 U"R : Restart current stage",
-	 U"Space / Enter : Next stage (when cleared)",
-	 U"ESC : Resume / Show this menu"
-	};
+    Array<String> helpTexts = {
+        U"↑ ↓ ← → : 移動 / ブロックを押す",
+        U"R : ステージをやり直す",
+        U"Space / Enter : 次のステージへ (クリア時)",
+        U"ESC : 再開 / このメニューを表示"
+    };
     
     for (size_t i = 0; i < helpTexts.size(); i++)
     {
         ColorF textColor = ColorF{ 0.9, 0.9, 0.9 };
-        gameFont_(helpTexts[i]).drawAt(centerX, startY + i * lineHeight, textColor);
+        debugFont_(helpTexts[i]).drawAt(centerX, startY + i * lineHeight, textColor);
     }
     
     // 스테이지 선택으로 돌아가는 버튼
@@ -2696,9 +2701,9 @@ void InGameScene::drawHelpScreen()
     backButton.draw(buttonColor);
     backButton.drawFrame(3, Palette::White);
     
-    // 버튼 텍스트
+    // 버튼 텍스트 (일본어)
     ColorF textColor = backButton.mouseOver() ? Palette::Yellow : Palette::White;
-    gameFont_(U"Back to Stage Select").drawAt(backButton.center(), textColor);
+    buttonFont_(U"ステージ選択に戻る").drawAt(backButton.center(), textColor);
     
     // 버튼 클릭 처리
     if (backButton.leftClicked())
@@ -2706,14 +2711,14 @@ void InGameScene::drawHelpScreen()
         changeScene(SceneType::StageSelect);
     }
     
-    // 포커스 상태에 따라 다른 메시지 표시
+    // 포커스 상태에 따라 다른 메시지 표시 (일본어)
     if (!Window::GetState().focused)
     {
-        clearFont_(U"Click to resume").drawAt(centerX, Scene::Size().y - 100, ColorF{ 1.0, 1.0, 0.5 });
+        debugFont_(U"クリックして再開").drawAt(centerX, Scene::Size().y - 100, ColorF{ 1.0, 1.0, 0.5 });
     }
     else
     {
-        clearFont_(U"Press ESC to resume").drawAt(centerX, Scene::Size().y - 100, ColorF{ 1.0, 1.0, 0.5 });
+        debugFont_(U"ESCで再開").drawAt(centerX, Scene::Size().y - 100, ColorF{ 1.0, 1.0, 0.5 });
     }
 }
 
@@ -3146,7 +3151,7 @@ void InGameScene::initializeClearButtons()
         static_cast<int32>(centerY - buttonSize / 2),
         static_cast<int32>(buttonSize), static_cast<int32>(buttonSize)
     };
-    retryButton_.text = U"Retry";
+    retryButton_.text = U"やり直す";
     retryButton_.normalColor = ColorF{ 0.6, 0.3, 0.2 };
     retryButton_.hoverColor = ColorF{ 0.7, 0.4, 0.3 };
     
@@ -3156,7 +3161,7 @@ void InGameScene::initializeClearButtons()
         static_cast<int32>(centerY - buttonSize / 2),
         static_cast<int32>(buttonSize), static_cast<int32>(buttonSize)
     };
-    stageSelectButton_.text = U"Menu";
+    stageSelectButton_.text = U"メニュー";
     stageSelectButton_.normalColor = ColorF{ 0.2, 0.4, 0.6 };
     stageSelectButton_.hoverColor = ColorF{ 0.3, 0.5, 0.7 };
     
@@ -3167,7 +3172,7 @@ void InGameScene::initializeClearButtons()
         static_cast<int32>(buttonSize), static_cast<int32>(buttonSize)
     };
     nextStageButton_.text = (currentStage_ < StageData::getTotalStageCount()) ? 
-        U"Next" : U"Done";
+        U"次へ" : U"完了";
     nextStageButton_.normalColor = ColorF{ 0.2, 0.6, 0.3 };
     nextStageButton_.hoverColor = ColorF{ 0.3, 0.7, 0.4 };
 }
@@ -3550,7 +3555,7 @@ void InGameScene::drawFailedScreen()
 	retryButtonRect.drawFrame(3, Palette::White);
 
 	ColorF retryTextColor = retryButtonRect.mouseOver() ? Palette::Yellow : Palette::White;
-	buttonFont_(U"Retry").drawAt(retryButtonRect.center(), retryTextColor);
+	buttonFont_(U"やり直す").drawAt(retryButtonRect.center(), retryTextColor);
 
 	// Stage Select 버튼 (오른쪽)
 	Rect stageSelectButtonRect{
@@ -3565,7 +3570,7 @@ void InGameScene::drawFailedScreen()
 	stageSelectButtonRect.drawFrame(3, Palette::White);
 
 	ColorF stageSelectTextColor = stageSelectButtonRect.mouseOver() ? Palette::Yellow : Palette::White;
-	buttonFont_(U"Stage Select").drawAt(stageSelectButtonRect.center(), stageSelectTextColor);
+	buttonFont_(U"ステージ選択").drawAt(stageSelectButtonRect.center(), stageSelectTextColor);
 
 	// 버튼 클릭 처리
 	if (retryButtonRect.leftClicked())
@@ -3606,7 +3611,7 @@ void InGameScene::drawFailedScreen()
 		changeScene(SceneType::StageSelect);
 	}
 
-	gameFont_(U"Press R to Retry")
+	gameFont_(U"Rキーでやり直す")
 		.drawAt(Scene::Size().x / 2.0, Scene::Size().y - 100, ColorF{ 0.7, 0.7, 0.7 });
 }
 
