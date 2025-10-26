@@ -22,17 +22,20 @@ void Main()
 	//g_Shaders.printStatus();
 
 	GameSceneManager sceneManager;
-	sceneManager.initialize(SceneType::MainMenu);
+	sceneManager.initialize(SceneType::Logo);  // Logo 씬부터 시작
 
 	constexpr Size gameSize{ 880, 880 };
 
 	// ★ Scene의 논리적 크기를 880x880으로 고정
 	Scene::Resize(gameSize);
 	Scene::SetResizeMode(ResizeMode::Virtual);
+	Scene::SetTextureFilter(TextureFilter::Linear);
 
 	// ★ 배경을 항상 검정색으로 고정
 	Scene::SetBackground(ColorF{ 0.0, 0.0, 0.0 });
 	Scene::SetLetterbox(ColorF{ 0.0, 0.0, 0.0 });
+
+	bool wasFullscreen = false;
 
 	while (System::Update())
 	{
@@ -40,6 +43,17 @@ void Main()
 		if (KeyF11.down())
 		{
 			Window::SetFullscreen(!Window::GetState().fullscreen);
+		}
+
+		// 전체화면 상태가 변경되었을 때 씬 설정 재적용
+		const bool isFullscreen = Window::GetState().fullscreen;
+		if (wasFullscreen != isFullscreen)
+		{
+			Scene::Resize(gameSize);
+			Scene::SetResizeMode(ResizeMode::Virtual);
+			Scene::SetBackground(ColorF{ 0.0, 0.0, 0.0 });
+			Scene::SetLetterbox(ColorF{ 0.0, 0.0, 0.0 });
+			wasFullscreen = isFullscreen;
 		}
 
 		// Scene::Size()는 항상 880x880을 반환

@@ -5,6 +5,7 @@
 // 씬 타입 열거형
 enum class SceneType
 {
+    Logo,         // 로고 씬 추가
     MainMenu,
     Opening,      // 오프닝 씬 추가
     StageSelect,  // 스테이지 선택 씬 추가

@@ -84,6 +84,11 @@ Resource(ArtResources/Fonts/TetsubinGothic.otf)
 Resource(engine/font/min/siv3d-min.woff)
 
 //
+//	Logo
+//
+Resource(ArtResources/Logo/L_siv3D.png)
+
+//
 //	BGM
 //
 

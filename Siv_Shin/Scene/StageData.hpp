@@ -38,7 +38,7 @@ namespace StageData
 			U"           ",
 	};
 
-	inline const Array<String> STAGE_1 = {
+	/*inline const Array<String> STAGE_1 = {
 			U"#    T #",
 			U"# R   B#",
 			U"###### #",
@@ -47,7 +47,7 @@ namespace StageData
 			U"        ",
 			U"     Y  ",
 			U"  r     ",
-	};
+	};*/
 
 
 	//inline const Array<String> STAGE_1_TILES = {

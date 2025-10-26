@@ -39,6 +39,16 @@ private:
     double titleAnimTimer_ = 0.0;
     ColorF backgroundColor_;
     bool wasFocused_ = true;  // 포커스 상태 추적
+    
+    // 페이드 효과
+    double fadeTimer_ = 0.0;
+    double fadeDuration_ = 1.0;  // 1초 페이드인
+    
+    // 페이드아웃 효과
+    bool isFadingOut_ = false;
+    double fadeOutTimer_ = 0.0;
+    double fadeOutDuration_ = 1.0;  // 1초 페이드아웃
+    SceneType nextScene_ = SceneType::MainMenu;
 
 public:
     MainMenuScene();
@@ -53,4 +63,6 @@ private:
     void initializeButtons();
     void updateButton(Button& button);
     void drawButton(const Button& button);
+    double getFadeAlpha() const;
+    void startFadeOut(SceneType targetScene);
 };

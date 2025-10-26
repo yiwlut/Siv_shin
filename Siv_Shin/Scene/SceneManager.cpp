@@ -1,4 +1,5 @@
 ﻿#include "SceneManager.hpp"
+#include "LogoScene.hpp"      // 로고 씬 추가
 #include "MainMenuScene.hpp"
 #include "OpeningScene.hpp"  // 오프닝 씬 추가
 #include "StageSelectScene.hpp"
@@ -8,7 +9,7 @@
 #include "StageData.hpp"  // 스테이지 데이터 포함
 
 GameSceneManager::GameSceneManager() 
-    : currentScene_(nullptr), currentSceneType_(SceneType::MainMenu)
+    : currentScene_(nullptr), currentSceneType_(SceneType::Logo)  // 로고부터 시작
 {
     // 스테이지 데이터에 맞춰 해금 배열 초기화
     gameData_.initializeForStageCount(StageData::getTotalStageCount());
@@ -52,6 +53,8 @@ std::unique_ptr<GameScene> GameSceneManager::createScene(SceneType sceneType)
 {
     switch (sceneType)
     {
+    case SceneType::Logo:  // 로고 씬 추가
+        return std::make_unique<LogoScene>();
     case SceneType::MainMenu:
         return std::make_unique<MainMenuScene>();
     case SceneType::Opening:  // 오프닝 씬 추가

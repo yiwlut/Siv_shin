@@ -1677,6 +1677,10 @@ void InGameScene::update()
 		wallBreakFXs.clear();
 		bombExpiryAbs_.clear();
 
+		bossProjectiles_.clear();  // ★ 추가: 보스 투사체 제거
+		bossExplosionParticles_.clear();  // ★ 추가: 폭발 파티클 제거
+		bossAttackTimer_ = 0.0;  // ★ 추가: 공격 타이머 초기화
+
 		loadStage(currentStage_);
 
 		// ★ 배경음악 재생 (Final Stage 구분) ★
@@ -2655,15 +2659,7 @@ void InGameScene::drawUI()
     {
         gameFont_(U"Item: None").draw(Vec2{ 16, 132 }, ColorF{ 0.6, 0.6, 0.6 });
     }
-    
-    // 하단 정보 패널 위치 조정
-    Rect{ 0, 940, 1024, 84 }.draw(ColorF{ 0, 0, 0, 0.5 });
-	debugFont_(U"Arrow: Move/Push | ESC: Menu | R: Retry").draw(Vec2{ 16, 950 }, ColorF{ 0.8, 0.8, 0.9 });
-	debugFont_(U"ROYGBVK: Match colors to goals (lowercase)!").draw(Vec2{ 16, 975 }, ColorF{ 0.9, 0.9, 0.9 });
-
 }
-
-
 
 void InGameScene::drawHelpScreen()
 {

@@ -177,6 +177,9 @@
     <ClCompile Include="Scene\StageSelectScene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\LogoScene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Scene\OpeningScene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -891,6 +894,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Scene\OpeningScene.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\LogoScene.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
