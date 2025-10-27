@@ -105,30 +105,49 @@ void StageSelectScene::loadStageTextures()
 	const int32 totalStages = StageData::getTotalStageCount();
 	stageTextures_.resize(totalStages);
 
+
 	// 각 스테이지별로 3개의 애니메이션 프레임 로드
 	for (int32 stageIndex = 0; stageIndex < totalStages; stageIndex++)
 	{
-		const int32 stageNumber = stageIndex + 1;  // 스테이지 번호는 1부터 시작
+		const int32 stageNumber = stageIndex + 1;
 
-		// ★ 스테이지 10, 11은 임시로 스테이지 9의 텍스처 사용
-		const int32 textureStageNumber = (stageNumber >= 10) ? 9 : stageNumber;
-
-		for (int32 frameIndex = 0; frameIndex < 3; frameIndex++)
+		if (stageNumber == 11)
 		{
-			// 파일 경로: ArtResources/Texture2D/stage/stage_1-0.png, stage_1-1.png, etc.
-			const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_{}-{}.png"_fmt(textureStageNumber, frameIndex));
-
-			Texture frameTexture(texturePath);
-
-			// 텍스처 로딩이 성공했는지 확인
-			if (!frameTexture.isEmpty())
+			
+			for (int32 frameIndex = 0; frameIndex <= 10; frameIndex++)
 			{
-				stageTextures_[stageIndex].push_back(frameTexture);
+				const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_boss-{}.png"_fmt(frameIndex));
+				
+				Texture frameTexture(texturePath);
+
+				if (!frameTexture.isEmpty())
+				{
+					stageTextures_[stageIndex].push_back(frameTexture);
+				}
+				else
+				{
+					stageTextures_[stageIndex].push_back(Texture{});
+				}
 			}
-			else
+			
+		}
+		else
+		{
+			const int32 textureStageNumber = (stageNumber >= 10) ? 9 : stageNumber;
+
+			for (int32 frameIndex = 0; frameIndex < 2; frameIndex++)
 			{
-				// 로딩 실패 시 빈 텍스처 추가 (오류 방지)
-				stageTextures_[stageIndex].push_back(Texture{});
+				const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_{}-{}.png"_fmt(textureStageNumber, frameIndex));
+				Texture frameTexture(texturePath);
+
+				if (!frameTexture.isEmpty())
+				{
+					stageTextures_[stageIndex].push_back(frameTexture);
+				}
+				else
+				{
+					stageTextures_[stageIndex].push_back(Texture{});
+				}
 			}
 		}
 	}
@@ -145,23 +164,49 @@ void StageSelectScene::update()
     {
         if (currentFocus && !bgm_.isPlaying())
         {
-            // 포커스를 다시 얻었을 때 음악 재생
             bgm_.play();
         }
         else if (!currentFocus && bgm_.isPlaying())
         {
-            // 포커스를 잃었을 때 음악 일시정지
             bgm_.pause();
         }
     }
     wasFocused_ = currentFocus;
     
-    // 애니메이션 프레임 업데이트
+    // 일반 스테이지 애니메이션 프레임 업데이트
     animationFrameTimer_ += deltaTime;
     if (animationFrameTimer_ >= animationFrameDuration_)
     {
         animationFrameTimer_ -= animationFrameDuration_;
-        animationFrameIndex_ = (animationFrameIndex_ + 1) % 3;  // 3프레임 순환
+        animationFrameIndex_ = (animationFrameIndex_ + 1) % 2;  
+    }
+    
+    // ★ 보스 스테이지 애니메이션 업데이트 (0→10→0 순환)
+    bossAnimationFrameTimer_ += deltaTime;
+    if (bossAnimationFrameTimer_ >= bossAnimationFrameDuration_)
+    {
+        bossAnimationFrameTimer_ -= bossAnimationFrameDuration_;
+        
+        if (!bossAnimationReverse_)
+        {
+            // 정방향: 0 → 10
+            bossAnimationFrameIndex_++;
+            if (bossAnimationFrameIndex_ >= 10)
+            {
+                bossAnimationFrameIndex_ = 10;
+                bossAnimationReverse_ = true;
+            }
+        }
+        else
+        {
+            // 역방향: 10 → 0
+            bossAnimationFrameIndex_--;
+            if (bossAnimationFrameIndex_ <= 0)
+            {
+                bossAnimationFrameIndex_ = 0;
+                bossAnimationReverse_ = false;
+            }
+        }
     }
     
     handleDragInput();
@@ -259,9 +304,13 @@ void StageSelectScene::drawStageButtons()
 		if (i < stageTextures_.size() && !stageTextures_[i].isEmpty())
 		{
 			const auto& frames = stageTextures_[i];
-			if (animationFrameIndex_ < static_cast<int32>(frames.size()) && !frames[animationFrameIndex_].isEmpty())
+			
+			const bool isBossStage = (button.stageNumber == 11);
+			const int32 frameIndex = isBossStage ? bossAnimationFrameIndex_ : animationFrameIndex_;
+			
+			if (frameIndex < static_cast<int32>(frames.size()) && !frames[frameIndex].isEmpty())
 			{
-				const Texture& currentFrame = frames[animationFrameIndex_];
+				const Texture& currentFrame = frames[frameIndex];
 
 				if (button.isLocked)
 				{
@@ -300,7 +349,7 @@ void StageSelectScene::drawStageButtons()
 			const Vec2 center = drawRect.center();
 			Circle{ center.movedBy(0, -10), 12 }.drawFrame(3, Palette::Gray);
 			Rect{ center.movedBy(-8, -2).asPoint(), 16, 18 }.draw(Palette::Gray);
-			stageFont_(U"ロック中").drawAt(center.movedBy(0, 40), ColorF{ 0.5, 0.5, 0.5 });  // ★ "Locked" → "ロック中"
+			stageFont_(U"ロック中").drawAt(center.movedBy(0, 40), ColorF{ 0.5, 0.5, 0.5 });
 		}
 	}
 

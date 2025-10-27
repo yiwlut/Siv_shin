@@ -31,6 +31,12 @@ Audio bgm_;
 	double animationFrameTimer_ = 0.0;
 	double animationFrameDuration_ = 0.33;  // 약 3fps
 
+	// ★ 보스 스테이지 전용 애니메이션 추가
+	int32 bossAnimationFrameIndex_ = 0;
+	double bossAnimationFrameTimer_ = 0.0;
+	double bossAnimationFrameDuration_ = 0.1;  // 페이드 효과 속도
+	bool bossAnimationReverse_ = false;  // 역재생 플래그
+
 	// ★ 함수 선언 추가
 	void loadStageTextures();
     Array<StageButton> stageButtons_;
