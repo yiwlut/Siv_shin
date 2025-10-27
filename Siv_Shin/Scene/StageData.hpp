@@ -11,23 +11,23 @@ namespace StageData
 
 	//7x7
 	inline const Array<String> STAGE_1 = {
-		U"#######",
-		U"###b###",
-		U"###B###",
-		U"T R Y o",
-		U"###G###",
 		U"###g###",
-		U"#######",
+		U"###B###",
+		U"###Y###",
+		U"T R Y o",
+		U"###R###",
+		U"###B###",
+		U"###v###",
 	};
 	//8x8
     inline const Array<String> STAGE_2 = {
 		U"########",
-		U"# vB R #",
-		U"# R    #",  
-		U"# T    #",
+		U"# vB ###",
+		U"# R   ##",  
+		U"# T R  #",
 		U"#    Y #",
-		U"#  Rr o#",
-		U"#      #",  
+		U"## Rr o#",
+		U"###    #",  
 		U"########"
 	};
 
@@ -43,15 +43,16 @@ namespace StageData
 	};
 
     inline const Array<String> STAGE_4 = {
-		U"L# VOv#",  
-		U"#     #",  
-		U" R    #",
-		U"T  BO #",  
-		U"# Y   #",  
-		U"##BV ##",  
-		U"LLv###L",
+		U"L# VOvL",  
+		U"#     L",  
+		U" R    L",
+		U"T  BO L",  
+		U"# Y   L",  
+		U"##BV LL",  
+		U"LLvLLLL",
 	};
 
+	/*
     inline const Array<String> STAGE_5 = {
 		U"iiiii#iiiii",
 		U"iiiii#iiiii",
@@ -64,6 +65,21 @@ namespace StageData
 		U"LLLL   LLLL",
 		U"LLLLLTLLLLL",  
 		U"LLLLLLLLLLL"
+	};
+
+	*/
+	inline const Array<String> STAGE_5 = {
+		U"       #   ",
+		U" ## # ## # ",
+		U" #  #    # ",
+		U" # #  # ## ",
+		U" ######### ",
+		U" #VYoTR#GR ",
+		U" #######4# ",
+		U" # ## # ## ",
+		U" #    #    ",
+		U" ## # # ## ",
+		U"    #    # ",
 	};
 
 	inline const Array<String> STAGE_6 = {
