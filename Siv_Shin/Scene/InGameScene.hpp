@@ -296,7 +296,7 @@ private:
 	//holographic
 	void applyHoloFromHeldItem_();
 
-
+	enum class OverlayApplyMode { OverlayOnly, WriteToMap };
 
     bool isSliding_ = false;      
     Point slideDir_{ 0, 0 };
@@ -306,7 +306,35 @@ private:
     void continueSliding();
     void slideBoxOnIce(ColorBox* box, Point dir);
 
-	void applyTileOverlay(const Array<String>& overlayData);
+	void applyTileOverlay(const Array<String>& overlayData, OverlayApplyMode mode);
+	void drawGoalMarkersTop();
+	bool isGoalTile(TileType t);
+
+	enum class OverlayType : uint8 { None = 0, Warning = 1 };
+
+	Array<Array<OverlayType>> overlayWarn_;
+	double wallStepInterval_ = 2.0;
+	double wallNextTime_ = 0.0;
+	int32 nextColumnL_ = 0;
+	int32 nextColumnR_ = 0;
+	bool fillFromBothSides_ = true;
+
+	void initBossWallSystem();
+	void updateBossWallFilling(double dt);
+	void spawnWallColumn(int32 x);
+	void setOverlayWarning(int32 x, int32 y, bool on);
+	void clearOverlayWarningCol(int32 x);
+	void drawOverlayWarnings();
+
+	Array<Array<bool>> wallMask_;
+
+	bool isBlocked(Point pos) const;
+
+	void clearWallMask();
+	void setWallMaskCol(int x, bool on);
+
+	void drawWallMask();
+
 
 public:
     InGameScene();

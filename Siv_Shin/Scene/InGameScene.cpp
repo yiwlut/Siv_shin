@@ -100,8 +100,9 @@ void InGameScene::onEnter()
 		const Array<String> initialOverlay = StageData::getFinalStageTileOverlay(0.0);
 		if (!initialOverlay.isEmpty())
 		{
-			applyTileOverlay(initialOverlay);
+			applyTileOverlay(initialOverlay,StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly : OverlayApplyMode::WriteToMap);
 		}
+		initBossWallSystem();
 
 		if (!bossBgm_.isEmpty())
 		{
@@ -214,8 +215,12 @@ void InGameScene::loadStage(int32 stageNumber)
 	// 가변 크기 파서 호출
 	loadStageFromText_VarSize(mapText);
 
+	wallMask_.assign(getMapHeight(), Array<bool>(getMapWidth(), false));
+
+	overlayWarn_.assign(getMapHeight(), Array<OverlayType>(getMapWidth(), OverlayType::None));
 	const Array<String> tileOverlay = StageData::getStageTileOverlay(stageNumber);
-	applyTileOverlay(tileOverlay);
+	applyTileOverlay(tileOverlay, StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly   // 보스전: 오버레이만
+										   : OverlayApplyMode::WriteToMap);
 
 
 	// 맵 크기에 맞춘 고정 카메라 적용
@@ -748,19 +753,19 @@ void InGameScene::destroyWalls8(Point centerTile)
 		Point{-1,  1}, Point{0,  1}, Point{1,  1}   // 아래쪽 3칸
 	};
 
-	for (const auto& dir : directions) {
-		Point targetTile = centerTile + dir;
+	for (const auto& d : directions) {
+		Point t = centerTile + d;
+		if (!isInsideMap(t)) continue;
 
-		// 맵 범위 체크
-		if (!isInsideMap(targetTile)) continue;
+		if (!wallMask_.isEmpty() && wallMask_[t.y][t.x]) {
+			wallMask_[t.y][t.x] = false;
+			spawnWallBreakFXAtTile(t);
+			continue;
+		}
 
-		// 벽인지 확인
-		if (mapData_[targetTile.y][targetTile.x] == TileType::Wall) {
-			// 벽을 빈 타일로 변환
-			mapData_[targetTile.y][targetTile.x] = TileType::Empty;
-
-			// 벽 파괴 효과 생성
-			spawnWallBreakFXAtTile(targetTile);
+		if (mapData_[t.y][t.x] == TileType::Wall) {
+			mapData_[t.y][t.x] = TileType::Empty;
+			spawnWallBreakFXAtTile(t);
 		}
 	}
 }
@@ -905,8 +910,7 @@ bool InGameScene::canMoveTo(Point pos) const
 	if (pos.x < 0 || pos.x >= getMapWidth() || pos.y < 0 || pos.y >= getMapHeight())
 		return false;
 
-	if (mapData_[pos.y][pos.x] == TileType::Wall)
-		return false;
+	if (isBlocked(pos)) return false;
 
 	if (getBoxAt(pos) != nullptr)
 		return false;
@@ -925,29 +929,22 @@ bool InGameScene::canMoveTo(Point pos) const
 			// 박스가 최종적으로 멈출 위치까지 계산
 			while (true)
 			{
-				Point nextPos = testPos + task.dir;
+				const Point nextPos = testPos + task.dir; // 다음 후보 [attached_file:7]
 
-				// 맵 밖이거나 벽이면 현재 위치에서 멈춤
-				if (!isInsideMap(nextPos) || mapData_[nextPos.y][nextPos.x] == TileType::Wall)
+				// 맵 밖이거나 "차단 칸"(기존 Wall + 마스크)이면 현재 testPos에서 멈춤
+				if (!isInsideMap(nextPos) || isBlocked(nextPos) || getBoxAt(nextPos) != nullptr)
 				{
-					if (testPos == pos) return false; // 최종 위치가 플레이어가 가려는 위치와 같음
-					break;
+					if (testPos == pos) return false; // 플레이어가 가려는 칸이 그 박스의 최종 정지칸 [attached_file:7]
+					break; // 시뮬 종료 [attached_file:7]
 				}
 
-				// 다른 박스가 있으면 현재 위치에서 멈춤
-				if (getBoxAt(nextPos) != nullptr)
-				{
-					if (testPos == pos) return false;
-					break;
-				}
+				testPos = nextPos; // 전진 [attached_file:7]
 
-				testPos = nextPos;
-
-				// 얼음이 아니면 이 위치에서 멈춤
+				// 얼음이 아니면 여기서 멈춤
 				if (!isIce(testPos))
 				{
-					if (testPos == pos) return false;
-					break;
+					if (testPos == pos) return false; // 최종 정지칸과 충돌 [attached_file:7]
+					break; // 시뮬 종료 [attached_file:7]
 				}
 			}
 		}
@@ -995,22 +992,19 @@ bool InGameScene::canPushBox(Point playerPos, Point boxPos, Point dir) const {
 	const Point next = boxPos + dir;
 
 	if (!isInsideMap(next)) return false;
-	if (mapData_[next.y][next.x] == TileType::Wall) return false;
+	if (isBlocked(next)) return false;
 
 	if (const auto* target = getBoxAt(next)) {
 		if (const auto* current = getBoxAt(boxPos)) {
-			
-			BoxColor currentColor = getEffectiveBoxColor(current->uid);
-			BoxColor targetColor = getEffectiveBoxColor(target->uid);
-
-			const Optional<BoxColor> merged = getMergedColor(currentColor, targetColor);
+			const BoxColor currentColor = getEffectiveBoxColor(current->uid);
+			const BoxColor targetColor = getEffectiveBoxColor(target->uid);
+			const auto merged = getMergedColor(currentColor, targetColor);
 			return merged.has_value();
 		}
 		return false;
 	}
 	return true;
 }
-
 void InGameScene::pushBox(ColorBox* box, Point direction)
 {
     box->pos = box->pos + direction;
@@ -1383,7 +1377,7 @@ void InGameScene::updateFinalStageTileOverlay()
 
         if (currentPhase != lastAppliedPhase)
         {
-            applyTileOverlay(overlay);
+            applyTileOverlay(overlay,StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly : OverlayApplyMode::WriteToMap);
             lastAppliedPhase = currentPhase;
 
             checkPlayerLavaCollision();
@@ -1450,7 +1444,8 @@ void InGameScene::update()
 	// ★ Final Stage 시간 기반 타일 오버레이 업데이트
 	if (StageData::isFinalStage(currentStage_))
 	{
-		updateFinalStageTileOverlay();  // 새 함수 호출
+		//updateFinalStageTileOverlay();  // 새 함수 호출
+		updateBossWallFilling(dt);
 	}
 	// ★ StageFailed 상태: R키만 동작, Z키는 불가, ESC도 불가
 	if (isFailed_ && showFailedButtons_)
@@ -1466,11 +1461,18 @@ void InGameScene::update()
 			moves_ = 0;
 			score_ = 0;
 			playerHealth_ = MAX_HEALTH;
+			const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
+			if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay,StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly: OverlayApplyMode::WriteToMap); }
+			
 
 			loadStage(currentStage_);
 
 			if (StageData::isFinalStage(currentStage_))
 			{
+				const auto ov = StageData::getFinalStageTileOverlay(0.0);
+				applyTileOverlay(ov, OverlayApplyMode::OverlayOnly);
+				initBossWallSystem();
+				initBossWallSystem();
 				if (!bossBgm_.isEmpty())
 				{
 					bossBgm_.setVolume(0.4);
@@ -1519,6 +1521,12 @@ void InGameScene::update()
 
 			if (StageData::isFinalStage(currentStage_))
 			{
+				const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
+				if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay,OverlayApplyMode::OverlayOnly); }
+
+
+				initBossWallSystem();
+
 				if (!bossBgm_.isEmpty())
 				{
 					bossBgm_.setVolume(0.4);
@@ -1586,7 +1594,6 @@ void InGameScene::update()
 					}
 				}
 			}
-			// ✅ 폭탄 생성 사운드도 재개 (필요 시)
 			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPaused()) {
 				bombExplosionSound_.play();
 			}
@@ -1606,10 +1613,14 @@ void InGameScene::update()
 			isPlayerDead_ = true;
 			deathAnimTimer_ = 0.0;
 			createDeathEffect(true);  // ★ true = 흰색 파티클 사용
+			const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
+			if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay,StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly: OverlayApplyMode::WriteToMap); }
+
 			if (StageData::isFinalStage(currentStage_)) {
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
 					savedMusicPosition_ = bossBgm_.posSec();
 					bossBgm_.stop();
+					initBossWallSystem();
 				}
 			}
 			else {
@@ -1676,9 +1687,13 @@ void InGameScene::update()
 		wallBreakFXs.clear();
 		bombExpiryAbs_.clear();
 
-		bossProjectiles_.clear();  // ★ 추가: 보스 투사체 제거
-		bossExplosionParticles_.clear();  // ★ 추가: 폭발 파티클 제거
-		bossAttackTimer_ = 0.0;  // ★ 추가: 공격 타이머 초기화
+		bossProjectiles_.clear();
+		bossExplosionParticles_.clear();
+		bossAttackTimer_ = 0.0;
+
+		const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
+		if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay, StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly: OverlayApplyMode::WriteToMap); }
+		
 
 		loadStage(currentStage_);
 
@@ -1687,7 +1702,8 @@ void InGameScene::update()
 			const Array<String> initialOverlay = StageData::getFinalStageTileOverlay(0.0);
 			if (!initialOverlay.isEmpty())
 			{
-				applyTileOverlay(initialOverlay);
+				applyTileOverlay(initialOverlay,OverlayApplyMode::OverlayOnly);
+				initBossWallSystem();
 			}
 
 			if (!bossBgm_.isEmpty())
@@ -2078,7 +2094,7 @@ bool InGameScene::canSlideNext_(Point tile, Point dir) const
 
 bool InGameScene::isIce(Point pos) const
 {
-    if (!isInsideMap(pos)) return false;
+	if (isBlocked(pos)) return false;
     return (mapData_[pos.y][pos.x] == TileType::Ice);
 }
 
@@ -2458,16 +2474,16 @@ void InGameScene::drawMap()
 				tileRect.drawFrame(2, 0, ColorF{ 1.0, 0.5, 0.0 });
 			}
 			break;  // ★ break 추가!
-			case TileType::LavaWarning:  // ★ 새로운 케이스 추가
-			{
-				// 투명한 배경
-				tileRect.draw(ColorF{ 0.9, 0.2, 0.2, 0.12 });
+			//case TileType::LavaWarning:  // ★ 새로운 케이스 추가
+			//{
+			//	// 투명한 배경
+			//	tileRect.draw(ColorF{ 0.9, 0.2, 0.2, 0.12 });
 
-				// 빠르게 깜빡이는 테두리
-				const double flash = 0.4 + 0.6 * Math::Abs(Math::Sin(gameTime_ * 8.0));
-				tileRect.drawFrame(4, 0, ColorF{ 1.0, 0.0, 0.0, flash });
-			}
-			break;
+			//	// 빠르게 깜빡이는 테두리
+			//	const double flash = 0.4 + 0.6 * Math::Abs(Math::Sin(gameTime_ * 8.0));
+			//	tileRect.drawFrame(4, 0, ColorF{ 1.0, 0.0, 0.0, flash });
+			//}
+			//break;
 			case TileType::RedGoal:
 				tileRect.draw(ColorF{ 0.9, 0.2, 0.2, 0.3 });
 				Circle{ tileRect.center(), 12 }.drawFrame(3, ColorF{ 0.9, 0.2, 0.2 });
@@ -2530,6 +2546,10 @@ void InGameScene::drawMap()
 		Quad(top, right, bottom, left).draw(ic);
 		Quad(top, right, bottom, left).drawFrame(2, ColorF{ ic.r * 1.3, ic.g * 1.3, ic.b * 1.3 });
 	}
+
+	drawWallMask();
+	drawGoalMarkersTop();
+	drawOverlayWarnings();
 }
 
 
@@ -3167,6 +3187,11 @@ void InGameScene::updateClearButtons()
         moves_ = 0;
         score_ = 0;
         loadStage(currentStage_);
+		if (StageData::isFinalStage(currentStage_)) {
+			const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
+			if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay, StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly: OverlayApplyMode::WriteToMap); }
+			initBossWallSystem();
+		}
     }
     else if (stageSelectButton_.rect.leftClicked())
     {
@@ -3782,7 +3807,7 @@ bool InGameScene::isInsideMap(Point pos) const {
 }
 
 bool InGameScene::canMoveToPoint(Point pos) const {
-	if (!isInsideMap(pos)) return false;
+	if (isBlocked(pos)) return false;
 	if (mapData_[pos.y][pos.x] == TileType::Wall) return false;
 	if (getBoxAt(pos) != nullptr) return false;
 	return true;
@@ -3911,9 +3936,7 @@ void InGameScene::drawWorldWithCamera(const std::function<void()>& worldDraw,
 }
 
 void InGameScene::setTileAt(Point pos, TileType type) {
-	if (!isInsideMap(pos)) {
-		return;
-	}
+	if (isBlocked(pos)) return;
 	mapData_[pos.y][pos.x] = type;
 }
 
@@ -3922,7 +3945,7 @@ void InGameScene::setTileAt(int32 x, int32 y, TileType type) {
 }
 
 InGameScene::TileType InGameScene::getTileAt(Point pos) const {
-	if (!isInsideMap(pos)) {
+	if (isBlocked(pos)){
 		return TileType::Empty;
 	}
 	return mapData_[pos.y][pos.x];
@@ -3932,47 +3955,247 @@ InGameScene::TileType InGameScene::getTileAt(int32 x, int32 y) const {
 	return getTileAt(Point(x, y));
 }
 
-void InGameScene::applyTileOverlay(const Array<String>& overlayData) {
-	if (overlayData.isEmpty()) {
-		return;
+void InGameScene::applyTileOverlay(const Array<String>& overlayData, OverlayApplyMode mode) {
+	const int H = getMapHeight();
+	const int W = getMapWidth();
+
+	if ((int)overlayWarn_.size() != H || (H > 0 && (int)overlayWarn_[0].size() != W)) {
+		overlayWarn_.assign(H, Array<OverlayType>(W, OverlayType::None));
+	}
+	else {
+		for (int y = 0; y < H; ++y)
+			for (int x = 0; x < W; ++x)
+				overlayWarn_[y][x] = OverlayType::None;
 	}
 
-	int32 height = Min((int32)overlayData.size(), getMapHeight());
-
-	for (int32 y = 0; y < height; y++) {
+	const int h = Min((int)overlayData.size(), H);
+	for (int y = 0; y < h; ++y) {
 		const String& line = overlayData[y];
-		int32 width = Min((int32)line.length(), getMapWidth());
+		const int w = Min((int)line.size(), W);
+		for (int x = 0; x < w; ++x) {
+			const char32 ch = line[x];
+			const Point p{ x, y };
 
-		for (int32 x = 0; x < width; x++) {
-			char32 ch = line[x];
-
-			// 빈칸이면 스킵 (변경하지 않음)
-			if (ch == U' ' || ch == U'.') {
+			if (mode == OverlayApplyMode::OverlayOnly) {
+				if (ch == U'!') {
+					overlayWarn_[y][x] = OverlayType::Warning;
+				}
 				continue;
 			}
 
-			// 타일 타입 변환
-			TileType newTile = TileType::Empty;
 			switch (ch) {
-			case U'i':  // 얼음
-				newTile = TileType::Ice;
-				break;
-			case U'L':  // 용암
-				newTile = TileType::Lava;
-				break;
-			case U'!':  // 용암 예고 ★ 추가
-				newTile = TileType::LavaWarning;
-				break;
-			case U'#':  // 벽
-				newTile = TileType::Wall;
-				break;
-				// 필요한 다른 타일 타입 추가
-			default:
-				continue;  // 알 수 없는 문자는 스킵
-			}
+			case U'#': setTileAt(p, TileType::Wall);        break;
+			case U' ': setTileAt(p, TileType::Empty);       break;
+			case U'i': case U'I': setTileAt(p, TileType::Ice);  break;
+			case U'l': case U'L': setTileAt(p, TileType::Lava); break;
+			case U'!': setTileAt(p, TileType::LavaWarning); break;
 
-			// 타일 변경
-			setTileAt(x, y, newTile);
+			default: break;
+			}
 		}
 	}
+}
+
+void InGameScene::initBossWallSystem() {
+	overlayWarn_.assign(getMapHeight(), Array<OverlayType>(getMapWidth(), OverlayType::None));
+
+	wallMask_.assign(getMapHeight(), Array<bool>(getMapWidth(), false));
+
+	nextColumnL_ = 0;
+	nextColumnR_ = getMapWidth() - 1;
+
+	wallNextTime_ = gameTime_ + wallStepInterval_;
+
+	if (isInsideMap(Point{ nextColumnL_, 0 })) {
+		for (int y = 0; y < getMapHeight(); ++y) setOverlayWarning(nextColumnL_, y, true);
+	}
+	if (fillFromBothSides_ && isInsideMap(Point{ nextColumnR_, 0 })) {
+		for (int y = 0; y < getMapHeight(); ++y) setOverlayWarning(nextColumnR_, y, true);
+	}
+}
+
+void InGameScene::setOverlayWarning(int32 x, int32 y, bool on) {
+	if (x < 0 || x >= getMapWidth() || y < 0 || y >= getMapHeight()) return;
+	overlayWarn_[y][x] = on ? OverlayType::Warning : OverlayType::None;
+}
+
+void InGameScene::clearOverlayWarningCol(int32 x) {
+	if (x < 0 || x >= getMapWidth()) return;
+	for (int y = 0; y < getMapHeight(); ++y) {
+		overlayWarn_[y][x] = OverlayType::None;
+	}
+}
+
+void InGameScene::drawOverlayWarnings() {
+	const int H = getMapHeight();
+	const int W = getMapWidth();
+
+	if ((int)overlayWarn_.size() != H || H == 0) return;
+	for (int y = 0; y < H; ++y) {
+		if ((int)overlayWarn_[y].size() != W) return;
+	}
+
+	const double t = Math::Fmod(gameTime_, 1.0);
+	const double flash = 0.6 + 0.4 * Sin(2.0 * Math::Pi * t);
+
+	for (int y = 0; y < H; ++y) {
+		for (int x = 0; x < W; ++x) {
+			if (overlayWarn_[y][x] != OverlayType::Warning) continue;
+			const Rect r{ x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+			r.drawFrame(4, 0, ColorF{ 1.0, 0.15, 0.15, flash });
+		}
+	}
+}
+
+void InGameScene::updateBossWallFilling(double dt) {
+	if (!StageData::isFinalStage(currentStage_)) return;
+	if (isCleared_ || isPlayerDead_) return;
+
+	if (gameTime_ < wallNextTime_) return;
+
+	const bool hasLeft = (nextColumnL_ <= nextColumnR_);
+	const bool hasRight = (nextColumnR_ >= nextColumnL_);
+
+	if (!hasLeft) return;
+
+	if (fillFromBothSides_ && hasLeft && hasRight && nextColumnL_ < nextColumnR_) {
+		const int xL = nextColumnL_;
+		const int xR = nextColumnR_;
+		spawnWallColumn(xL);
+		if (xR != xL) spawnWallColumn(xR);
+
+		clearOverlayWarningCol(xL);
+		clearOverlayWarningCol(xR);
+
+		nextColumnL_++;
+		nextColumnR_--;
+
+		if (nextColumnL_ <= nextColumnR_) {
+			if (isInsideMap(Point{ nextColumnL_, 0 })) {
+				for (int y = 0; y < getMapHeight(); ++y) setOverlayWarning(nextColumnL_, y, true);
+			}
+			if (nextColumnR_ != nextColumnL_ && isInsideMap(Point{ nextColumnR_, 0 })) {
+				for (int y = 0; y < getMapHeight(); ++y) setOverlayWarning(nextColumnR_, y, true);
+			}
+		}
+	}
+	else {
+		const int x = nextColumnL_;
+		spawnWallColumn(x);
+		clearOverlayWarningCol(x);
+		nextColumnL_++;
+		if (nextColumnL_ <= nextColumnR_) {
+			if (isInsideMap(Point{ nextColumnL_, 0 })) {
+				for (int y = 0; y < getMapHeight(); ++y) setOverlayWarning(nextColumnL_, y, true);
+			}
+		}
+	}
+
+	wallNextTime_ = gameTime_ + wallStepInterval_;
+}
+
+void InGameScene::spawnWallColumn(int32 x) {
+	if (x < 0 || x >= getMapWidth()) return;
+
+	if (!isPlayerDead_ && playerPos_.x == x) {
+		isPlayerDead_ = true;
+		deathAnimTimer_ = 0.0;
+		createDeathEffect(true);
+
+
+		if (StageData::isFinalStage(currentStage_)) {
+			if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
+				savedMusicPosition_ = bossBgm_.posSec();
+				bossBgm_.stop();
+			}
+		}
+		else {
+			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
+				savedMusicPosition_ = bgm_.posSec();
+				bgm_.stop();
+			}
+		}
+	}
+
+
+	for (int y = 0; y < getMapHeight(); ++y) {
+		if (!wallMask_.isEmpty()) wallMask_[y][x] = true;
+		spawnWallBreakFXAtTile(Point{ x,y });
+	}
+
+	const double scale = camera().getScale();
+	const double shakeIntensityWorld = Min(34.0 / Max(0.001, scale), 40.0 / Max(0.001, scale));
+	camera().shake(0.25, shakeIntensityWorld);
+}
+
+bool InGameScene::isBlocked(Point pos) const {
+	if (pos.x < 0 || pos.x >= getMapWidth() || pos.y < 0 || pos.y >= getMapHeight())
+		return true;
+	if (mapData_[pos.y][pos.x] == TileType::Wall) return true;
+	if (!wallMask_.isEmpty() && wallMask_[pos.y][pos.x]) return true;
+	return false;
+}
+
+void InGameScene::drawWallMask() {
+	if (wallMask_.isEmpty()) return;
+	for (int y = 0; y < getMapHeight(); ++y) {
+		for (int x = 0; x < getMapWidth(); ++x) {
+			if (!wallMask_[y][x]) continue;
+			const Rect r{ x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+			r.draw(ColorF{ 0.3, 0.3, 0.35 });
+			r.drawFrame(2, 0, ColorF{ 0.5, 0.5, 0.55 });
+		}
+	}
+}
+
+bool InGameScene::isGoalTile(TileType t) {
+	switch (t) {
+	case TileType::RedGoal:
+	case TileType::YellowGoal:
+	case TileType::BlueGoal:
+	case TileType::OrangeGoal:
+	case TileType::GreenGoal:
+	case TileType::VioletGoal:
+	case TileType::BlackGoal:
+		return true;
+	default:
+		return false;
+	}
+}
+
+void InGameScene::drawGoalMarkersTop() {
+	// 바닥 타일 스위치에서 사용한 파라미터와 동일
+	constexpr double ringRadius = 12.0;
+	constexpr int ringThickness = 3;
+
+	auto shouldOverlay = [&](Point p) -> bool {
+		if (p.x < 0 || p.x >= getMapWidth() || p.y < 0 || p.y >= getMapHeight()) return false;
+		// 이미 바닥 타일로 Goal이 그려질 상황이면 상단에서 중복 그리지 않음
+		if (isGoalTile(mapData_[p.y][p.x])) return false;
+		// 그 외(용암/얼음/벽/마스크 등으로 가려진 경우)는 상단에서 그려서 보이게 함
+		return true;
+		};
+
+	auto drawGoalTop = [&](Point p, const ColorF& cFill, const ColorF& cRing) {
+		if (!shouldOverlay(p)) return;
+		const Rect r{ p.x * TILE_SIZE, p.y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+		r.draw(cFill);
+		Circle{ r.center(), ringRadius }.drawFrame(ringThickness, cRing);
+		};
+
+	// 바닥 타일과 동일 색상으로 최상단 오버레이
+	for (const auto& p : redGoalPositions_)
+		drawGoalTop(p, ColorF{ 0.9, 0.2, 0.2, 0.3 }, ColorF{ 0.9, 0.2, 0.2 });
+	for (const auto& p : yellowGoalPositions_)
+		drawGoalTop(p, ColorF{ 1.0, 0.9, 0.2, 0.3 }, ColorF{ 1.0, 0.9, 0.2 });
+	for (const auto& p : blueGoalPositions_)
+		drawGoalTop(p, ColorF{ 0.2, 0.4, 0.9, 0.3 }, ColorF{ 0.2, 0.4, 0.9 });
+	for (const auto& p : orangeGoalPositions_)
+		drawGoalTop(p, ColorF{ 1.0, 0.5, 0.0, 0.3 }, ColorF{ 1.0, 0.5, 0.0 });
+	for (const auto& p : greenGoalPositions_)
+		drawGoalTop(p, ColorF{ 0.2, 0.8, 0.3, 0.3 }, ColorF{ 0.2, 0.8, 0.3 });
+	for (const auto& p : violetGoalPositions_)
+		drawGoalTop(p, ColorF{ 0.7, 0.2, 0.8, 0.3 }, ColorF{ 0.7, 0.2, 0.8 });
+	for (const auto& p : blackGoalPositions_)
+		drawGoalTop(p, ColorF{ 0.2, 0.2, 0.2, 0.5 }, ColorF{ 0.4, 0.4, 0.4 });
 }

@@ -9,6 +9,8 @@ namespace StageData
 		char tileChar;  // 'i' = Ice, 'l' = Lava
 	};
 
+	
+
 	//7x7
 	inline const Array<String> STAGE_1 = {
 		U"###g###",
@@ -175,26 +177,30 @@ namespace StageData
 	};
 
 	inline const Array<String> FINAL_STAGE = {
-		U"   # GVBO #   ",
-		U"   #      #   ",
-		U"   ########   ",
-		U"        R     ",
-		U"    B T  O    ",
-		U"             o",
+		U"     r          ",
+		U"    R v         ",
+		U"     R y        ",
+		U"    GG Tg       ",
+		U"         b      ",
+		U"          o     ",
 
 	};
 
 	// 첫 시작 시 오버레이 
 	inline const Array<String> FINAL_STAGE_P0_TILES = {
-		U"L!! iiiiii LLL",
-		U"LL! iiiiii LLL",
-		U"LL!        !LL",
-		U"LL!!!      !LL",
-		U"LL!        !LL",
-		U"LLL!      !!!L",
-
+		U"                ",
+		U"                ",
+		U"                ",
+		U"                ",
+		U"                ",
+		U"                ",
 	};
-
+	//U"L!! iiiiii LLL",
+	//U"LL! iiiiii LLL",
+	//U"LL!        !LL",
+	//U"LL!!!      !LL",
+	//U"LL!        !LL",
+	//U"LLL!      !!!L",
 	// 10초 경과 시 타일 오버레이 (용암 첫 상승)
 	inline const Array<String> FINAL_STAGE_P1_TILES = {
 		U"LLL!iiiii!!LLL",
@@ -235,17 +241,40 @@ namespace StageData
 		U"LLLLLLLLLLLLLL",
 	};
 
+	inline constexpr double getNextPhaseTime(int32 phase)
+	{
+		double nextPhaseTime = 10.0;
+
+		return nextPhaseTime * phase;
+	}
+
+	inline constexpr double getPhaseTimeByGameTime(double elapsedTime)
+	{
+		if (elapsedTime >= getNextPhaseTime(4)) return 4;
+		if (elapsedTime >= getNextPhaseTime(3)) return 3;
+		if (elapsedTime >= getNextPhaseTime(2)) return 2;
+		if (elapsedTime >= getNextPhaseTime(1)) return 1;
+
+		return 0;
+	}
+
 	inline Array<String> getFinalStageTileOverlay(double elapsedTime)
 	{
-		if (elapsedTime >= 18.0)  // ★ 18초 (6초 * 3)
+		
+
+		if (elapsedTime >= getNextPhaseTime(4))  // ★ 18초 (6초 * 3)
+		{
+			return FINAL_STAGE_P4_TILES;
+		}
+		else if (elapsedTime >= getNextPhaseTime(3))  // ★ 12초 (6초 * 2)
 		{
 			return FINAL_STAGE_P3_TILES;
 		}
-		else if (elapsedTime >= 12.0)  // ★ 12초 (6초 * 2)
+		else if (elapsedTime >= getNextPhaseTime(2))  // ★ 12초 (6초 * 2)
 		{
 			return FINAL_STAGE_P2_TILES;
 		}
-		else if (elapsedTime >= 6.0)  // ★ 6초 (6초 * 1)
+		else if (elapsedTime >= getNextPhaseTime(1))  // ★ 6초 (6초 * 1)
 		{
 			return FINAL_STAGE_P1_TILES;
 		}
