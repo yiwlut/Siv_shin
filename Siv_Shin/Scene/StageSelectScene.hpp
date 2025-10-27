@@ -8,6 +8,7 @@ Font titleFont_;
 Font stageFont_;
 Font infoFont_;
 Font stageNumberFont_;
+Font stageTitleFont_;  // ★ 스테이지 이름용 큰 폰트 추가
     
 // 배경음악
 Audio bgm_;

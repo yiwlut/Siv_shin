@@ -6,6 +6,7 @@ StageSelectScene::StageSelectScene()
 	, stageFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
 	, infoFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))   // ★ 일본어 폰트로 변경
 	, stageNumberFont_(48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))              // ★ 일본어 폰트로 변경
+	, stageTitleFont_(FontMethod::MSDF, 32, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 큰 폰트 (28 + 4 = 32)
 	, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)
 {
 	currentScene_ = SceneType::StageSelect;
@@ -18,6 +19,7 @@ StageSelectScene::StageSelectScene(GameData* gameData)
 	, stageFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
 	, infoFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))   // ★ 일본어 폰트로 변경
 	, stageNumberFont_(48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))              // ★ 일본어 폰트로 변경
+	, stageTitleFont_(FontMethod::MSDF, 32, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 큰 폰트 (28 + 4 = 32)
 	, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)
 	, gameData_(gameData)
 {
@@ -58,26 +60,20 @@ void StageSelectScene::initializeStages()
 {
 	stageButtons_.clear();
 
-	// 화면 중앙 Y 위치
 	const int32 centerY = 400;
 
-	// 스테이지 개수 동적 결정 (마지막은 finalStage)
 	const int32 totalStages = StageData::getTotalStageCount();
 
-	// ★ 일본어 스테이지 이름으로 변경
 	Array<String> stageNames = {
-	U"Tutorial 1", U"Basic", U"Complex",
-	U"Tutorial 2", U"Fish", U"Master",
-	U"Tutorial 3", U"Red Chess", U"Stage 9",
-	U"Stage 10", U"Final"
+	U"神罰", U"ここはどこ", U"爆発",
+	U"灼熱海流", U"深淵の門", U"歪む色彩",
+	U"裁きの間", U"氷結の迷路", U"上昇海流",
+	U"心臓部"
 	};
 
-	// 스테이지 버튼 생성 (가로로 나열)
 	for (int32 i = 0; i < totalStages; i++)
 	{
 		StageButton button;
-
-		// 가로로 배치 (스크롤 영역 고려)
 		button.rect = Rect{
 			i * (STAGE_WIDTH + STAGE_SPACING),
 			centerY - STAGE_HEIGHT / 2,
@@ -85,11 +81,7 @@ void StageSelectScene::initializeStages()
 		};
 
 		button.stageNumber = i + 1;
-
-		// 처음부터 모두 해금
 		button.isLocked = false;
-
-		// 배열 범위를 넘어가면 기본 이름/설명 사용
 		button.stageName = (i < stageNames.size()) ? stageNames[i] : U"ステージ {}"_fmt(i + 1);
 
 		stageButtons_.push_back(button);
@@ -299,13 +291,15 @@ void StageSelectScene::drawStageButtons()
 		if (drawRect.x + drawRect.w < -100 || drawRect.x > 1124)
 			continue;
 
+		// 텍스처 렌더링
+		bool textureRendered = false;
 		if (i < stageTextures_.size() && !stageTextures_[i].isEmpty())
 		{
 			const auto& frames = stageTextures_[i];
-			
+
 			const bool isBossStage = (button.stageNumber == 11);
 			const int32 frameIndex = isBossStage ? bossAnimationFrameIndex_ : animationFrameIndex_;
-			
+
 			if (frameIndex < static_cast<int32>(frames.size()) && !frames[frameIndex].isEmpty())
 			{
 				const Texture& currentFrame = frames[frameIndex];
@@ -318,9 +312,12 @@ void StageSelectScene::drawStageButtons()
 				{
 					currentFrame.resized(drawRect.size).draw(drawRect.pos);
 				}
+				textureRendered = true;
 			}
 		}
-		else
+
+		// 텍스처가 없거나 실패한 경우 폴백
+		if (!textureRendered)
 		{
 			ColorF buttonColor;
 
@@ -342,6 +339,19 @@ void StageSelectScene::drawStageButtons()
 			}
 		}
 
+		// ★ 텍스처 위에 텍스트 렌더링 (스테이지 1~10만 표시, 11번은 제외)
+		if (!button.isLocked && button.stageNumber != 11)
+		{
+			const Vec2 center = drawRect.center();
+			const double offsetY = drawRect.h * 0.25 - 5.0;  // 중앙에서 아래로 1/4, 위로 5px 이동
+			const Vec2 textPos = center.movedBy(0, offsetY);
+
+			// 텍스트에 외곽선 추가하여 가독성 향상 (28px 폰트 사용)
+			stageTitleFont_(button.stageName).drawAt(textPos.movedBy(2, 2), ColorF(0.0, 0.0, 0.0, 0.7));  // 그림자
+			stageTitleFont_(button.stageName).drawAt(textPos, Palette::White);  // 본문
+		}
+
+		// 잠금 아이콘
 		if (button.isLocked)
 		{
 			const Vec2 center = drawRect.center();
@@ -351,6 +361,7 @@ void StageSelectScene::drawStageButtons()
 		}
 	}
 
+	// 스크롤 인디케이터
 	if (getMaxScrollOffset() > 0)
 	{
 		const double scrollProgress = Math::Abs(scrollOffset_) / getMaxScrollOffset();

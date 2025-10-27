@@ -53,19 +53,6 @@ namespace StageData
 	};
 
     inline const Array<String> STAGE_5 = {
-		U"LL## ##ii",
-		U"###gY ###",  
-		U"###R BG##",
-		U"# Y T R #",  
-		U"#    Y  #",
-		U"##BB  R##",
-		U"### B v##",  
-		U"#### ###L",
-		U"LL## ##LL",
-	};
-
-
-    inline const Array<String> STAGE_6 = {
 		U"iiiii#iiiii",
 		U"iiiii#iiiii",
 		U"iiiii#iiiii",
@@ -77,6 +64,18 @@ namespace StageData
 		U"LLLL   LLLL",
 		U"LLLLLTLLLLL",  
 		U"LLLLLLLLLLL"
+	};
+
+	inline const Array<String> STAGE_6 = {
+		U"LL## ##ii",
+		U"###gY ###",
+		U"###R BG##",
+		U"# Y T R #",
+		U"#    Y  #",
+		U"##BB  R##",
+		U"### B v##",
+		U"#### ###L",
+		U"LL## ##LL",
 	};
 
     inline const Array<String> STAGE_7 = {
@@ -93,21 +92,9 @@ namespace StageData
 		U"###########"
 	};
 
-    inline const Array<String> STAGE_8 = {
-		U"##6########",
-		U"## # #   ##",  
-		U"oG R   #  #",
-		U"2#       ##",
-		U"Y #      #v",
-		U" O   o    B",
-		U"  #     # B",
-		U"#    R     ",
-		U"#  #iii#  #",
-		U"##B iii  ##",  
-		U"##2##T#####"
-	};
 
-	inline const Array<String> STAGE_9 = {
+
+	inline const Array<String> STAGE_8 = {
 		U"#    T #",
 		U"# R   B#",
 		U"###### #",
@@ -117,7 +104,7 @@ namespace StageData
 		U"     Y  ",
 		U"  r     ",
 	};
-	inline const Array<String> STAGE_9_TILES = {
+	inline const Array<String> STAGE_8_TILES = {
 		U"   ii   ", 
 		U" iiiii  ",
 		U"      i ",
@@ -126,6 +113,20 @@ namespace StageData
 		U" iiiii  ",
 		U"  iii   ",
 		U"        ",
+	};
+
+	inline const Array<String> STAGE_9 = {
+		U"##6########",
+		U"## # #   ##",
+		U"oG R   #  #",
+		U"2#       ##",
+		U"Y #      #v",
+		U" O   o    B",
+		U"  #     # B",
+		U"#    R     ",
+		U"#  #iii#  #",
+		U"##B iii  ##",
+		U"##2##T#####"
 	};
 
 	inline const Array<String> STAGE_10 = {
@@ -247,7 +248,7 @@ namespace StageData
 
 	inline Array<String> getStageTileOverlay(int32 stageNumber) {
 		switch (stageNumber) {
-		case 9: return STAGE_9_TILES;
+		case 8: return STAGE_8_TILES;
 		case 10: return STAGE_10_TILES;
 		default: return {};
 		}
