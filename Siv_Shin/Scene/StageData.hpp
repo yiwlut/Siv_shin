@@ -9,86 +9,18 @@ namespace StageData
 		char tileChar;  // 'i' = Ice, 'l' = Lava
 	};
 
-	inline const Array<String> STAGE_1 = {
-			U"   ####    ",
-			U" ##        ",
-			U" #   R ##  ",
-			U"#     #8O# ",
-			U"# V   ##  #",
-			U"# R##b##Y #",
-			U"#  ##     #",
-			U" # 7#   T #",
-			U"  ## O   # ",
-			U"        ## ",
-			U"    ####   ",
-	};
-
-
-	inline const Array<String> STAGE_1_TILES = {
-			U"           ",
-			U"           ",
-			U"           ",
-			U"    ii     ",
-			U"   iii     ",
-			U"           ",
-			U"     iii   ",
-			U"     ii    ",
-			U"           ",
-			U"           ",
-			U"           ",
-	};
-
-	/*inline const Array<String> STAGE_1 = {
-			U"#    T #",
-			U"# R   B#",
-			U"###### #",
-			U"##   #O#",
-			U" GV  ###",
-			U"        ",
-			U"     Y  ",
-			U"  r     ",
-	};*/
-
-
-	//inline const Array<String> STAGE_1_TILES = {
-	//		U"   ii   ",  // 첫 줄은 변경 없음
-	//		U" iiiii  ",
-	//		U"      i ",
-	//		U"  iii i ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
-	//		U" iiii   ",
-	//		U" iiiii  ",
-	//		U"  iii   ",
-	//		U"        ",
-	//};
-
 	//7x7
- //   inline const Array<String> STAGE_1 = {
- //       U"#######", 
- //       U"###b###",
- //       U"###B###",
- //       U"T R Y o",  
- //       U"###G###",
- //       U"###g###",  
- //       U"#######",
+	inline const Array<String> STAGE_1 = {
+		U"#######",
+		U"###b###",
+		U"###B###",
+		U"T R Y o",
+		U"###G###",
+		U"###g###",
+		U"#######",
+	};
 
- //   };
 
-
-	//inline const Array<String> STAGE_1_TILES = {
-	//	U"       ",  // 첫 줄은 변경 없음
-	//	U"       ",
-	//	U"       ",
-	//	U"iiiiii ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
-	//	U"       ",
-	//	U"       ",
-	//	U"       ",
-	//};
-
-	//inline const Array<String> STAGE_2 = {
-	//	U"  o",
-	//	U"TRY",
-	//	U"   ",
-	//};
 
 	//8x8
     inline const Array<String> STAGE_2 = {
@@ -135,6 +67,7 @@ namespace StageData
 		U"#### ####",
 	};
 
+
     inline const Array<String> STAGE_6 = {
 		U"###########",
 		U"###########",  
@@ -177,6 +110,45 @@ namespace StageData
 		U"##2##T#####"
 	};
 
+	inline const Array<String> STAGE_9 = {
+			U"#    T #",
+			U"# R   B#",
+			U"###### #",
+			U"##   #O#",
+			U" GV  ###",
+			U"        ",
+			U"     Y  ",
+			U"  r     ",
+	};
+
+	inline const Array<String> STAGE_10 = {
+		U"   ####    ",
+		U" ##        ",
+		U" #   R ##  ",
+		U"#     #8O# ",
+		U"# V   ##  #",
+		U"# R##b##Y #",
+		U"#  ##     #",
+		U" # 7#   T #",
+		U"  ## O   # ",
+		U"        ## ",
+		U"    ####   ",
+	};
+
+
+	inline const Array<String> STAGE_10_TILES = {
+			U"           ",
+			U"           ",
+			U"           ",
+			U"    ii     ",
+			U"   iii     ",
+			U"           ",
+			U"     iii   ",
+			U"     ii    ",
+			U"           ",
+			U"           ",
+			U"           ",
+	};
 	// 10x5 Final Boss Stage (always referenced as FINAL_STAGE)
     inline const Array<String> FINAL_STAGE = {
 		U"              ",
