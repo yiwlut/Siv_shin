@@ -111,14 +111,24 @@ namespace StageData
 	};
 
 	inline const Array<String> STAGE_9 = {
-			U"#    T #",
-			U"# R   B#",
-			U"###### #",
-			U"##   #O#",
-			U" GV  ###",
-			U"        ",
-			U"     Y  ",
-			U"  r     ",
+		U"#    T #",
+		U"# R   B#",
+		U"###### #",
+		U"##   #O#",
+		U" GV  ###",
+		U"        ",
+		U"     Y  ",
+		U"  r     ",
+	};
+	inline const Array<String> STAGE_9_TILES = {
+		U"   ii   ", 
+		U" iiiii  ",
+		U"      i ",
+		U"  iii i ", 
+		U" iiii   ",
+		U" iiiii  ",
+		U"  iii   ",
+		U"        ",
 	};
 
 	inline const Array<String> STAGE_10 = {
@@ -241,6 +251,7 @@ namespace StageData
 
 	inline Array<String> getStageTileOverlay(int32 stageNumber) {
 		switch (stageNumber) {
+		case 9: return STAGE_9_TILES;
 		case 10: return STAGE_10_TILES;
 		default: return {};
 		}
