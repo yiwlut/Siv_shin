@@ -79,7 +79,6 @@ Resource(engine/shader/myShader/terastal_effect.vert)
 //
 //	Fonts
 //
-Resource(ArtResources/Fonts/DarumaDropOne-Regular.ttf)
 Resource(ArtResources/Fonts/TetsubinGothic.otf)
 Resource(engine/font/min/siv3d-min.woff)
 

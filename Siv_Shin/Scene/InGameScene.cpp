@@ -1365,24 +1365,20 @@ ColorF InGameScene::getBoxColorF(BoxColor color) const
         return ColorF{ 0.1, 0.1, 0.1 };
     }
 }
-// ★ 새로 추가: Final Stage 타일 오버레이 동적 업데이트
 void InGameScene::updateFinalStageTileOverlay()
 {
-	// 이전 체크 시간 저장 (한 번만 업데이트하도록)
 	static double lastCheckedTime = -1.0;
 	static int32 lastAppliedPhase = -1;
 
 	const Array<String> overlay = StageData::getFinalStageTileOverlay(gameTime_);
 
-	// 오버레이가 변경되었을 때만 적용
 	if (!overlay.isEmpty())
 	{
-		// 현재 시간에 해당하는 페이즈 계산
-		int32 currentPhase = (gameTime_ >= 30.0) ? 3 :
-			(gameTime_ >= 20.0) ? 2 :
-			(gameTime_ >= 10.0) ? 1 : 0;
+		// ★ 6초 간격으로 변경
+		int32 currentPhase = (gameTime_ >= 18.0) ? 3 :  // 18초
+			(gameTime_ >= 12.0) ? 2 :  // 12초
+			(gameTime_ >= 6.0) ? 1 : 0;  // 6초
 
-		// 페이즈가 변경되었을 때만 적용
 		if (currentPhase != lastAppliedPhase)
 		{
 			applyTileOverlay(overlay);
@@ -2443,52 +2439,22 @@ void InGameScene::drawMap()
 				tileRect.draw(ColorF{ 0.615, 0.988, 0.976, 0.6 });
 				tileRect.drawFrame(2, 0, ColorF{ 0.8, 1.0, 1.0, 0.8 });
 				break;
-			case TileType::Lava: 
+			case TileType::Lava:
 			{
 				double pulse = 0.5 + 0.5 * sin(gameTime_ * 3.0);
 				ColorF lavaColor{ 0.9, 0.2 + 0.2 * pulse, 0.0, 0.8 };
 				tileRect.draw(lavaColor);
 				tileRect.drawFrame(2, 0, ColorF{ 1.0, 0.5, 0.0 });
 			}
-			case TileType::LavaWarning:  // ★ 추가: 용암 예고 타일
+			break;  // ★ break 추가!
+			case TileType::LavaWarning:  // ★ 새로운 케이스 추가
 			{
-				// 반투명한 주황색 바닥
-				double pulse = 0.3 + 0.2 * sin(gameTime_ * 2.0);  // 천천히 깜빡임
-				ColorF warningColor{ 1.0, 0.4, 0.0, 0.3 + pulse };  // 반투명 주황색
-				tileRect.draw(warningColor);
+				// 투명한 배경
+				tileRect.draw(ColorF{ 0.9, 0.2, 0.2, 0.12 });
 
-				// 경계선: 대시 패턴
-				double dashPhase = fmod(gameTime_ * 2.0, 1.0);
-				int32 dashCount = 8;
-				for (int32 i = 0; i < dashCount; i++) {
-					double ratio = (i + dashPhase) / dashCount;
-					if (fmod(ratio * 2, 1.0) < 0.5) {  // 0.5초 온, 0.5초 오프
-						int32 side = i % 4;
-						ColorF frameColor{ 1.0, 0.6, 0.0, 0.6 };
-						switch (side) {
-						case 0:  // 위
-							Line{ tileRect.tl() + Vec2(i * TILE_SIZE / 4, 0),
-								  tileRect.tl() + Vec2((i + 1) * TILE_SIZE / 4, 0) }
-							.draw(3, frameColor);
-							break;
-						case 1:  // 오른쪽
-							Line{ tileRect.tr() + Vec2(0, i * TILE_SIZE / 4),
-								  tileRect.tr() + Vec2(0, (i + 1) * TILE_SIZE / 4) }
-							.draw(3, frameColor);
-							break;
-						case 2:  // 아래
-							Line{ tileRect.bl() + Vec2(i * TILE_SIZE / 4, 0),
-								  tileRect.bl() + Vec2((i + 1) * TILE_SIZE / 4, 0) }
-							.draw(3, frameColor);
-							break;
-						case 3:  // 왼쪽
-							Line{ tileRect.tl() + Vec2(0, i * TILE_SIZE / 4),
-								  tileRect.tl() + Vec2(0, (i + 1) * TILE_SIZE / 4) }
-							.draw(3, frameColor);
-							break;
-						}
-					}
-				}
+				// 빠르게 깜빡이는 테두리
+				const double flash = 0.4 + 0.6 * Math::Abs(Math::Sin(gameTime_ * 8.0));
+				tileRect.drawFrame(4, 0, ColorF{ 1.0, 0.0, 0.0, flash });
 			}
 			break;
 			case TileType::RedGoal:

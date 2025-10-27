@@ -211,23 +211,23 @@ namespace StageData
 
 	inline Array<String> getFinalStageTileOverlay(double elapsedTime)
 	{
-		if (elapsedTime >= 30.0)
+		if (elapsedTime >= 18.0)  // ★ 18초 (6초 * 3)
 		{
 			return FINAL_STAGE_P3_TILES;
 		}
-		else if (elapsedTime >= 20.0)
+		else if (elapsedTime >= 12.0)  // ★ 12초 (6초 * 2)
 		{
 			return FINAL_STAGE_P2_TILES;
 		}
-		else if (elapsedTime >= 10.0)
+		else if (elapsedTime >= 6.0)  // ★ 6초 (6초 * 1)
 		{
 			return FINAL_STAGE_P1_TILES;
 		}
-		else if (elapsedTime >= 0.0)  // ★ 수정: 0초 이상일 때 P0 반환
+		else if (elapsedTime >= 0.0)  // 0초 (시작)
 		{
 			return FINAL_STAGE_P0_TILES;
 		}
-		return Array<String>{}; 
+		return Array<String>{};
 	}
 
     inline Array<String> getStageMap(int32 stageNumber)
