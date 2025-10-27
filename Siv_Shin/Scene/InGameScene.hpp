@@ -313,7 +313,7 @@ private:
 	enum class OverlayType : uint8 { None = 0, Warning = 1 };
 
 	Array<Array<OverlayType>> overlayWarn_;
-	double wallStepInterval_ = 2.0;
+	double wallStepInterval_ = 6.0;
 	double wallNextTime_ = 0.0;
 	int32 nextColumnL_ = 0;
 	int32 nextColumnR_ = 0;
@@ -335,6 +335,82 @@ private:
 
 	void drawWallMask();
 
+	enum class BossAttackType : uint8 { ColorSpawn, BlackHoming };
+	enum class AttackPhase : uint8 { Telegraph, Fire, Done };
+
+	struct HomingBullet {
+		Vec2 pos;
+		Vec2 vel;
+		Point targetTile;
+		double speed = 420.0;
+		double armTime = 0.25;
+		double life = 5.0;
+		bool armed = false;
+		bool alive = true;
+		Point sourceTile{ -1, -1 };
+	};
+
+	struct PendingAttack {
+		BossAttackType type;
+		AttackPhase phase = AttackPhase::Telegraph;
+		Point targetTile{ -1, -1 };
+		Point sourceTile{ -1, -1 };
+		ColorF telegraphColor = ColorF{ 1,1,1,1 };
+		BoxColor boxColor = BoxColor::Red;
+		double telegraphTime = 1.0;
+	};
+
+	// 보스 공격 스케줄러
+	double attackInterval_ = 3;
+	double nextAttackTime_ = 0.0;
+	double attackRatioColor_ = 1.0;
+	double attackRatioBlack_ = 0;
+	Point lastAttackTile_{ -1, -1 };
+
+	Array<HomingBullet> homingBullets_;
+	Array<PendingAttack> pendingAttacks_;
+
+	Vec2 getBossStartUIPos() const;
+	void initBossAttacks();
+	void scheduleNextBossAttack();
+	void updateBossAttacks(double dt);
+	void drawBossAttacks();
+	void spawnColorAttack();
+	void spawnBlackHomingAttack();
+	bool chooseRandomSpawnTile(Point& out);
+	bool isSpawnableTile(Point p) const;
+	ColorF randomSixColor() const;
+
+	void fireColorAttack(const PendingAttack& p);
+	void fireBlackHoming(const PendingAttack& p);
+	void drawTelegraphMarker(Point tile, const ColorF& col, double t, double pulse01) const;
+
+	struct EnergyBall
+	{
+		Vec2 startPosScreen;
+		Point targetTile;
+		Vec2 currentPosScreen;
+		ColorF color;
+		double progress = 0.0;
+		double duration = 0.5;
+		double elapsedTime = 0.0;
+		bool active = true;
+		bool spawnBoxOnArrive = false;
+		BoxColor spawnBoxColor = BoxColor::Red;
+		bool arrivalHandled = false;
+	};
+
+	Array<EnergyBall> energyBalls;
+
+	void createEnergyBallEffect(Vec2 screenStart, Point targetTile, const ColorF& color, double duration, bool spawnBoxOnArrive, BoxColor boxColor);
+	void updateEnergyBalls(double dt);
+	void drawEnergyBalls();
+	void drawHomingBullets();
+
+	void drawBossChargeTelegraphs();
+	void drawBossChargeAtStart(const ColorF& col, double remain, double total);
+
+	void spawnBombExplosionFXAtTile(Point tile);
 
 public:
     InGameScene();
@@ -530,7 +606,7 @@ private:
 	void updateDeathEffect();
 	void drawDeathEffect();
 
-	void updateBossAttack(double dt);
+	//void updateBossAttack(double dt);
 	void spawnBossProjectile();
 	void updateBossProjectiles(double dt);
 	void createBossExplosion(Vec2 pos, ColorF color);

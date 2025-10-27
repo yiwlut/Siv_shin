@@ -102,6 +102,7 @@ void InGameScene::onEnter()
 		{
 			applyTileOverlay(initialOverlay,StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly : OverlayApplyMode::WriteToMap);
 		}
+		initBossAttacks();
 		initBossWallSystem();
 
 		if (!bossBgm_.isEmpty())
@@ -810,21 +811,42 @@ void InGameScene::spawnWallBreakFXAtTile(Point tile)
 
 void InGameScene::updateWallBreakFX()
 {
+	const double dt = Scene::DeltaTime();
+
 	for (auto& fx : wallBreakFXs)
 	{
-		if (!fx.effect) { fx.finished = true; continue; } // 안전 가드
+		// 이펙트 핸들 없으면 바로 종료 표시
+		if (!fx.effect)
+		{
+			fx.finished = true;
+			continue;
+		}
 
-		fx.effect->update(Scene::DeltaTime()); // 진행도 갱신
+		// 시간 진행
+		fx.effect->update(dt);
 
-		// 시간 기반 제거: 폭발 구간 + 한계 시간 도달 시 완료
-		const double limit = fx.params.explodeTime;
+		// 현재 폭발 구간 여부
+		const bool inExplode = fx.effect->isInExplode();
+
+		// 폭발 구간에 들어간 뒤 아직 벽 파괴를 하지 않았다면 1회만 수행
+		// (폭탄 스타일: params.useWallColor == false 라고 가정)
+		if (inExplode && !fx.params.useWallColor && !fx.params.wallsDestroyed)
+		{
+			destroyWalls8(fx.tilePos);   // 중심 8방향 벽 파괴
+			fx.params.wallsDestroyed = true;
+		}
+
+		// 폭발 경과 시간(초) 조회
 		const double expTime = fx.effect->getExplodeT();
-		if (fx.effect->isInExplode() && (expTime >= limit)) {
+
+		// 지정된 폭발 지속시간을 지나면 FX 종료
+		if (inExplode && (expTime >= fx.params.explodeTime))
+		{
 			fx.finished = true;
 		}
 	}
 
-	// 완료된 항목 제거
+	// 종료된 FX 정리
 	wallBreakFXs.remove_if([](const WallBreakFX& e) { return e.finished; });
 }
 
@@ -1471,7 +1493,7 @@ void InGameScene::update()
 			{
 				const auto ov = StageData::getFinalStageTileOverlay(0.0);
 				applyTileOverlay(ov, OverlayApplyMode::OverlayOnly);
-				initBossWallSystem();
+				initBossAttacks();
 				initBossWallSystem();
 				if (!bossBgm_.isEmpty())
 				{
@@ -1524,7 +1546,7 @@ void InGameScene::update()
 				const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
 				if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay,OverlayApplyMode::OverlayOnly); }
 
-
+				initBossAttacks();
 				initBossWallSystem();
 
 				if (!bossBgm_.isEmpty())
@@ -1620,6 +1642,7 @@ void InGameScene::update()
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
 					savedMusicPosition_ = bossBgm_.posSec();
 					bossBgm_.stop();
+					initBossAttacks();
 					initBossWallSystem();
 				}
 			}
@@ -1641,8 +1664,10 @@ void InGameScene::update()
 	// ★ 보스 공격 업데이트
 	if (StageData::isFinalStage(currentStage_) && !isPlayerDead_ && !isCleared_)
 	{
-		updateBossAttack(dt);
+		//updateBossAttack(dt);
+		updateBossAttacks(dt);
 		updateBossProjectiles(dt);
+		updateEnergyBalls(dt);
 	}
 	updateBossExplosions(dt);  // 폭발은 항상 업데이트
 
@@ -1703,6 +1728,7 @@ void InGameScene::update()
 			if (!initialOverlay.isEmpty())
 			{
 				applyTileOverlay(initialOverlay,OverlayApplyMode::OverlayOnly);
+				initBossAttacks();
 				initBossWallSystem();
 			}
 
@@ -2344,7 +2370,10 @@ void InGameScene::draw()
 			const int32 y = (topH - drawH) / 2;
 			bossTex.resized(drawW, drawH).draw(x, y);
 		}
+		drawBossChargeTelegraphs();
 	}
+
+
 
 	// 카메라 변환 시작 (월드 렌더링 + 인게임 UI)
 	{
@@ -2359,6 +2388,8 @@ void InGameScene::draw()
 	drawUI();
 	drawBossProjectiles();
 	drawBossExplosions();
+	drawEnergyBalls();
+	drawHomingBullets();
 
 	// Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리
 	if (currentStage_ == 5)
@@ -2547,6 +2578,7 @@ void InGameScene::drawMap()
 		Quad(top, right, bottom, left).drawFrame(2, ColorF{ ic.r * 1.3, ic.g * 1.3, ic.b * 1.3 });
 	}
 
+	//drawBossAttacks();
 	drawWallMask();
 	drawGoalMarkersTop();
 	drawOverlayWarnings();
@@ -2797,19 +2829,19 @@ void InGameScene::updateBlackBoxes()
 	//}
 }
 
-void InGameScene::updateBossAttack(double dt)
-{
-	if (!StageData::isFinalStage(currentStage_)) return;
-
-	bossAttackTimer_ += dt;
-
-	// 3초마다 공 발사
-	if (bossAttackTimer_ >= BOSS_ATTACK_INTERVAL)
-	{
-		bossAttackTimer_ = 0.0;
-		spawnBossProjectile();
-	}
-}
+//void InGameScene::updateBossAttack(double dt)
+//{
+//	if (!StageData::isFinalStage(currentStage_)) return;
+//
+//	bossAttackTimer_ += dt;
+//
+//	// 3초마다 공 발사
+//	if (bossAttackTimer_ >= BOSS_ATTACK_INTERVAL)
+//	{
+//		bossAttackTimer_ = 0.0;
+//		spawnBossProjectile();
+//	}
+//}
 
 void InGameScene::spawnBossProjectile()
 {
@@ -3190,6 +3222,7 @@ void InGameScene::updateClearButtons()
 		if (StageData::isFinalStage(currentStage_)) {
 			const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
 			if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay, StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly: OverlayApplyMode::WriteToMap); }
+			initBossAttacks();
 			initBossWallSystem();
 		}
     }
@@ -4198,4 +4231,484 @@ void InGameScene::drawGoalMarkersTop() {
 		drawGoalTop(p, ColorF{ 0.7, 0.2, 0.8, 0.3 }, ColorF{ 0.7, 0.2, 0.8 });
 	for (const auto& p : blackGoalPositions_)
 		drawGoalTop(p, ColorF{ 0.2, 0.2, 0.2, 0.5 }, ColorF{ 0.4, 0.4, 0.4 });
+}
+
+void InGameScene::initBossAttacks()
+{
+	pendingAttacks_.clear();;
+	nextAttackTime_ = gameTime_;
+	scheduleNextBossAttack();
+}
+
+bool InGameScene::isSpawnableTile(Point p) const {
+	if (!isInsideMap(p)) return false;
+	if (mapData_[p.y][p.x] == TileType::Wall) return false;
+	if (!wallMask_.isEmpty() && wallMask_[p.y][p.x]) return false;
+	if (getBoxAt(p) != nullptr) return false;
+	return true;
+}
+
+bool InGameScene::chooseRandomSpawnTile(Point& out) {
+	Array<Point> candidates;
+	for (int y = 0; y < getMapHeight(); ++y) {
+		for (int x = 0; x < getMapWidth(); ++x) {
+			const Point p{ x, y };
+			if (isSpawnableTile(p)) candidates << p;
+		}
+	}
+	if (candidates.isEmpty()) return false;
+	out = candidates[Random(candidates.size() - 1)];
+	return true;
+}
+
+ColorF InGameScene::randomSixColor() const {
+	static const BoxColor pool[] = {
+		BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
+		BoxColor::Orange, BoxColor::Green, BoxColor::Violet
+	};
+
+	switch (pool[Random(5)])
+	{
+		case BoxColor::Red:    return Palette::Red;
+		case BoxColor::Yellow: return Palette::Yellow;
+		case BoxColor::Blue:   return Palette::Blue;
+		case BoxColor::Orange: return Palette::Orange;
+		case BoxColor::Green:  return Palette::Green;
+		case BoxColor::Violet: return Palette::Violet;
+		default:               return Palette::White;
+	}
+
+}
+
+//void InGameScene::spawnColorAttack() {
+//	Point tile;
+//	if (!chooseRandomSpawnTile(tile)) return;
+//
+//	
+//	ColorBox box;
+//	box.pos = tile;
+//	box.color = randomSixColor();
+//	box.uid = nextBoxUID_++;
+//	box.creationTime = gameTime_;
+//	boxes_ << box;
+//
+//	
+//	spawnWallBreakFXAtTile(tile);
+//	camera().shake(0.12, 10.0 / Max(0.001, camera().getScale()));
+//
+//	lastAttackTile_ = tile;
+//}
+
+// InGameScene.cpp
+void InGameScene::updateBossAttacks(double dt)
+{
+	if (!StageData::isFinalStage(currentStage_)) return;
+
+	// 주기적으로 다음 공격 예약
+	if (gameTime_ >= nextAttackTime_)
+	{
+		scheduleNextBossAttack();           // nextAttackTime은 함수 내부에서 갱신
+	}
+
+	// 이하 기존 텔레그래프 처리/발사 처리 유지
+	for (auto& p : pendingAttacks_)
+	{
+		if (p.phase != AttackPhase::Telegraph) continue;
+		p.telegraphTime -= dt;
+		if (p.telegraphTime <= 0.0)
+		{
+			if (p.type == BossAttackType::ColorSpawn)
+			{
+				fireColorAttack(p);
+			}
+			p.phase = AttackPhase::Done;
+		}
+	}
+	pendingAttacks_.remove_if([](const PendingAttack& a) { return a.phase == AttackPhase::Done; });
+}
+
+
+void InGameScene::spawnBlackHomingAttack() {
+	Point source = lastAttackTile_;
+	if (!isInsideMap(source) || !isSpawnableTile(source)) {
+		if (!chooseRandomSpawnTile(source)) return;
+	}
+
+	spawnWallBreakFXAtTile(source);
+	camera().shake(0.08, 8.0 / Max(0.001, camera().getScale()));
+
+	HomingBullet b;
+	b.sourceTile = source;
+	b.pos = Vec2{ (source.x + 0.5) * TILE_SIZE, (source.y + 0.5) * TILE_SIZE };
+	b.armed = false;
+	b.armTime = 0.25;
+	b.life = 5.0;
+	b.speed = 420.0;
+
+	b.targetTile = playerPos_;
+
+	b.vel = Vec2{ 0, 0 };
+	homingBullets_ << b;
+
+	lastAttackTile_ = source;
+}
+
+void InGameScene::drawBossAttacks()
+{
+	// 텔레그래프 마커 그리기 (기존 코드)
+	for (const auto& p : pendingAttacks_)
+	{
+		if (p.phase != AttackPhase::Telegraph) continue;
+
+		const double t = gameTime_;
+		const double pulse = 0.5 + 0.5 * Math::Sin(t * 12.0);
+
+		if (p.type == BossAttackType::ColorSpawn)
+		{
+			// 타겟 타일 마커
+			drawTelegraphMarker(p.targetTile, p.telegraphColor, t, pulse);
+
+			const Vec2 bossPos = getBossStartUIPos();
+			const Vec2 targetPos = Vec2(
+				p.targetTile.x * TILE_SIZE + TILE_SIZE * 0.5,
+				p.targetTile.y * TILE_SIZE + TILE_SIZE * 0.5
+			);
+
+			// 보스 -> 타겟 라인 (예고 빔)
+			const double beamAlpha = 0.35 + 0.15 * pulse;
+			Line(bossPos, targetPos).draw(5, ColorF(
+				p.telegraphColor.r,
+				p.telegraphColor.g,
+				p.telegraphColor.b,
+				beamAlpha
+			));
+
+			// 보스 위치에 발사 준비 표시
+			const double chargePulse = 1.0 - (p.telegraphTime / 2.0); // 준비 진행도
+			const double chargeSize = 15.0 + 10.0 * chargePulse;
+
+			Circle(bossPos, chargeSize * pulse)
+				.draw(ColorF(p.telegraphColor.r, p.telegraphColor.g, p.telegraphColor.b, 0.5 * pulse));
+			Circle(bossPos, chargeSize)
+				.drawFrame(3, ColorF(p.telegraphColor.r, p.telegraphColor.g, p.telegraphColor.b, 0.8 * pulse));
+		}
+		else // BossAttackType::BlackHoming
+		{
+			// 소스 타일 마커
+			drawTelegraphMarker(p.sourceTile, ColorF(0.0, 0.0, 0.0, 1.0), t, pulse);
+
+			const Vec2 bossPos = getBossStartUIPos();
+			const Vec2 sourcePos = Vec2(
+				p.sourceTile.x * TILE_SIZE + TILE_SIZE * 0.5,
+				p.sourceTile.y * TILE_SIZE + TILE_SIZE * 0.5
+			);
+
+			Line(bossPos, sourcePos).draw(5, ColorF(0.9, 0.9, 0.9, 0.25 + 0.15 * pulse));
+
+			const double chargePulse = 1.0 - (p.telegraphTime / 2.0);
+			const double chargeSize = 15.0 + 10.0 * chargePulse;
+
+			Circle(bossPos, chargeSize * pulse)
+				.draw(ColorF(0.9, 0.9, 0.9, 0.4 * pulse));
+			Circle(bossPos, chargeSize)
+				.drawFrame(3, ColorF(0.95, 0.95, 0.95, 0.7 * pulse));
+		}
+	}
+}
+
+
+Vec2 InGameScene::getBossStartUIPos() const
+{
+	if (!StageData::isFinalStage(currentStage_) || bossIdleFrames_.isEmpty())
+	{
+		return Vec2(Scene::Width() * 0.72, Scene::Height() * 0.18);
+	}
+
+	const int32 screenW = Scene::Width();
+	const int32 screenH = Scene::Height();
+	const int32 topH = screenH / 2;
+
+	const Texture& bossTex = bossIdleFrames_[bossAnimFrame_ % static_cast<int32>(bossIdleFrames_.size())];
+	const Size bossSize = bossTex.size();
+
+	if (bossSize.x == 0 || bossSize.y == 0)
+	{
+		return Vec2(screenW * 0.72, screenH * 0.18);
+	}
+
+	const double sx = static_cast<double>(screenW) / bossSize.x;
+	const double sy = static_cast<double>(topH) / bossSize.y;
+	const double s = Min(sx, sy) * 0.9;
+
+	const int32 drawW = static_cast<int32>(bossSize.x * s);
+	const int32 drawH = static_cast<int32>(bossSize.y * s);
+
+	const int32 x = (screenW - drawW) / 2;
+	const int32 y = (topH - drawH) / 2;
+
+	return Vec2(x + drawW / 2.0, y + drawH * 0.85);
+}
+
+void InGameScene::scheduleNextBossAttack()
+{
+	PendingAttack p;
+	p.type = BossAttackType::ColorSpawn;
+
+	Point t;
+	if (!chooseRandomSpawnTile(t))
+		return;
+
+	p.targetTile = t;
+
+	static const BoxColor pool[6] = {
+		BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
+		BoxColor::Orange, BoxColor::Green, BoxColor::Violet
+	};
+	const BoxColor bc = pool[Random(0, 5)];
+	p.boxColor = bc;
+	p.telegraphColor = getBoxColorF(bc);
+
+	p.telegraphTime = 2.0;
+	p.phase = AttackPhase::Telegraph;
+
+	pendingAttacks_ << p;
+
+	// 다음 예약 시간 갱신(기존 간격 사용)
+	nextAttackTime_ = gameTime_ + attackInterval_;
+}
+
+void InGameScene::fireColorAttack(const PendingAttack& p)
+{
+	const Vec2 bossScreenPos = getBossStartUIPos();
+	createEnergyBallEffect(
+		bossScreenPos,
+		p.targetTile,
+		p.telegraphColor,
+		1.2,
+		true,
+		p.boxColor
+	);
+}
+
+void InGameScene::fireBlackHoming(const PendingAttack& p)
+{
+
+}
+
+void InGameScene::drawTelegraphMarker(Point tile, const ColorF& col, double t, double pulse01) const
+{
+	const Vec2 center(tile.x * TILE_SIZE + TILE_SIZE * 0.5, tile.y * TILE_SIZE + TILE_SIZE * 0.5);
+
+	const double baseRadius = TILE_SIZE * 0.45;
+	const double pulseRadius = baseRadius * (0.85 + 0.15 * pulse01);
+	const double alpha = 0.6 + 0.4 * pulse01;
+
+	Circle(center, pulseRadius).draw(ColorF(col.r, col.g, col.b, 0.25 * alpha));
+
+	Circle(center, pulseRadius).drawFrame(4, ColorF(col.r, col.g, col.b, alpha));
+
+	const double innerRadius = 8.0 + 4.0 * pulse01;
+	Circle(center, innerRadius).draw(ColorF(col.r, col.g, col.b, 0.6 * alpha));
+
+	const double crossSize = 15.0;
+	Line(center - Vec2(crossSize, 0), center + Vec2(crossSize, 0))
+		.draw(3, ColorF(col.r, col.g, col.b, alpha * 0.8));
+	Line(center - Vec2(0, crossSize), center + Vec2(0, crossSize))
+		.draw(3, ColorF(col.r, col.g, col.b, alpha * 0.8));
+}
+
+void InGameScene::createEnergyBallEffect(Vec2 screenStart, Point targetTile, const ColorF& color,
+										 double duration, bool spawnBoxOnArrive, BoxColor boxColor)
+{
+	EnergyBall b;
+	b.startPosScreen = screenStart;
+	b.targetTile = targetTile;
+	b.currentPosScreen = screenStart;
+	b.color = color;
+	b.duration = duration;
+	b.elapsedTime = 0.0;
+	b.progress = 0.0;
+	b.active = true;
+	b.spawnBoxOnArrive = spawnBoxOnArrive;
+	b.spawnBoxColor = boxColor;
+	b.arrivalHandled = false;
+
+	energyBalls << b;
+}
+
+void InGameScene::updateEnergyBalls(double dt)
+{
+	const Mat3x2 transform = camera().getMat3x2();
+
+	for (auto& b : energyBalls)
+	{
+		if (!b.active) continue;
+
+		b.elapsedTime += dt;
+		b.progress = Clamp(b.elapsedTime / Max(0.001, b.duration), 0.0, 1.0);
+
+		const double eased = 1.0 - Math::Pow(1.0 - b.progress, 3.0);
+
+		const Vec2 targetWorld(
+			b.targetTile.x * TILE_SIZE + TILE_SIZE * 0.5,
+			b.targetTile.y * TILE_SIZE + TILE_SIZE * 0.5
+		);
+		const Vec2 targetScreen = transform.transformPoint(targetWorld);
+
+		b.currentPosScreen = Math::Lerp(b.startPosScreen, targetScreen, eased);
+
+		// 도착 처리: 한 번만 실행
+		if (!b.arrivalHandled && b.progress >= 1.0)
+		{
+			b.arrivalHandled = true;
+
+			if (b.spawnBoxOnArrive)
+			{
+				// 박스 생성 지연 실행
+				ColorBox box;
+				box.pos = b.targetTile;
+				box.color = b.spawnBoxColor;
+				box.uid = nextBoxUID_++;
+				box.creationTime = gameTime_;
+				boxes_ << box;
+
+				spawnWallBreakFXAtTile(b.targetTile);
+				camera().shake(0.12, 10.0 / Max(0.001, camera().getScale()));
+				lastAttackTile_ = b.targetTile;
+			}
+
+			b.active = false;
+		}
+	}
+
+	energyBalls.remove_if([](const EnergyBall& e) { return !e.active; });
+}
+
+void InGameScene::drawEnergyBalls()
+{
+	if (energyBalls.isEmpty()) return;
+
+	// Additive 블렌딩으로 발광 효과
+	ScopedRenderStates2D blend(BlendState::Additive);
+
+	for (const auto& ball : energyBalls)
+	{
+		if (!ball.active) continue;
+
+		const double t = ball.progress;
+
+		const double sizeProgress = Math::Sin(t * Math::Pi);
+		const double baseSize = 25.0;
+		const double size = baseSize * (0.5 + sizeProgress * 0.8);
+
+		const double alpha = t < 0.9 ? 1.0 : (1.0 - (t - 0.9) / 0.1);
+
+		Circle(ball.currentPosScreen, size * 1.5)
+			.draw(ColorF(ball.color.r, ball.color.g, ball.color.b, 0.3 * alpha));
+
+		Circle(ball.currentPosScreen, size * 1.2)
+			.draw(ColorF(ball.color.r, ball.color.g, ball.color.b, 0.5 * alpha));
+
+		Circle(ball.currentPosScreen, size)
+			.draw(ColorF(ball.color.r, ball.color.g, ball.color.b, 0.8 * alpha));
+
+		Circle(ball.currentPosScreen, size * 0.4)
+			.draw(ColorF(1.0, 1.0, 1.0, 0.9 * alpha));
+
+		const Vec2 trailDir = (ball.currentPosScreen - ball.startPosScreen).normalized();
+		const double trailLength = 30.0 * sizeProgress;
+		for (int i = 0; i < 5; ++i)
+		{
+			const double offset = (i + 1) * (trailLength / 5.0);
+			const Vec2 trailPos = ball.currentPosScreen - trailDir * offset;
+			const double trailAlpha = (1.0 - i / 5.0) * 0.4 * alpha;
+			const double trailSize = size * (1.0 - i / 5.0) * 0.6;
+
+			Circle(trailPos, trailSize)
+				.draw(ColorF(ball.color.r, ball.color.g, ball.color.b, trailAlpha));
+		}
+	}
+}
+
+// InGameScene.cpp - 새 함수 추가
+void InGameScene::drawHomingBullets()
+{
+}
+
+void InGameScene::drawBossChargeAtStart(const ColorF& col, double remain, double total)
+{
+	const Vec2 center = getBossStartUIPos();      // 화면 좌표(보스 시작점)
+	const double t01 = Saturate(1.0 - remain / Max(0.001, total));
+	const double pulse = 0.5 + 0.5 * Math::Sin(gameTime_ * 10.0);
+	const double base = 18.0 + 10.0 * t01;
+	const double rCore = base * (0.7 + 0.3 * pulse);
+	const double rMid = rCore * 1.45;
+	const double rGlow = rCore * 2.0;
+
+	ScopedRenderStates2D blend(BlendState::Additive);
+
+	Circle(center, rGlow).draw(ColorF(col.r, col.g, col.b, 0.20 + 0.15 * pulse));
+	Circle(center, rMid).draw(ColorF(col.r, col.g, col.b, 0.35 + 0.25 * pulse));
+	Circle(center, rCore).draw(ColorF(col.r, col.g, col.b, 0.7 + 0.25 * pulse));
+	Circle(center, rCore * 0.4).draw(ColorF(1.0, 1.0, 1.0, 0.8));
+
+	const int sparkCount = 6;
+	const double orbit = rGlow * (0.55 + 0.25 * t01);
+	for (int i = 0; i < sparkCount; ++i)
+	{
+		const double ang = gameTime_ * 4.0 + i * Math::TwoPi / sparkCount;
+		const Vec2 p = center + Vec2(Math::Cos(ang), Math::Sin(ang)) * orbit;
+		Circle(p, 4.0 + 2.0 * pulse).draw(ColorF(col.r, col.g, col.b, 0.5));
+	}
+}
+
+void InGameScene::drawBossChargeTelegraphs()
+{
+	bool any = false;
+	for (const auto& p : pendingAttacks_)
+		if (p.phase == AttackPhase::Telegraph) { any = true; break; }
+	if (!any) return;
+
+	for (const auto& p : pendingAttacks_)
+	{
+		if (p.phase != AttackPhase::Telegraph) continue;
+
+		const ColorF c = (p.type == BossAttackType::ColorSpawn)
+			? p.telegraphColor
+			: ColorF(0.9, 0.9, 0.9, 1.0);
+
+		drawBossChargeAtStart(c, p.telegraphTime, 2.0);
+	}
+}
+
+void InGameScene::spawnBombExplosionFXAtTile(Point tile)
+{
+	WallBreakFX fx;
+	fx.tilePos = tile;
+	fx.effect = std::make_unique<BombBoxEffect>();
+	fx.effect->reset();
+	fx.effect->trigger();
+	fx.params.pulseDuration = 0.0f;
+	fx.params.pulseCount = 0.0f;
+	fx.params.explodeTime = 0.6f;
+	fx.params.pulseAmp = 0.0f;
+	fx.params.pulseSpeed = 0.0f;
+	fx.params.spread = 140.0f;
+	fx.params.gravity = 700.0f;
+	fx.params.seed = static_cast<float>(Random(0.0, 1.0));
+	fx.params.useWallColor = false;
+	fx.params.wallColor = ColorF(0.1, 0.1, 0.1);
+	fx.finished = false;
+	fx.shakeStarted = false;
+
+	const Vec2 worldCenter = tileToPixel(tile) + Vec2(TILE_SIZE * 0.5, TILE_SIZE * 0.5);
+	const Vec2 camC = camera().getCenter();
+	const double dist = (worldCenter - camC).length();
+	const double scale = camera().getScale();
+	const double falloff = Saturate(1.0 - dist / (900.0 / Max(0.001, scale)));
+	const double inten = 16.0 * falloff / Max(0.001, scale);
+	camera().shake(0.25, Min(inten, 40.0));
+
+	wallBreakFXs << std::move(fx);
+
 }

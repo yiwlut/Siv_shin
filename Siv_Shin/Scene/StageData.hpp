@@ -178,9 +178,9 @@ namespace StageData
 
 	inline const Array<String> FINAL_STAGE = {
 		U"     r          ",
-		U"    R v         ",
-		U"     R y        ",
-		U"    GG Tg       ",
+		U"      v         ",
+		U"       y        ",
+		U"       Tg       ",
 		U"         b      ",
 		U"          o     ",
 
