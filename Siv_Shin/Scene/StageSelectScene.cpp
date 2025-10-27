@@ -106,18 +106,18 @@ void StageSelectScene::loadStageTextures()
 	stageTextures_.resize(totalStages);
 
 
-	// 각 스테이지별로 3개의 애니메이션 프레임 로드
+	// 각 스테이지별로 애니메이션 프레임 로드
 	for (int32 stageIndex = 0; stageIndex < totalStages; stageIndex++)
 	{
 		const int32 stageNumber = stageIndex + 1;
 
 		if (stageNumber == 11)
 		{
-			
+			// 보스 스테이지 (11번): 11개의 프레임 (0~10)
 			for (int32 frameIndex = 0; frameIndex <= 10; frameIndex++)
 			{
 				const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_boss-{}.png"_fmt(frameIndex));
-				
+
 				Texture frameTexture(texturePath);
 
 				if (!frameTexture.isEmpty())
@@ -129,15 +129,13 @@ void StageSelectScene::loadStageTextures()
 					stageTextures_[stageIndex].push_back(Texture{});
 				}
 			}
-			
 		}
 		else
 		{
-			const int32 textureStageNumber = (stageNumber >= 10) ? 9 : stageNumber;
-
+			// 일반 스테이지 (1~10번): 각 2개의 프레임 (0~1)
 			for (int32 frameIndex = 0; frameIndex < 2; frameIndex++)
 			{
-				const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_{}-{}.png"_fmt(textureStageNumber, frameIndex));
+				const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_{}-{}.png"_fmt(stageNumber, frameIndex));
 				Texture frameTexture(texturePath);
 
 				if (!frameTexture.isEmpty())

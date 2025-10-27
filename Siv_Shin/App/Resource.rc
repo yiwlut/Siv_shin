@@ -206,6 +206,9 @@ Resource(ArtResources/Texture2D/stage/stage_8-1.png)
 
 Resource(ArtResources/Texture2D/stage/stage_9-0.png)
 Resource(ArtResources/Texture2D/stage/stage_9-1.png)
+Resource(ArtResources/Texture2D/stage/stage_10-0.png)
+Resource(ArtResources/Texture2D/stage/stage_10-1.png)
+
 
 Resource(ArtResources/Texture2D/stage/Lock/locked_0.png)
 Resource(ArtResources/Texture2D/stage/Lock/locked_1.png)
