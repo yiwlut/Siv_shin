@@ -145,65 +145,78 @@ namespace StageData
 
 
 	inline const Array<String> STAGE_10_TILES = {
-		U"           ",
-		U"           ",
-		U"           ",
+		U"iii    iiii",
+		U"i        ii",
+		U"i         i",
 		U"    ii     ",
 		U"   iii     ",
 		U"           ",
 		U"     iii   ",
 		U"     ii    ",
-		U"           ",
-		U"           ",
-		U"           ",
+		U"i         i",
+		U"iii       i",
+		U"iiii    iii",
 	};
-    inline const Array<String> FINAL_STAGE = {
-		U"              ",
-		U"    B    R    ",
-		U"              ",
-		U"    roybg T   ",
-		U"              ",
-		U"              "
+
+	inline const Array<String> FINAL_STAGE = {
+		U"   # GVBO #   ",
+		U"   #      #   ",
+		U"   ########   ",
+		U"        R     ",
+		U"    B T  O    ",
+		U"             o",
+
 	};
 
 	// 첫 시작 시 오버레이 
 	inline const Array<String> FINAL_STAGE_P0_TILES = {
-		U"LL   iiii !!LL",
-		U"LL  Lii iL!!LL",
-		U"LL        !!LL",
-		U"LL  L  L  !!LL",
-		U"LL   L    !!LL",
-		U"LL        !!LL"
+		U"L!! iiiiii LLL",
+		U"LL! iiiiii LLL",
+		U"LL!        !LL",
+		U"LL!!!      !LL",
+		U"LL!        !LL",
+		U"LLL!      !!!L",
+
 	};
 
 	// 10초 경과 시 타일 오버레이 (용암 첫 상승)
 	inline const Array<String> FINAL_STAGE_P1_TILES = {
-		U"LL   iiii LLLL",
-		U"LL  Lii iLLLLL",
-		U"LL        LLLL",
-		U"LL  L  L   LLL",
-		U"LL   L    LLLL",
-		U"LL        LLLL"
+		U"LLL!iiiii!!LLL",
+		U"LLL!!iiiii!LLL",
+		U"LLL!!     !LLL",
+		U"LLLLL!   !!LLL",
+		U"LLL!      !LLL",
+		U"LLLL!    !LLLL",
+
 	};
 
 	// 20초 경과 시 타일 오버레이 (용암 두 번째 상승)
 	inline const Array<String> FINAL_STAGE_P2_TILES = {
-		U"LL   iiii   LL",
-		U"LL   LiiL	  LL",
-		U"LLLL  LLLLLLLL",
-		U"LL  L  L    LL",
-		U"LL   L      LL",
-		U"LL          LL"
+		U"LLLL!ii!!LLLLL",
+		U"LLLLL!ii!!LLLL",
+		U"LLLLL!   !LLLL",
+		U"LLLLLL  !LLLLL",
+		U"LLLL!!   !LLLL",
+		U"LLLLL! !!LLLLL",
 	};
 
 	// 30초 경과 시 타일 오버레이 (용암 세 번째 상승)
 	inline const Array<String> FINAL_STAGE_P3_TILES = {
-		U"LL   iiii   LL",
-		U"LL  LiiL    LL",
+		U"LLLLL!!LLLLLLL",
+		U"LLLLLL!!LLLLLL",
+		U"LLLLLL!!!LLLLL",
+		U"LLLLLL!!LLLLLL",
+		U"LLLLLL!!!LLLLL",
+		U"LLLLLL!LLLLLLL",
+	};
+
+	inline const Array<String> FINAL_STAGE_P4_TILES = {
 		U"LLLLLLLLLLLLLL",
-		U"LL  LLLLLLL LL",
-		U"LL   L      LL",
-		U"LL          LL"
+		U"LLLLLLLLLLLLLL",
+		U"LLLLLLLLLLLLLL",
+		U"LLLLLLLLLLLLLL",
+		U"LLLLLLLLLLLLLL",
+		U"LLLLLLLLLLLLLL",
 	};
 
 	inline Array<String> getFinalStageTileOverlay(double elapsedTime)
