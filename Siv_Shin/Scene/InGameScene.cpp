@@ -187,6 +187,8 @@ void InGameScene::loadAssets()
 
 	stageClearSound_ = Audio{ Resource(U"ArtResources/SFX/StageClear.wav") };
 	bombExplosionSound_ = Audio{ Resource(U"ArtResources/SFX/bomb.wav") };
+	bumpSound_ = Audio{ Resource(U"ArtResources/SFX/bump.wav") };  // ★ 추가
+
 
 	// ★ 보스 등장 애니메이션 로드 (boss_cloak_5.png → boss_cloak_0.png 역순)
 	bossIdleFrames_.clear();
@@ -1848,6 +1850,7 @@ void InGameScene::handleInput()
 	const double dt = Scene::DeltaTime();
 	
 	inputCooldown_ = Max(0.0, inputCooldown_ - dt);
+	bumpSoundCooldown_ = Max(0.0, bumpSoundCooldown_ - dt);  // ★ 쿨다운 감소
 
 	if (isPlayerMoving_ || isPlayingPaintAnimation_ || isSliding_) {
 		bufferInputWhileMoving();
@@ -1884,8 +1887,18 @@ void InGameScene::handleInput()
 	if (!moved) return;
 
 	const Point newPos = playerPos_ + dir;
+
 	const bool enteringIce = (isIce(newPos) && !isIce(playerPos_));
 	const bool leavingIce = (isIce(playerPos_) && !isIce(newPos));
+
+	if (!isInsideMap(newPos) || mapData_[newPos.y][newPos.x] == TileType::Wall) {
+		if (!bumpSound_.isEmpty() && bumpSoundCooldown_ <= 0.0) {  // ★ 쿨다운 체크
+			bumpSound_.playOneShot(0.4);
+			bumpSoundCooldown_ = 0.25;  
+
+		}
+		return;
+	}
 
 	if (ColorBox* box = getBoxAt(newPos)) {
 		if (playerHeldItem_ != ItemType::None) {
@@ -1895,7 +1908,15 @@ void InGameScene::handleInput()
 			}
 		}
 		const Point next = box->pos + dir;
-		if (!canPushBox(playerPos_, box->pos, dir)) return;
+
+		if (!canPushBox(playerPos_, box->pos, dir)) {
+			if (!bumpSound_.isEmpty() && bumpSoundCooldown_ <= 0.0) {  // ★ 쿨다운 체크
+				bumpSound_.playOneShot(0.4);
+				bumpSoundCooldown_ = 0.25; 
+
+			}
+			return;
+		}
 
 		// 합성 경로(타깃 존재)
 		if (ColorBox* targetPeek = getBoxAt(next)) {
@@ -2324,11 +2345,11 @@ void InGameScene::draw()
 	drawBossExplosions();
 
 	// Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리
-	if (currentStage_ == 6)
+	if (currentStage_ == 5)
 	{
 		const Mat3x2 transform = camera().getMat3x2();
 		const Vec2 screenPos = transform.transformPoint(playerPixelPos_);
-		const double radius = 80.0;
+		const double radius = 100.0;
 		const double w = static_cast<double>(Scene::Width());
 		const double h = static_cast<double>(Scene::Height());
 		const double outer = std::sqrt(w * w + h * h);
