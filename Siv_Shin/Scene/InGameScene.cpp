@@ -3680,10 +3680,6 @@ void InGameScene::drawPaintAnimation()
         currentFrame.resized(TILE_SIZE, TILE_SIZE).draw(animRect.pos);
     }
 }
-
-// InGameScene.cpp (추가)
-
-// 0) 카메라 단일 인스턴스 + 접근자 오버로드
 CustomCamera2D& InGameScene::camInstance() {
 	static CustomCamera2D s_cam{ Vec2{ 0, 0 }, 1.0 };
 	return s_cam;

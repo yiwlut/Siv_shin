@@ -66,22 +66,10 @@ void StageSelectScene::initializeStages()
 
 	// ★ 일본어 스테이지 이름으로 변경
 	Array<String> stageNames = {
-		U"チュートリアル1", U"基本", U"複雑",
-		U"チュートリアル2", U"魚", U"マスター",
-		U"チュートリアル3", U"赤いチェス", U"最終"
-	};
-
-	// ★ 일본어 설명으로 변경
-	Array<String> descriptions = {
-		U"基本的な動き方を学ぶ",
-		U"色の混合の基礎",
-		U"高度な組み合わせ",
-		U"黒ブロックについて学ぶ",
-		U"魚だ",
-		U"すごい",
-		U"アイテムについて学ぶ",
-		U"チェス",
-		U"最終ボスステージ"
+	U"Tutorial 1", U"Basic", U"Complex",
+	U"Tutorial 2", U"Fish", U"Master",
+	U"Tutorial 3", U"Red Chess", U"Stage 9",
+	U"Stage 10", U"Final"
 	};
 
 	// 스테이지 버튼 생성 (가로로 나열)
@@ -103,7 +91,6 @@ void StageSelectScene::initializeStages()
 
 		// 배열 범위를 넘어가면 기본 이름/설명 사용
 		button.stageName = (i < stageNames.size()) ? stageNames[i] : U"ステージ {}"_fmt(i + 1);
-		button.description = (i < descriptions.size()) ? descriptions[i] : U"";
 
 		stageButtons_.push_back(button);
 	}
@@ -113,35 +100,38 @@ void StageSelectScene::initializeStages()
 
 void StageSelectScene::loadStageTextures()
 {
-    // 스테이지 텍스처 배열 초기화 (8개 스테이지, 각각 3개 프레임)
-    stageTextures_.clear();
-    const int32 totalStages = StageData::getTotalStageCount();
-    stageTextures_.resize(totalStages);
-    
-    // 각 스테이지별로 3개의 애니메이션 프레임 로드
-    for (int32 stageIndex = 0; stageIndex < totalStages; stageIndex++)
-    {
-        const int32 stageNumber = stageIndex + 1;  // 스테이지 번호는 1부터 시작
-        
-        for (int32 frameIndex = 0; frameIndex < 3; frameIndex++)
-        {
-            // 파일 경로: ArtResources/Texture2D/stage/stage_1-0.png, stage_1-1.png, etc.
-            const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_{}-{}.png"_fmt(stageNumber, frameIndex));
-            
-            Texture frameTexture(texturePath);
-            
-            // 텍스처 로딩이 성공했는지 확인
-            if (!frameTexture.isEmpty())
-            {
-                stageTextures_[stageIndex].push_back(frameTexture);
-            }
-            else
-            {
-                // 로딩 실패 시 빈 텍스처 추가 (오류 방지)
-                stageTextures_[stageIndex].push_back(Texture{});
-            }
-        }
-    }
+	// 스테이지 텍스처 배열 초기화
+	stageTextures_.clear();
+	const int32 totalStages = StageData::getTotalStageCount();
+	stageTextures_.resize(totalStages);
+
+	// 각 스테이지별로 3개의 애니메이션 프레임 로드
+	for (int32 stageIndex = 0; stageIndex < totalStages; stageIndex++)
+	{
+		const int32 stageNumber = stageIndex + 1;  // 스테이지 번호는 1부터 시작
+
+		// ★ 스테이지 10, 11은 임시로 스테이지 9의 텍스처 사용
+		const int32 textureStageNumber = (stageNumber >= 10) ? 9 : stageNumber;
+
+		for (int32 frameIndex = 0; frameIndex < 3; frameIndex++)
+		{
+			// 파일 경로: ArtResources/Texture2D/stage/stage_1-0.png, stage_1-1.png, etc.
+			const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_{}-{}.png"_fmt(textureStageNumber, frameIndex));
+
+			Texture frameTexture(texturePath);
+
+			// 텍스처 로딩이 성공했는지 확인
+			if (!frameTexture.isEmpty())
+			{
+				stageTextures_[stageIndex].push_back(frameTexture);
+			}
+			else
+			{
+				// 로딩 실패 시 빈 텍스처 추가 (오류 방지)
+				stageTextures_[stageIndex].push_back(Texture{});
+			}
+		}
+	}
 }
 
 void StageSelectScene::update()

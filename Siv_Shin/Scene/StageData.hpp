@@ -232,23 +232,23 @@ namespace StageData
         case 6: return STAGE_6;
         case 7: return STAGE_7;
         case 8: return STAGE_8;
-        case 9: return FINAL_STAGE; // Final Boss Stage (명명: finalStage)
+        case 9: return STAGE_9;
+        case 10: return STAGE_10;
+        case 11: return FINAL_STAGE; // Final Boss Stage
         default: return STAGE_1; // 기본값: 스테이지 1
         }
     }
 
 	inline Array<String> getStageTileOverlay(int32 stageNumber) {
 		switch (stageNumber) {
-		case 1: return STAGE_1_TILES;
-		// case 4: return STAGE_4_TILES;
-		// case 5: return STAGE_5_TILES;
+		case 10: return STAGE_10_TILES;
 		default: return {};
 		}
 	}
 
     inline constexpr int32 getTotalStageCount()
     {
-        return 9;
+        return 11;  // 10 normal stages + 1 final stage
     }
 
     inline Array<String> getFinalStageMap()
