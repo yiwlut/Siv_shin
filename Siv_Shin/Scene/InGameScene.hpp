@@ -121,6 +121,8 @@ private:
     double moveDelay_;
     ColorF playerColor_;
 
+	double bumpSoundCooldown_ = 0.0;  // ★ bump 사운드 쿨다운 추가
+
 	Optional<Point> queuedDir_; // 방향 전환 입력 버퍼
 	bool pollMoveDirection(Point& outDir, TacoDirection& outTacoDir, bool& outFacingLeft);
 	void bufferInputWhileMoving();
@@ -409,6 +411,7 @@ private:
 
 	Audio stageClearSound_;  // 스테이지 클리어 사운드
 	Audio bombExplosionSound_;
+	Audio bumpSound_;  // ★ bump 사운드 (벽/밀리지 않는 박스)
     // 블록 색상에 따라 음악 재생
     void playBoxSound(BoxColor color);
 

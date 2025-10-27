@@ -258,7 +258,7 @@ Resource(ArtResources/Texture2D/box.png)
 //
 //	SFX
 //
-
+Resource(ArtResources/SFX/bump.wav)
 Resource(ArtResources/SFX/bomb.wav)
 Resource(ArtResources/SFX/C6.wav)
 Resource(ArtResources/SFX/E5.wav)
