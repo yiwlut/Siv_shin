@@ -1367,27 +1367,27 @@ ColorF InGameScene::getBoxColorF(BoxColor color) const
 }
 void InGameScene::updateFinalStageTileOverlay()
 {
-	static double lastCheckedTime = -1.0;
-	static int32 lastAppliedPhase = -1;
+    static double lastCheckedTime = -1.0;
+    static int32 lastAppliedPhase = -1;
 
-	const Array<String> overlay = StageData::getFinalStageTileOverlay(gameTime_);
+    const Array<String> overlay = StageData::getFinalStageTileOverlay(gameTime_);
 
-	if (!overlay.isEmpty())
-	{
-		// ★ 6초 간격으로 변경
-		int32 currentPhase = (gameTime_ >= 18.0) ? 3 :  // 18초
-			(gameTime_ >= 12.0) ? 2 :  // 12초
-			(gameTime_ >= 6.0) ? 1 : 0;  // 6초
+    if (!overlay.isEmpty())
+    {
+        // ★ 6초 간격으로 변경
+        int32 currentPhase = (gameTime_ >= 18.0) ? 3 :  // 18초
+                             (gameTime_ >= 12.0) ? 2 :  // 12초
+                             (gameTime_ >= 6.0) ? 1 : 0;  // 6초
 
-		if (currentPhase != lastAppliedPhase)
-		{
-			applyTileOverlay(overlay);
-			lastAppliedPhase = currentPhase;
+        if (currentPhase != lastAppliedPhase)
+        {
+            applyTileOverlay(overlay);
+            lastAppliedPhase = currentPhase;
 
-			checkPlayerLavaCollision();
-			checkBoxesLavaCollision();
-		}
-	}
+            checkPlayerLavaCollision();
+            checkBoxesLavaCollision();
+        }
+    }
 }
 void InGameScene::checkBoxesLavaCollision()
 {
@@ -1454,7 +1454,7 @@ void InGameScene::update()
 	if (isFailed_ && showFailedButtons_)
 	{
 		// R키로 리트라이
-		if (KeyR.down()) {
+		if (!isCleared_ && KeyR.down()) {
 			isFailed_ = false;
 			showFailedButtons_ = false;
 			isPlayerDead_ = false;
@@ -1497,7 +1497,7 @@ void InGameScene::update()
 		updateDeathEffect();
 		updateBossExplosions(dt); 
 
-		if (KeyR.down()) {
+		if (!isCleared_ && KeyR.down()) {
 			gameTime_ = 0.0;
 			moves_ = 0;
 			score_ = 0;
@@ -1658,7 +1658,7 @@ void InGameScene::update()
 	}
 
 	// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
-	if (KeyR.down()) {
+	if (!isCleared_ && KeyR.down()) {
 		gameTime_ = 0.0;
 		moves_ = 0;
 		score_ = 0;
@@ -2388,17 +2388,7 @@ void InGameScene::draw()
 			ColorF{ 1.0, 1.0, 1.0, alpha }
 		);
 	}
-	// ★ 죽음 후 1.5초 뒤에 "R?" 텍스트 표시
-	if (isPlayerDead_ && deathAnimTimer_ >= 1.5)
-	{
-		double alpha = Sin((deathAnimTimer_ - 1.5) * Math::TwoPi) * 0.5 + 0.5;
-		clearFont_(U"R?").drawAt(
-			Scene::Size().x / 2.0,
-			Scene::Size().y / 2.0,
-			ColorF{ 1.0, 1.0, 1.0, alpha }
-		);
-	}
-
+	
 	// 클리어 이펙트 그리기
 	if (showClearEffect_)
 	{
@@ -2519,9 +2509,6 @@ void InGameScene::drawMap()
 		Quad(top, right, bottom, left).draw(ic);
 		Quad(top, right, bottom, left).drawFrame(2, ColorF{ ic.r * 1.3, ic.g * 1.3, ic.b * 1.3 });
 	}
-	
-	// 폭발 이펙트 (카메라 변환 내부에서 그리기)
-	drawBombBoxFX_Multi();
 }
 
 
@@ -3653,14 +3640,18 @@ CustomCamera2D& InGameScene::camInstance() {
 CustomCamera2D& InGameScene::camera() { return camInstance(); }
 const CustomCamera2D& InGameScene::camera() const { return camInstance(); }
 
-// 1) 동적 맵 크기 질의 (mapData_ 우선, 비어 있으면 레거시 폴백)
 int32 InGameScene::getMapWidth() const {
-	if (!mapData_.isEmpty()) return static_cast<int32>(mapData_.front().size());
-	return getMapWidth(); // 폴백 (점진 전환 시 제거 가능)
+	if (!mapData_.isEmpty()) {
+		return static_cast<int32>(mapData_.front().size());
+	}
+	return 0;
 }
+
 int32 InGameScene::getMapHeight() const {
-	if (!mapData_.isEmpty()) return static_cast<int32>(mapData_.size());
-	return getMapHeight(); // 폴백 (점진 전환 시 제거 가능)
+	if (!mapData_.isEmpty()) {
+		return static_cast<int32>(mapData_.size());
+	}
+	return 0;
 }
 
 // 2) 스테이지 인덱스로 로드 (가변 파서 경로 사용)

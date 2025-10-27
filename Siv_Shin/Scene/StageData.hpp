@@ -19,9 +19,6 @@ namespace StageData
 		U"###g###",
 		U"#######",
 	};
-
-
-
 	//8x8
     inline const Array<String> STAGE_2 = {
 		U"########",
@@ -36,50 +33,50 @@ namespace StageData
 
 	//7x7
 	inline const Array<String> STAGE_3 = {
-		U"#######",
-		U"###  ##",
-		U"YBR  ##",  
-		U" V#  ##",
+		U"LL####L",
+		U"###  #L",
+		U"YBR  #L",  
+		U" V#  #L",
 		U"    T##",  
 		U"## OBv#",
-		U"#######",
+		U"L######",
 	};
 
     inline const Array<String> STAGE_4 = {
-		U"## VOv#",  
+		U"L# VOv#",  
 		U"#     #",  
 		U" R    #",
 		U"T  BO #",  
 		U"# Y   #",  
 		U"##BV ##",  
-		U"##v####",
+		U"LLv###L",
 	};
 
     inline const Array<String> STAGE_5 = {
-		U"#### ####",
+		U"LL## ##ii",
 		U"###gY ###",  
 		U"###R BG##",
 		U"# Y T R #",  
 		U"#    Y  #",
 		U"##BB  R##",
 		U"### B v##",  
-		U"#### ####",
-		U"#### ####",
+		U"#### ###L",
+		U"LL## ##LL",
 	};
 
 
     inline const Array<String> STAGE_6 = {
-		U"###########",
-		U"###########",  
-		U"###########",
-		U"#####v#####",  
-		U"###  R  ###",  
-		U"#        9#",
-		U"##   T   ##",
-		U"###     ###",  
-		U"####   ####",
-		U"#####T#####",  
-		U"###########"
+		U"iiiii#iiiii",
+		U"iiiii#iiiii",
+		U"iiiii#iiiii",
+		U"iiiiiviiiii",  
+		U"iii  R  iii",  
+		U"L        9L",
+		U"#L   T   LL",
+		U"LLL     LLL",  
+		U"LLLL   LLLL",
+		U"LLLLLTLLLLL",  
+		U"LLLLLLLLLLL"
 	};
 
     inline const Array<String> STAGE_7 = {
@@ -105,8 +102,8 @@ namespace StageData
 		U" O   o    B",
 		U"  #     # B",
 		U"#    R     ",
-		U"#  #   #  #",
-		U"##B      ##",  
+		U"#  #iii#  #",
+		U"##B iii  ##",  
 		U"##2##T#####"
 	};
 
@@ -147,19 +144,18 @@ namespace StageData
 
 
 	inline const Array<String> STAGE_10_TILES = {
-			U"           ",
-			U"           ",
-			U"           ",
-			U"    ii     ",
-			U"   iii     ",
-			U"           ",
-			U"     iii   ",
-			U"     ii    ",
-			U"           ",
-			U"           ",
-			U"           ",
+		U"           ",
+		U"           ",
+		U"           ",
+		U"    ii     ",
+		U"   iii     ",
+		U"           ",
+		U"     iii   ",
+		U"     ii    ",
+		U"           ",
+		U"           ",
+		U"           ",
 	};
-	// 10x5 Final Boss Stage (always referenced as FINAL_STAGE)
     inline const Array<String> FINAL_STAGE = {
 		U"              ",
 		U"    B    R    ",
