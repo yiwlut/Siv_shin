@@ -7,6 +7,7 @@
 #include "SettingsScene.hpp"
 #include "GameOverScene.hpp"
 #include "StageData.hpp"  // 스테이지 데이터 포함
+#include "EndingScene.hpp"
 
 GameSceneManager::GameSceneManager() 
     : currentScene_(nullptr), currentSceneType_(SceneType::Logo)  // 로고부터 시작
@@ -57,8 +58,10 @@ std::unique_ptr<GameScene> GameSceneManager::createScene(SceneType sceneType)
         return std::make_unique<LogoScene>();
     case SceneType::MainMenu:
         return std::make_unique<MainMenuScene>();
-    case SceneType::Opening:  // 오프닝 씬 추가
-        return std::make_unique<OpeningScene>();
+	case SceneType::Opening:
+		return std::make_unique<OpeningScene>();
+	case SceneType::Ending:
+		return std::make_unique<EndingScene>();
     case SceneType::StageSelect:
         {
             auto scene = std::make_unique<StageSelectScene>(&gameData_);

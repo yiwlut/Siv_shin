@@ -116,6 +116,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Scene\EndingScene.cpp" />
     <ClCompile Include="Scene\GameOverScene.cpp" />
     <ClCompile Include="Scene\InGameScene.cpp" />
     <ClCompile Include="Scene\LogoScene.cpp" />
@@ -339,6 +340,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera\CustomCamera2D.hpp" />
+    <ClInclude Include="Scene\EndingScene.hpp" />
     <ClInclude Include="Scene\GameOverScene.hpp" />
     <ClInclude Include="Scene\InGameScene.hpp" />
     <ClInclude Include="Scene\LogoScene.hpp" />

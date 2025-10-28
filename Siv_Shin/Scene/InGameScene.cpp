@@ -119,6 +119,11 @@ void InGameScene::onEnter()
 			bgm_.play();
 		}
 	}
+	if (StageData::isFinalStage(currentStage_) && KeyF2.down()) {
+		isCleared_ = true;
+		changeScene(SceneType::Ending);
+		return;
+	}
 
 	auto& holo = g_Shaders.holographic();
 	holo.setRainbowMode(false);
@@ -1694,7 +1699,11 @@ void InGameScene::update()
 			}
 		}
 	}
-
+	if (StageData::isFinalStage(currentStage_) && KeyF2.down()) {
+		isCleared_ = true;
+		changeScene(SceneType::Ending);
+		return;
+	}
 	// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
 	if (!isCleared_ && KeyR.down()) {
 		gameTime_ = 0.0;
