@@ -236,30 +236,30 @@ namespace StageData
 	};
 
 	inline const Array<String> FINALSTAGE_PHASE1 = {
-		U"   r b          ",
-		U"   R B          ",
+		U"   r        b   ",
 		U"                ",
-		U"        T       ",
+		U"                ",
+		U"     T          ",
 		U"                ",
 		U"                "
 	};
 
 	inline const Array<String> FINALSTAGE_PHASE2 = {
-		U"   r b          ",
-		U"   R B Y        ",
+		U"   r        b   ",
 		U"                ",
-		U"        T       ",
 		U"                ",
-		U"                "
+		U"     T          ",
+		U"                ",
+		U"   y        g   ",
 	};
 
 	inline const Array<String> FINALSTAGE_PHASE3 = {
-		U"   r b          ",
-		U"   R B   G      ",
-		U"                ",
-		U"        T       ",
-		U"                ",
-		U"                "
+		U"     r          ",
+		U"      b         ",
+		U"       y        ",
+		U"     T  g       ",
+		U"         v      ",
+		U"          o     ",
 	};
 
 	inline Array<String> getFinalStageMapForPhase(int32 phase)

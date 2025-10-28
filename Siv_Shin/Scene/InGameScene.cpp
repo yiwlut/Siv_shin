@@ -5006,7 +5006,7 @@ void InGameScene::setWarningAtTile(Point tile, bool on)
 
 void InGameScene::loadRandomPattern()
 {
-	Array<int32> availablePatterns = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+	Array<int32> availablePatterns = { 0, 1, 2, 3, 4, 5};
 
 	if (patternHistory_.size() >= 2)
 	{
@@ -5017,7 +5017,7 @@ void InGameScene::loadRandomPattern()
 
 	if (availablePatterns.isEmpty())
 	{
-		availablePatterns = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+		availablePatterns = { 0, 1, 2, 3, 4, 5};
 		patternHistory_.clear();
 	}
 
@@ -5037,12 +5037,12 @@ void InGameScene::loadRandomPattern()
 	case 3: currentWallPattern_ = BossWallPatternData::getCrossPattern(); break;
 	case 4: currentWallPattern_ = BossWallPatternData::getDiagonalXPattern(); break;
 	case 5: currentWallPattern_ = BossWallPatternData::getSpikePattern(); break;
-	case 6: currentWallPattern_ = BossWallPatternData::getAlternatingPattern(); break;
-	case 7: currentWallPattern_ = BossWallPatternData::getMazePattern(); break;
+	//case 6: currentWallPattern_ = BossWallPatternData::getAlternatingPattern(); break;
+	/*case 7: currentWallPattern_ = BossWallPatternData::getMazePattern(); break;
 	case 8: currentWallPattern_ = BossWallPatternData::getCheckerboardPattern(); break;
 	case 9: currentWallPattern_ = BossWallPatternData::getRandomBulletPattern(); break;
 	case 10: currentWallPattern_ = BossWallPatternData::getRotatingPattern(); break;
-	case 11: currentWallPattern_ = BossWallPatternData::getBoxShrinkPattern(); break;
+	case 11: currentWallPattern_ = BossWallPatternData::getBoxShrinkPattern(); break;*/
 	default: currentWallPattern_ = BossWallPatternData::getVerticalFillPattern(); break;
 	}
 }
