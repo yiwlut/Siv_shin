@@ -9,13 +9,10 @@ EndingScene::EndingScene()
 	, currentSlideIndex_(0), isFastForward_(false), isFullscreen_(false), ffwdAnimTime_(0.0), textTypingTime_(0.0), visibleCharCount_(0) {
 	currentScene_ = SceneType::Ending;
 	slides_ = {
-	{ U"ArtResources/Texture2D/Story/ed_0.png", { U"タコは神を倒し、兄弟たちを救い出した。", U"しかし、何かが失われたような気がした。" } },
-	{ U"ArtResources/Texture2D/Story/ed_1.png", { U"深い海に戻ったタコたちは、", U"再び静かな日々を取り戻した。" } },
-	{ U"ArtResources/Texture2D/Story/ed_2.png", { U"兄弟たちと共に過ごす時間は、", U"かつてないほど大切に感じられた。" } },
-	{ U"ArtResources/Texture2D/Story/ed_3.png", { U"しかし、主人公のタコは知っていた。", U"この平和が永遠に続くわけではないことを。" } },
-	{ U"ArtResources/Texture2D/Story/ed_4.png", { U"それでも今は、", U"この瞬間を大切にしようと決めた。" } },
-	{ U"ArtResources/Texture2D/Story/ed_5.png", { U"こうしてタコの冒険は幕を閉じた。", U"新たな伝説として語り継がれるために。" } },
-	{ U"ArtResources/Texture2D/Story/ed_6.png", { U"ありがとうございました！", U"製作: 開発チーム" } }
+	{ U"ArtResources/Texture2D/Story/ed_0.png", { U"彼は、力を失い意識のない神のそばに落ちていた鍵を見つける。「これこそが、檻の鍵に違いない！」" } },
+	{ U"ArtResources/Texture2D/Story/ed_1.png", { U"彼は鍵を頭に乗せて、懐かしい我が家へと急いで戻った。" } },
+	{ U"ArtResources/Texture2D/Story/ed_2.png", { U"彼が鍵を扉に差し込むと……カチッ！ 鍵は扉を開き、すべての兄弟たちを解放した。" } },
+	{ U"ArtResources/Texture2D/Story/ed_3.png", { U"彼らは抱き合った。すると、眩い色彩の渦が彼らの周りで弾けた。彼の旅路で得た色合いが、彼と兄弟たちを光り輝くスペクトルに染め上げる。それこそが、彼らが深海（シンかい）の新（あら）たな守護者となった証だった。" } },
 	};
 	for (const auto& slide : slides_) slideTextures_.push_back(Texture(Resource(slide.imagePath)));
 	ffwdTextures_.push_back(Texture(Resource(U"ArtResources/Texture2D/FFWD/ffwd_0.png")));
