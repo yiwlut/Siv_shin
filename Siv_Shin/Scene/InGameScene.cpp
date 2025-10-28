@@ -1478,6 +1478,18 @@ void InGameScene::update()
 	// ★ Final Stage 시간 기반 타일 오버레이 업데이트
 	if (StageData::isFinalStage(currentStage_))
 	{
+		if (isCleared_ && isFading_)
+		{
+			fadeTimer_ += dt;
+
+			if (fadeTimer_ >= fadeDuration_)
+			{
+				// ★ 엔딩 씬으로 전환
+				changeScene(SceneType::Ending);
+				return;
+			}
+		}
+
 		// 보스 공격 시퀀스 중이 아니고, 모든 골이 채워졌을 때
 		if (!isBossAttackSequenceActive_ && !isCleared_ && !isPlayerDead_ && checkAllGoalsFilledForBoss())
 		{
@@ -1521,10 +1533,24 @@ void InGameScene::update()
 
 			if (StageData::isFinalStage(currentStage_))
 			{
-				const auto ov = StageData::getFinalStageTileOverlay(0.0);
-				applyTileOverlay(ov, OverlayApplyMode::OverlayOnly);
-				initBossAttacks();
-				initBossWallSystem();
+				currentBossPhase_ = 1;
+				bossHitCount_ = 0;
+				bossCurrentHP_ = 3;
+				showBossHitEffect_ = false;
+				bossHitEffectTimer_ = 0.0;
+
+				isBossAttackSequenceActive_ = false;
+				currentBossAttackPhase_ = BossAttackPhase::None;
+				bossAttackSequenceTimer_ = 0.0;
+				gatheringBoxes_.clear();
+				mergedBoxCreated_ = false;
+
+				bossProjectiles_.clear();
+				bossExplosionParticles_.clear();
+				bossAttackTimer_ = 0.0;
+
+				loadBossPhase(1);
+
 				if (!bossBgm_.isEmpty())
 				{
 					bossBgm_.setVolume(0.4);
@@ -1533,6 +1559,8 @@ void InGameScene::update()
 			}
 			else
 			{
+				loadStage(currentStage_);
+
 				if (!bgm_.isEmpty())
 				{
 					bgm_.setVolume(0.33);
@@ -1543,7 +1571,7 @@ void InGameScene::update()
 			updateMergePaintFX();
 			return;
 		}
-		// StageFailed 상태에서는 다른 입력 처리 없음
+
 		updateMergePaintFX();
 		return;
 	}
@@ -1573,11 +1601,23 @@ void InGameScene::update()
 
 			if (StageData::isFinalStage(currentStage_))
 			{
-				const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
-				if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay,OverlayApplyMode::OverlayOnly); }
+				currentBossPhase_ = 1;
+				bossHitCount_ = 0;
+				bossCurrentHP_ = 3;
+				showBossHitEffect_ = false;
+				bossHitEffectTimer_ = 0.0;
 
-				initBossAttacks();
-				initBossWallSystem();
+				isBossAttackSequenceActive_ = false;
+				currentBossAttackPhase_ = BossAttackPhase::None;
+				bossAttackSequenceTimer_ = 0.0;
+				gatheringBoxes_.clear();
+				mergedBoxCreated_ = false;
+
+				bossProjectiles_.clear();
+				bossExplosionParticles_.clear();
+				bossAttackTimer_ = 0.0;
+
+				loadBossPhase(1);
 
 				if (!bossBgm_.isEmpty())
 				{
@@ -1587,6 +1627,8 @@ void InGameScene::update()
 			}
 			else
 			{
+				loadStage(currentStage_);
+
 				if (!bgm_.isEmpty())
 				{
 					bgm_.setVolume(0.33);
@@ -1731,7 +1773,8 @@ void InGameScene::update()
 		return;
 	}
 	// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
-	if (!isCleared_ && KeyR.down()) {
+	if (!isCleared_ && KeyR.down())
+	{
 		gameTime_ = 0.0;
 		moves_ = 0;
 		score_ = 0;
@@ -1739,33 +1782,46 @@ void InGameScene::update()
 		isPlayerDead_ = false;
 		deathAnimTimer_ = 0.0;
 		deathParticles_.clear();
-
 		isFailed_ = false;
 		showFailedButtons_ = false;
-
 		bombFXs_.clear();
 		wallBreakFXs.clear();
 		bombExpiryAbs_.clear();
-
 		bossProjectiles_.clear();
 		bossExplosionParticles_.clear();
 		bossAttackTimer_ = 0.0;
 
 		const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
-		if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay, StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly: OverlayApplyMode::WriteToMap); }
-		
+		if (!initialOverlay.isEmpty())
+		{
+			applyTileOverlay(initialOverlay,
+							 StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly
+																	 : OverlayApplyMode::WriteToMap);
+		}
 
-		loadStage(currentStage_);
-
+		// ★ 보스 스테이지 전용 초기화 (loadStage 호출 전에)
 		if (StageData::isFinalStage(currentStage_))
 		{
-			const Array<String> initialOverlay = StageData::getFinalStageTileOverlay(0.0);
-			if (!initialOverlay.isEmpty())
-			{
-				applyTileOverlay(initialOverlay,OverlayApplyMode::OverlayOnly);
-				initBossAttacks();
-				initBossWallSystem();
-			}
+			// 보스 페이즈 시스템 완전 리셋
+			currentBossPhase_ = 1;
+			bossHitCount_ = 0;
+			bossCurrentHP_ = 3;
+			showBossHitEffect_ = false;
+			bossHitEffectTimer_ = 0.0;
+
+			// 보스 공격 시퀀스 리셋
+			isBossAttackSequenceActive_ = false;
+			currentBossAttackPhase_ = BossAttackPhase::None;
+			bossAttackSequenceTimer_ = 0.0;
+			gatheringBoxes_.clear();
+			mergedBoxCreated_ = false;
+
+			// ★ loadStage 대신 loadBossPhase 호출
+			loadBossPhase(1);
+
+			// 보스 관련 시스템 초기화
+			initBossAttacks();
+			initBossWallSystem();
 
 			if (!bossBgm_.isEmpty())
 			{
@@ -1775,6 +1831,9 @@ void InGameScene::update()
 		}
 		else
 		{
+			// 일반 스테이지만 loadStage 호출
+			loadStage(currentStage_);
+
 			if (!bgm_.isEmpty())
 			{
 				bgm_.setVolume(0.33);
@@ -5393,17 +5452,13 @@ void InGameScene::updateBossAttackSequence(double dt)
 			holo.setRainbowMode(false);
 			holo.setIntensity(0.0f);
 
-			// ★ 보스 HP 확인
 			bossHitCount_++;
 
 			if (bossHitCount_ >= 3)
 			{
-				// 최종 클리어
+
 				isCleared_ = true;
 				score_ += 1000;
-				showClearEffect_ = true;
-				clearEffectTimer_ = 0.0;
-				createClearEffect();
 
 				if (!stageClearSound_.isEmpty())
 				{
@@ -5415,6 +5470,16 @@ void InGameScene::updateBossAttackSequence(double dt)
 					gameData_->clearStage(currentStage_);
 				}
 
+				// ★ BGM 페이드아웃
+				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
+				{
+					bossBgm_.stop();
+				}
+
+				// ★ 엔딩 씬으로 전환 (2초 대기 후)
+				isFading_ = true;
+				fadeTimer_ = 0.0;
+				fadeDuration_ = 2.0;
 			}
 			else
 			{
