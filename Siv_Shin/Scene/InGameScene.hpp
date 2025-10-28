@@ -3,6 +3,7 @@
 #include "StageData.hpp"  // 스테이지 데이터 포함
 #include "../Shader/Manager/ShaderManager.hpp"
 #include "../Camera/CustomCamera2D.hpp"
+#include "BossWallPatternData.hpp"
 
 // 상자 색상
 enum class BoxColor
@@ -366,6 +367,20 @@ private:
 	double attackRatioColor_ = 1.0;
 	double attackRatioBlack_ = 0;
 	Point lastAttackTile_{ -1, -1 };
+
+	BossWallPattern currentWallPattern_;
+	int32 currentPatternFrame_ = 0;
+	double patternFrameTimer_ = 0.0;
+	bool isPlayingWallPattern_ = false;
+	Array<int32> patternHistory_;
+
+	void initBossWallPatternSystem();
+	void updateBossWallPattern(double dt);
+	void applyWallPatternFrame(const BossWallPatternFrame& frame);
+	void spawnWallAtTile(Point tile);
+	void destroyWallAtTile(Point tile);
+	void setWarningAtTile(Point tile, bool on);
+	void loadRandomPattern();
 
 	Array<HomingBullet> homingBullets_;
 	Array<PendingAttack> pendingAttacks_;
