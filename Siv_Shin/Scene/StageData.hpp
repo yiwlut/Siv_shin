@@ -236,29 +236,29 @@ namespace StageData
 	};
 
 	inline const Array<String> FINALSTAGE_PHASE1 = {
-		U"   r   y   b    ",
+		U"   r b          ",
+		U"   R B          ",
 		U"                ",
 		U"                ",
 		U"                ",
-		U"                ",
-		U"   T            "
+		U"                "
 	};
 
 	inline const Array<String> FINALSTAGE_PHASE2 = {
-		U"  r   y   b   o ",
+		U"   r b          ",
+		U"   R B          ",
 		U"                ",
 		U"                ",
 		U"                ",
-		U"                ",
-		U"  g   v     T   "
+		U"                "
 	};
 
 	inline const Array<String> FINALSTAGE_PHASE3 = {
-		U" r  y  b  o  g  ",
+		U"   r b          ",
+		U"   R B          ",
 		U"                ",
 		U"                ",
 		U"                ",
-		U"   v       T    ",
 		U"                "
 	};
 

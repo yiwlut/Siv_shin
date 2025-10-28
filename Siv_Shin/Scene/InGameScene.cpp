@@ -240,7 +240,6 @@ void InGameScene::loadStage(int32 stageNumber)
 	// 맵 크기에 맞춘 고정 카메라 적용
 	onStageLoaded_FixedCamera();
 
-	// Print << U"Loaded stage {} with size {}x{}"_fmt(stageNumber, getMapWidth(), getMapHeight());
 }
 
 void InGameScene::loadStageFromText(const Array<String>& mapText)
@@ -2388,7 +2387,6 @@ void InGameScene::draw()
 	applyFixedCameraFitToMap();
 	drawBackground();
 
-	// Final stage 상단 영역에 보스 이미지 표시 (카메라 변환 밖, 화면 좌표)
 	if (StageData::isFinalStage(currentStage_))
 	{
 		if (!bossIdleFrames_.isEmpty())
@@ -2442,10 +2440,13 @@ void InGameScene::draw()
 	drawEnergyBalls();
 	drawHomingBullets();
 
-	if (StageData::isFinalStage(currentStage_))
+	if (isBossAttackSequenceActive_ &&
+	(currentBossAttackPhase_ == BossAttackPhase::LaunchTowardsBoss ||
+		currentBossAttackPhase_ == BossAttackPhase::BossHit))
 	{
-		drawBossHP();
+		drawBossAttackSequence();
 	}
+
 	// Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리
 	if (currentStage_ == 5)
 	{
@@ -5148,10 +5149,6 @@ void InGameScene::loadBossPhase(int32 phase)
 
 	initBossWallPatternSystem();
 
-	Print(U"Loaded boss phase {} with {} boxes and {} goals",
-		  phase, boxes_.size(),
-		  redGoalPositions_.size() + yellowGoalPositions_.size() + blueGoalPositions_.size() +
-		  orangeGoalPositions_.size() + greenGoalPositions_.size() + violetGoalPositions_.size());
 }
 
 void InGameScene::advanceToNextBossPhase()
@@ -5174,7 +5171,6 @@ void InGameScene::advanceToNextBossPhase()
 			gameData_->clearStage(currentStage_);
 		}
 
-		Print(U"Boss defeated! Final stage clear!");
 		return;
 	}
 
@@ -5214,7 +5210,7 @@ Point InGameScene::getMapCenterTile() const
 
 Vec2 InGameScene::getBossPositionForAttack() const
 {
-	return Vec2(Scene::Width() / 2.0, 200.0);
+	return getBossStartUIPos();
 }
 
 void InGameScene::startBossAttackSequence()
@@ -5360,6 +5356,7 @@ void InGameScene::updateBossAttackSequence(double dt)
 
 		mergedBoxPixelPos_ = Math::Lerp(startScreen, bossPos, eased);
 
+
 		if (t >= 1.0)
 		{
 			currentBossAttackPhase_ = BossAttackPhase::BossHit;
@@ -5368,12 +5365,9 @@ void InGameScene::updateBossAttackSequence(double dt)
 			const double scale = camera().getScale();
 			camera().shake(0.5, 30.0 / Max(0.001, scale));
 
-			// ★ 보스에게 데미지 (함수명 수정)
 			bossCurrentHP_--;
 			showBossHitEffect_ = true;
 			bossHitEffectTimer_ = 0.0;
-
-			Print(U"Boss HP: {} / {}", bossCurrentHP_, bossMaxHP_);
 		}
 		break;
 	}
@@ -5421,7 +5415,6 @@ void InGameScene::updateBossAttackSequence(double dt)
 					gameData_->clearStage(currentStage_);
 				}
 
-				Print(U"Boss defeated! Final stage complete!");
 			}
 			else
 			{
@@ -5517,6 +5510,7 @@ void InGameScene::drawBossAttackSequence()
 	{
 		const double t = bossAttackSequenceTimer_ / 0.8;
 		const double size = TILE_SIZE - 8 + t * 20.0;
+
 		const RectF boxRect = RectF(Arg::center = mergedBoxPixelPos_, size, size);
 
 		const auto scope = holo.scopedTexture(Texture());
@@ -5526,6 +5520,7 @@ void InGameScene::drawBossAttackSequence()
 		const Vec2 startPos = tileToPixel(centerTile);
 		const Mat3x2 transform = camera().getMat3x2();
 		const Vec2 startScreen = transform.transformPoint(startPos);
+		const Vec2 bossPos = getBossPositionForAttack();
 
 		const int trailCount = 8;
 		for (int i = 0; i < trailCount; ++i)
@@ -5533,7 +5528,7 @@ void InGameScene::drawBossAttackSequence()
 			const double trailT = Max(0.0, t - i * 0.1);
 			if (trailT <= 0.0) continue;
 
-			const Vec2 trailPos = Math::Lerp(startScreen, getBossPositionForAttack(), Math::Pow(trailT, 2.0));
+			const Vec2 trailPos = Math::Lerp(startScreen, bossPos, Math::Pow(trailT, 2.0));
 			const double trailAlpha = (1.0 - static_cast<double>(i) / trailCount) * 0.5;
 			const double trailSize = size * (1.0 - static_cast<double>(i) / trailCount * 0.5);
 
