@@ -162,7 +162,8 @@ void MainMenuScene::draw()
     
     titleFont_(U"タコの伝説")  
         .drawAt(centerX, titleY, ColorF(1.0, 1.0, 1.0, fadeAlpha));  // 페이드 효과 적용
-    
+
+	initializeButtons();
     // 버튼들 그리기 (페이드 효과 적용)
     drawButton(startButton_);
     drawButton(exitButton_);

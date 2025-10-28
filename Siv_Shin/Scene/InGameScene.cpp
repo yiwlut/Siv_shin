@@ -2343,11 +2343,9 @@ void InGameScene::updateAnimations()
         }
     }
 }
-
-// draw() 함수 수정 - "R?" 텍스트 표시 부분 추가
-
 void InGameScene::draw()
 {
+	applyFixedCameraFitToMap();
 	drawBackground();
 
 	// Final stage 상단 영역에 보스 이미지 표시 (카메라 변환 밖, 화면 좌표)
