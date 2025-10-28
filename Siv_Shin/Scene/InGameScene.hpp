@@ -368,11 +368,50 @@ private:
 	double attackRatioBlack_ = 0;
 	Point lastAttackTile_{ -1, -1 };
 
+	int32 currentBossPhase_ = 1;
+	int32 bossHitCount_ = 0;
+
 	BossWallPattern currentWallPattern_;
 	int32 currentPatternFrame_ = 0;
 	double patternFrameTimer_ = 0.0;
 	bool isPlayingWallPattern_ = false;
 	Array<int32> patternHistory_;
+
+	bool isBossAttackSequenceActive_ = false;
+	double bossAttackSequenceTimer_ = 0.0;
+
+	struct BoxGatherData
+	{
+		Point originalPos;
+		Vec2 currentPixelPos;
+		BoxColor color;
+		bool gathered = false;
+	};
+	Array<BoxGatherData> gatheringBoxes_;
+
+	Vec2 mergedBoxPixelPos_;
+	bool mergedBoxCreated_ = false;
+
+	enum class BossAttackPhase
+	{
+		None,
+		GatherBoxes,
+		MergeEffect,
+		ChargeRainbow,
+		LaunchTowardsBoss,
+		BossHit,
+		Complete
+	};
+	BossAttackPhase currentBossAttackPhase_ = BossAttackPhase::None;
+
+	int32 bossMaxHP_ = 3;
+	int32 bossCurrentHP_ = 3;
+	double bossHitEffectTimer_ = 0.0;
+	bool showBossHitEffect_ = false;
+
+	void initBossPhaseSystem();
+	void loadBossPhase(int32 phase);
+	void advanceToNextBossPhase();
 
 	void initBossWallPatternSystem();
 	void updateBossWallPattern(double dt);
@@ -381,6 +420,17 @@ private:
 	void destroyWallAtTile(Point tile);
 	void setWarningAtTile(Point tile, bool on);
 	void loadRandomPattern();
+
+	void startBossAttackSequence();
+	void updateBossAttackSequence(double dt);
+	void drawBossAttackSequence();
+	bool checkAllGoalsFilledForBoss() const;
+	Point getMapCenterTile() const;
+	Vec2 getBossPositionForAttack() const;
+
+	void damageBoss();
+	void drawBossHP();
+	void updateBossHitEffect(double dt);
 
 	Array<HomingBullet> homingBullets_;
 	Array<PendingAttack> pendingAttacks_;

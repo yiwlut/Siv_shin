@@ -51,6 +51,15 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
     currentScene_ = SceneType::InGame;
     playerPixelPos_ = tileToPixel(playerPos_);
     targetPixelPos_ = playerPixelPos_;
+
+	if (StageData::isFinalStage(currentStage_))
+	{
+		currentBossPhase_ = 1;
+		bossHitCount_ = 0;
+		bossMaxHP_ = 3;
+		bossCurrentHP_ = 3;
+	}
+
     loadAssets();
     initializeClearButtons();  // 클리어 버튼 초기화
     
@@ -94,14 +103,13 @@ void InGameScene::onEnter()
 	bossProjectiles_.clear();
 	bossExplosionParticles_.clear();
 	bossAttackTimer_ = 0.0;
-	// ★ 배경음악 재생 (Final Stage는 보스 BGM)
 	if (StageData::isFinalStage(currentStage_))
 	{
-		const Array<String> initialOverlay = StageData::getFinalStageTileOverlay(0.0);
-		if (!initialOverlay.isEmpty())
-		{
-			applyTileOverlay(initialOverlay,StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly : OverlayApplyMode::WriteToMap);
-		}
+		currentBossPhase_ = 1;
+		bossHitCount_ = 0;
+		bossCurrentHP_ = 3;
+
+		initBossPhaseSystem();
 		initBossAttacks();
 		initBossWallSystem();
 
@@ -1471,9 +1479,26 @@ void InGameScene::update()
 	// ★ Final Stage 시간 기반 타일 오버레이 업데이트
 	if (StageData::isFinalStage(currentStage_))
 	{
-		//updateFinalStageTileOverlay();  // 새 함수 호출
-		//updateBossWallFilling(dt);
-		updateBossWallPattern(dt);
+		// 보스 공격 시퀀스 중이 아니고, 모든 골이 채워졌을 때
+		if (!isBossAttackSequenceActive_ && !isCleared_ && !isPlayerDead_ && checkAllGoalsFilledForBoss())
+		{
+			startBossAttackSequence();
+		}
+
+		// 보스 공격 시퀀스 업데이트
+		if (isBossAttackSequenceActive_)
+		{
+			updateBossAttackSequence(dt);
+			updateMergePaintFX();
+			updateBossHitEffect(dt);
+			return;
+		}
+
+		// 보스 패턴 업데이트
+		if (!isBossAttackSequenceActive_ && !isPlayerDead_ && !isCleared_)
+		{
+			updateBossWallPattern(dt);
+		}
 	}
 	// ★ StageFailed 상태: R키만 동작, Z키는 불가, ESC도 불가
 	if (isFailed_ && showFailedButtons_)
@@ -1671,6 +1696,7 @@ void InGameScene::update()
 	if (StageData::isFinalStage(currentStage_) && !isPlayerDead_ && !isCleared_)
 	{
 		//updateBossAttack(dt);
+		updateBossHitEffect(dt);
 		updateBossAttacks(dt);
 		updateBossProjectiles(dt);
 		updateEnergyBalls(dt);
@@ -1827,7 +1853,7 @@ void InGameScene::update()
 	updateMergePaintFX();
 	updateBlackBoxes();
 
-	if (!isCleared_ && isGameClear()) {
+	if (!isCleared_ && isGameClear() && !StageData::isFinalStage(currentStage_)) {
 		isCleared_ = true;
 		score_ += 1000;
 		showClearEffect_ = true;
@@ -2363,26 +2389,31 @@ void InGameScene::draw()
 	drawBackground();
 
 	// Final stage 상단 영역에 보스 이미지 표시 (카메라 변환 밖, 화면 좌표)
-	if (StageData::isFinalStage(currentStage_) && !bossIdleFrames_.isEmpty())
+	if (StageData::isFinalStage(currentStage_))
 	{
-		const int32 screenW = Scene::Width();
-		const int32 screenH = Scene::Height();
-		const int32 topH = screenH / 2;
-
-		const Texture& bossTex = bossIdleFrames_[bossAnimFrame_ % static_cast<int32>(bossIdleFrames_.size())];
-		const Size bossSize = bossTex.size();
-		if (bossSize.x > 0 && bossSize.y > 0)
+		if (!bossIdleFrames_.isEmpty())
 		{
-			const double sx = static_cast<double>(screenW) / bossSize.x;
-			const double sy = static_cast<double>(topH) / bossSize.y;
-			const double s = Min(sx, sy) * 0.9;
-			const int32 drawW = static_cast<int32>(bossSize.x * s);
-			const int32 drawH = static_cast<int32>(bossSize.y * s);
-			const int32 x = (screenW - drawW) / 2;
-			const int32 y = (topH - drawH) / 2;
-			bossTex.resized(drawW, drawH).draw(x, y);
+			const int32 screenW = Scene::Width();
+			const int32 screenH = Scene::Height();
+			const int32 topH = screenH / 2;
+
+			const Texture& bossTex = bossIdleFrames_[bossAnimFrame_ % static_cast<int32>(bossIdleFrames_.size())];
+			const Size bossSize = bossTex.size();
+
+			if (bossSize.x > 0 && bossSize.y > 0)
+			{
+				const double sx = static_cast<double>(screenW) / bossSize.x;
+				const double sy = static_cast<double>(topH) / bossSize.y;
+				const double s = Min(sx, sy) * 0.9;
+
+				const int32 drawW = static_cast<int32>(bossSize.x * s);
+				const int32 drawH = static_cast<int32>(bossSize.y * s);
+				const int32 x = (screenW - drawW) / 2;
+				const int32 y = (topH - drawH) / 2;
+
+				bossTex.resized(drawW, drawH).draw(x, y);
+			}
 		}
-		drawBossChargeTelegraphs();
 	}
 
 
@@ -2393,6 +2424,14 @@ void InGameScene::draw()
 
 		drawMap();
 		drawPlayer();
+
+		if (isBossAttackSequenceActive_ &&
+			currentBossAttackPhase_ != BossAttackPhase::LaunchTowardsBoss &&
+			currentBossAttackPhase_ != BossAttackPhase::BossHit)
+		{
+			drawBossAttackSequence();
+		}
+
 	}
 
 	drawBombBoxFX_Multi();
@@ -2403,6 +2442,10 @@ void InGameScene::draw()
 	drawEnergyBalls();
 	drawHomingBullets();
 
+	if (StageData::isFinalStage(currentStage_))
+	{
+		drawBossHP();
+	}
 	// Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리
 	if (currentStage_ == 5)
 	{
@@ -4065,6 +4108,7 @@ void InGameScene::initBossWallSystem()
 
 	initBossWallPatternSystem();
 }
+
 void InGameScene::setOverlayWarning(int32 x, int32 y, bool on) {
 	if (x < 0 || x >= getMapWidth() || y < 0 || y >= getMapHeight()) return;
 	overlayWarn_[y][x] = on ? OverlayType::Warning : OverlayType::None;
@@ -4733,17 +4777,13 @@ void InGameScene::spawnBombExplosionFXAtTile(Point tile)
 
 void InGameScene::initBossWallPatternSystem()
 {
-	// 히스토리 초기화
 	patternHistory_.clear();
-
-	// 랜덤 패턴 선택
 	loadRandomPattern();
 
 	currentPatternFrame_ = 0;
 	patternFrameTimer_ = 0.0;
 	isPlayingWallPattern_ = true;
 
-	// 첫 프레임 적용
 	if (!currentWallPattern_.frames.isEmpty())
 	{
 		applyWallPatternFrame(currentWallPattern_.frames[0]);
@@ -4779,6 +4819,7 @@ void InGameScene::updateBossWallPattern(double dt)
 				return;
 			}
 		}
+
 		applyWallPatternFrame(currentWallPattern_.frames[currentPatternFrame_]);
 	}
 }
@@ -4787,7 +4828,6 @@ void InGameScene::applyWallPatternFrame(const BossWallPatternFrame& frame)
 {
 	const int32 mapW = getMapWidth();
 	const int32 mapH = getMapHeight();
-
 	const int32 patternH = static_cast<int32>(frame.pattern.size());
 
 	for (int32 y = 0; y < Min(patternH, mapH); ++y)
@@ -4906,9 +4946,7 @@ void InGameScene::setWarningAtTile(Point tile, bool on)
 
 void InGameScene::loadRandomPattern()
 {
-
 	Array<int32> availablePatterns = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-
 
 	if (patternHistory_.size() >= 2)
 	{
@@ -4933,44 +4971,629 @@ void InGameScene::loadRandomPattern()
 
 	switch (selectedPattern)
 	{
-	case 0:
-		currentWallPattern_ = BossWallPatternData::getVerticalFillPattern();
+	case 0: currentWallPattern_ = BossWallPatternData::getVerticalFillPattern(); break;
+	case 1: currentWallPattern_ = BossWallPatternData::getHorizontalWavePattern(); break;
+	case 2: currentWallPattern_ = BossWallPatternData::getVerticalWavePattern(); break;
+	case 3: currentWallPattern_ = BossWallPatternData::getCrossPattern(); break;
+	case 4: currentWallPattern_ = BossWallPatternData::getDiagonalXPattern(); break;
+	case 5: currentWallPattern_ = BossWallPatternData::getSpikePattern(); break;
+	case 6: currentWallPattern_ = BossWallPatternData::getAlternatingPattern(); break;
+	case 7: currentWallPattern_ = BossWallPatternData::getMazePattern(); break;
+	case 8: currentWallPattern_ = BossWallPatternData::getCheckerboardPattern(); break;
+	case 9: currentWallPattern_ = BossWallPatternData::getRandomBulletPattern(); break;
+	case 10: currentWallPattern_ = BossWallPatternData::getRotatingPattern(); break;
+	case 11: currentWallPattern_ = BossWallPatternData::getBoxShrinkPattern(); break;
+	default: currentWallPattern_ = BossWallPatternData::getVerticalFillPattern(); break;
+	}
+}
+
+void InGameScene::initBossPhaseSystem()
+{
+	currentBossPhase_ = 1;
+	bossHitCount_ = 0;
+	bossCurrentHP_ = 3;
+	bossHitEffectTimer_ = 0.0;
+	showBossHitEffect_ = false;
+
+	loadBossPhase(1);
+}
+
+void InGameScene::loadBossPhase(int32 phase)
+{
+	currentBossPhase_ = phase;
+
+	const Array<String> phaseMap = StageData::getFinalStageMapForPhase(phase);
+
+	boxes_.clear();
+	items_.clear();
+	redGoalPositions_.clear();
+	yellowGoalPositions_.clear();
+	blueGoalPositions_.clear();
+	orangeGoalPositions_.clear();
+	greenGoalPositions_.clear();
+	violetGoalPositions_.clear();
+	blackGoalPositions_.clear();
+
+	const int32 mapHeight = static_cast<int32>(phaseMap.size());
+	int32 mapWidth = 0;
+	for (const auto& line : phaseMap)
+	{
+		mapWidth = Max(mapWidth, static_cast<int32>(line.size()));
+	}
+
+	mapData_.assign(mapHeight, Array<TileType>(mapWidth, TileType::Empty));
+
+	Point playerStart(1, 1);
+	bool foundPlayer = false;
+
+	for (int32 y = 0; y < mapHeight; ++y)
+	{
+		const String& line = phaseMap[y];
+		for (int32 x = 0; x < static_cast<int32>(line.size()); ++x)
+		{
+			const char32 ch = line[x];
+			const Point pos(x, y);
+
+			switch (ch)
+			{
+			case U' ':
+				mapData_[y][x] = TileType::Empty;
+				break;
+
+			case U'#':
+				mapData_[y][x] = TileType::Wall;
+				break;
+
+			case U'T':
+				mapData_[y][x] = TileType::Empty;
+				playerStart = pos;
+				foundPlayer = true;
+				break;
+
+			case U'R':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Red, 0.0, nextBoxUID_++ });
+				break;
+			case U'r':
+				mapData_[y][x] = TileType::RedGoal;
+				redGoalPositions_.push_back(pos);
+				break;
+
+			case U'Y':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Yellow, 0.0, nextBoxUID_++ });
+				break;
+			case U'y':
+				mapData_[y][x] = TileType::YellowGoal;
+				yellowGoalPositions_.push_back(pos);
+				break;
+
+			case U'B':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Blue, 0.0, nextBoxUID_++ });
+				break;
+			case U'b':
+				mapData_[y][x] = TileType::BlueGoal;
+				blueGoalPositions_.push_back(pos);
+				break;
+
+			case U'O':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Orange, 0.0, nextBoxUID_++ });
+				break;
+			case U'o':
+				mapData_[y][x] = TileType::OrangeGoal;
+				orangeGoalPositions_.push_back(pos);
+				break;
+
+			case U'G':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Green, 0.0, nextBoxUID_++ });
+				break;
+			case U'g':
+				mapData_[y][x] = TileType::GreenGoal;
+				greenGoalPositions_.push_back(pos);
+				break;
+
+			case U'V':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ });
+				break;
+			case U'v':
+				mapData_[y][x] = TileType::VioletGoal;
+				violetGoalPositions_.push_back(pos);
+				break;
+
+			default:
+				mapData_[y][x] = TileType::Empty;
+				break;
+			}
+		}
+	}
+	if (foundPlayer)
+	{
+		playerPos_ = playerStart;
+	}
+	else
+	{
+		bool placed = false;
+		for (int32 y = 0; y < mapHeight && !placed; ++y)
+		{
+			for (int32 x = 0; x < mapWidth && !placed; ++x)
+			{
+				if (mapData_[y][x] == TileType::Empty && !getBoxAt(Point(x, y)))
+				{
+					playerPos_ = Point(x, y);
+					placed = true;
+				}
+			}
+		}
+
+		if (!placed)
+		{
+			playerPos_ = Point(1, 1);
+		}
+	}
+
+	playerPixelPos_ = tileToPixel(playerPos_);
+	targetPixelPos_ = playerPixelPos_;
+	isPlayerMoving_ = false;
+
+	wallMask_.assign(mapHeight, Array<bool>(mapWidth, false));
+	overlayWarn_.assign(mapHeight, Array<OverlayType>(mapWidth, OverlayType::None));
+
+	isPlayerDead_ = false;
+	deathAnimTimer_ = 0.0;
+	deathParticles_.clear();
+
+	initBossWallPatternSystem();
+
+	Print(U"Loaded boss phase {} with {} boxes and {} goals",
+		  phase, boxes_.size(),
+		  redGoalPositions_.size() + yellowGoalPositions_.size() + blueGoalPositions_.size() +
+		  orangeGoalPositions_.size() + greenGoalPositions_.size() + violetGoalPositions_.size());
+}
+
+void InGameScene::advanceToNextBossPhase()
+{
+	if (currentBossPhase_ >= 3)
+	{
+		isCleared_ = true;
+		score_ += 1000;
+		showClearEffect_ = true;
+		clearEffectTimer_ = 0.0;
+		createClearEffect();
+
+		if (!stageClearSound_.isEmpty())
+		{
+			stageClearSound_.playOneShot(0.9);
+		}
+
+		if (gameData_)
+		{
+			gameData_->clearStage(currentStage_);
+		}
+
+		Print(U"Boss defeated! Final stage clear!");
+		return;
+	}
+
+	currentBossPhase_++;
+	loadBossPhase(currentBossPhase_);
+}
+
+bool InGameScene::checkAllGoalsFilledForBoss() const
+{
+	if (!StageData::isFinalStage(currentStage_)) return false;
+
+	const Array<BoxColor> allColors = {
+		BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
+		BoxColor::Orange, BoxColor::Green, BoxColor::Violet
+	};
+
+	for (const auto& color : allColors)
+	{
+		const Array<Point>& goals = getGoalPositionsForColor(color);
+		for (const auto& goal : goals)
+		{
+			const ColorBox* box = getBoxAt(goal);
+			if (!box || box->color != color)
+			{
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+Point InGameScene::getMapCenterTile() const
+{
+	return Point(getMapWidth() / 2, getMapHeight() / 2);
+}
+
+Vec2 InGameScene::getBossPositionForAttack() const
+{
+	return Vec2(Scene::Width() / 2.0, 200.0);
+}
+
+void InGameScene::startBossAttackSequence()
+{
+	if (isBossAttackSequenceActive_) return;
+
+	isBossAttackSequenceActive_ = true;
+	bossAttackSequenceTimer_ = 0.0;
+	currentBossAttackPhase_ = BossAttackPhase::GatherBoxes;
+
+	isPlayingWallPattern_ = false;
+
+	gatheringBoxes_.clear();
+
+	const Array<BoxColor> allColors = {
+		BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
+		BoxColor::Orange, BoxColor::Green, BoxColor::Violet
+	};
+
+	for (const auto& color : allColors)
+	{
+		const Array<Point>& goals = getGoalPositionsForColor(color);
+		for (const auto& goal : goals)
+		{
+			ColorBox* box = getBoxAt(goal);
+			if (box && box->color == color)
+			{
+				BoxGatherData data;
+				data.originalPos = box->pos;
+				data.currentPixelPos = tileToPixel(box->pos);
+				data.color = box->color;
+				data.gathered = false;
+				gatheringBoxes_.push_back(data);
+
+				removeBoxByUid(box->uid);
+			}
+		}
+	}
+
+	const Point centerTile = getMapCenterTile();
+	mergedBoxPixelPos_ = tileToPixel(centerTile);
+	mergedBoxCreated_ = false;
+
+}
+
+void InGameScene::updateBossAttackSequence(double dt)
+{
+	if (!isBossAttackSequenceActive_) return;
+
+	bossAttackSequenceTimer_ += dt;
+
+	auto& holo = g_Shaders.holographic();
+
+	switch (currentBossAttackPhase_)
+	{
+	case BossAttackPhase::GatherBoxes:
+	{
+		const double gatherDuration = 1.5;
+		const double t = Min(bossAttackSequenceTimer_ / gatherDuration, 1.0);
+		const double eased = 1.0 - Math::Pow(1.0 - t, 3.0);
+
+		const Point centerTile = getMapCenterTile();
+		const Vec2 targetPos = tileToPixel(centerTile);
+
+		bool allGathered = true;
+		for (auto& boxData : gatheringBoxes_)
+		{
+			if (!boxData.gathered)
+			{
+				boxData.currentPixelPos = Math::Lerp(
+					tileToPixel(boxData.originalPos),
+					targetPos,
+					eased
+				);
+
+				if (eased >= 0.99)
+				{
+					boxData.gathered = true;
+				}
+				else
+				{
+					allGathered = false;
+				}
+			}
+		}
+
+		if (allGathered && t >= 1.0)
+		{
+			currentBossAttackPhase_ = BossAttackPhase::MergeEffect;
+			bossAttackSequenceTimer_ = 0.0;
+
+			const double scale = camera().getScale();
+			camera().shake(0.3, 15.0 / Max(0.001, scale));
+		}
 		break;
-	case 1:
-		currentWallPattern_ = BossWallPatternData::getHorizontalWavePattern();
+	}
+
+	case BossAttackPhase::MergeEffect:
+	{
+		const double mergeDuration = 0.5;
+
+		if (bossAttackSequenceTimer_ >= mergeDuration)
+		{
+			mergedBoxCreated_ = true;
+			currentBossAttackPhase_ = BossAttackPhase::ChargeRainbow;
+			bossAttackSequenceTimer_ = 0.0;
+
+			holo.setRainbowMode(true);
+			holo.setScale(0.08f);
+			holo.setSpeed(2.5f);
+			holo.setIntensity(0.0f);
+		}
 		break;
-	case 2:
-		currentWallPattern_ = BossWallPatternData::getVerticalWavePattern();
+	}
+
+	case BossAttackPhase::ChargeRainbow:
+	{
+		const double chargeDuration = 1.0;
+		const double t = Min(bossAttackSequenceTimer_ / chargeDuration, 1.0);
+
+		holo.setIntensity(static_cast<float>(t * 1.2f));
+
+		if (t >= 1.0)
+		{
+			currentBossAttackPhase_ = BossAttackPhase::LaunchTowardsBoss;
+			bossAttackSequenceTimer_ = 0.0;
+		}
 		break;
-	case 3:
-		currentWallPattern_ = BossWallPatternData::getCrossPattern();
+	}
+
+	case BossAttackPhase::LaunchTowardsBoss:
+	{
+		const double launchDuration = 0.8;
+		const double t = Min(bossAttackSequenceTimer_ / launchDuration, 1.0);
+		const double eased = Math::Pow(t, 2.0);
+
+		const Point centerTile = getMapCenterTile();
+		const Vec2 startPos = tileToPixel(centerTile);
+		const Vec2 bossPos = getBossPositionForAttack();
+
+		const Mat3x2 transform = camera().getMat3x2();
+		const Vec2 startScreen = transform.transformPoint(startPos);
+
+		mergedBoxPixelPos_ = Math::Lerp(startScreen, bossPos, eased);
+
+		if (t >= 1.0)
+		{
+			currentBossAttackPhase_ = BossAttackPhase::BossHit;
+			bossAttackSequenceTimer_ = 0.0;
+
+			const double scale = camera().getScale();
+			camera().shake(0.5, 30.0 / Max(0.001, scale));
+
+			// ★ 보스에게 데미지 (함수명 수정)
+			bossCurrentHP_--;
+			showBossHitEffect_ = true;
+			bossHitEffectTimer_ = 0.0;
+
+			Print(U"Boss HP: {} / {}", bossCurrentHP_, bossMaxHP_);
+		}
 		break;
-	case 4:
-		currentWallPattern_ = BossWallPatternData::getDiagonalXPattern();
+	}
+
+	case BossAttackPhase::BossHit:
+	{
+		const double hitDuration = 0.5;
+
+		if (bossAttackSequenceTimer_ >= hitDuration)
+		{
+			currentBossAttackPhase_ = BossAttackPhase::Complete;
+			bossAttackSequenceTimer_ = 0.0;
+		}
 		break;
-	case 5:
-		currentWallPattern_ = BossWallPatternData::getSpikePattern();
+	}
+
+	case BossAttackPhase::Complete:
+	{
+		if (bossAttackSequenceTimer_ >= 0.5)
+		{
+			isBossAttackSequenceActive_ = false;
+
+			holo.setRainbowMode(false);
+			holo.setIntensity(0.0f);
+
+			// ★ 보스 HP 확인
+			bossHitCount_++;
+
+			if (bossHitCount_ >= 3)
+			{
+				// 최종 클리어
+				isCleared_ = true;
+				score_ += 1000;
+				showClearEffect_ = true;
+				clearEffectTimer_ = 0.0;
+				createClearEffect();
+
+				if (!stageClearSound_.isEmpty())
+				{
+					stageClearSound_.playOneShot(0.9);
+				}
+
+				if (gameData_)
+				{
+					gameData_->clearStage(currentStage_);
+				}
+
+				Print(U"Boss defeated! Final stage complete!");
+			}
+			else
+			{
+				// 다음 페이즈로
+				advanceToNextBossPhase();
+			}
+		}
 		break;
-	case 6:
-		currentWallPattern_ = BossWallPatternData::getAlternatingPattern();
-		break;
-	case 7:
-		currentWallPattern_ = BossWallPatternData::getMazePattern();
-		break;
-	case 8:
-		currentWallPattern_ = BossWallPatternData::getCheckerboardPattern();
-		break;
-	case 9:
-		currentWallPattern_ = BossWallPatternData::getRandomBulletPattern();
-		break;
-	case 10:
-		currentWallPattern_ = BossWallPatternData::getRotatingPattern();
-		break;
-	case 11:
-		currentWallPattern_ = BossWallPatternData::getBoxShrinkPattern();
-		break;
+	}
+
 	default:
-		currentWallPattern_ = BossWallPatternData::getVerticalFillPattern();
 		break;
+	}
+}
+
+void InGameScene::damageBoss()
+{
+	bossCurrentHP_--;
+	showBossHitEffect_ = true;
+	bossHitEffectTimer_ = 0.0;
+
+}
+
+void InGameScene::updateBossHitEffect(double dt)
+{
+	if (!showBossHitEffect_) return;
+
+	bossHitEffectTimer_ += dt;
+
+	if (bossHitEffectTimer_ >= 1.0)
+	{
+		showBossHitEffect_ = false;
+		bossHitEffectTimer_ = 0.0;
+	}
+}
+
+void InGameScene::drawBossAttackSequence()
+{
+	if (!isBossAttackSequenceActive_) return;
+
+	auto& holo = g_Shaders.holographic();
+	const ScopedRenderStates2D blend(BlendState::Additive);
+
+	switch (currentBossAttackPhase_)
+	{
+	case BossAttackPhase::GatherBoxes:
+	{
+		for (const auto& boxData : gatheringBoxes_)
+		{
+			const ColorF color = getBoxColorF(boxData.color);
+			const RectF boxRect = RectF(Arg::center = boxData.currentPixelPos, TILE_SIZE - 16, TILE_SIZE - 16);
+
+			boxRect.draw(color);
+			boxRect.drawFrame(3, 0, ColorF(color.r * 1.2, color.g * 1.2, color.b * 1.2));
+			Circle(boxData.currentPixelPos, 8).draw(ColorF(color, 0.8));
+		}
+		break;
+	}
+
+	case BossAttackPhase::MergeEffect:
+	{
+		const double t = bossAttackSequenceTimer_ / 0.5;
+		const double pulseSize = 50.0 * (1.0 + Math::Sin(t * Math::TwoPi * 3.0) * 0.3);
+
+		Circle(mergedBoxPixelPos_, pulseSize).draw(ColorF(1.0, 1.0, 1.0, 0.3 * (1.0 - t)));
+
+		for (const auto& boxData : gatheringBoxes_)
+		{
+			const ColorF color = getBoxColorF(boxData.color);
+			const RectF boxRect = RectF(Arg::center = boxData.currentPixelPos, TILE_SIZE - 16, TILE_SIZE - 16);
+
+			boxRect.draw(ColorF(color, 1.0 - t));
+		}
+		break;
+	}
+
+	case BossAttackPhase::ChargeRainbow:
+	{
+		const RectF boxRect = RectF(Arg::center = mergedBoxPixelPos_, TILE_SIZE - 8, TILE_SIZE - 8);
+
+		const auto scope = holo.scopedTexture(Texture());
+		boxRect.draw(ColorF(1.0, 1.0, 1.0));
+
+		const double t = bossAttackSequenceTimer_ / 1.0;
+		const double pulse = 0.5 + 0.5 * Math::Sin(t * Math::TwoPi * 4.0);
+		const double radius = 30.0 + 20.0 * t;
+
+		Circle(mergedBoxPixelPos_, radius * pulse).drawFrame(3, ColorF(1.0, 1.0, 1.0, 0.5 * pulse));
+		break;
+	}
+
+	case BossAttackPhase::LaunchTowardsBoss:
+	{
+		const double t = bossAttackSequenceTimer_ / 0.8;
+		const double size = TILE_SIZE - 8 + t * 20.0;
+		const RectF boxRect = RectF(Arg::center = mergedBoxPixelPos_, size, size);
+
+		const auto scope = holo.scopedTexture(Texture());
+		boxRect.draw(ColorF(1.0, 1.0, 1.0));
+
+		const Point centerTile = getMapCenterTile();
+		const Vec2 startPos = tileToPixel(centerTile);
+		const Mat3x2 transform = camera().getMat3x2();
+		const Vec2 startScreen = transform.transformPoint(startPos);
+
+		const int trailCount = 8;
+		for (int i = 0; i < trailCount; ++i)
+		{
+			const double trailT = Max(0.0, t - i * 0.1);
+			if (trailT <= 0.0) continue;
+
+			const Vec2 trailPos = Math::Lerp(startScreen, getBossPositionForAttack(), Math::Pow(trailT, 2.0));
+			const double trailAlpha = (1.0 - static_cast<double>(i) / trailCount) * 0.5;
+			const double trailSize = size * (1.0 - static_cast<double>(i) / trailCount * 0.5);
+
+			Circle(trailPos, trailSize * 0.5).draw(ColorF(1.0, 1.0, 1.0, trailAlpha));
+		}
+		break;
+	}
+
+	case BossAttackPhase::BossHit:
+	{
+		const double t = bossAttackSequenceTimer_ / 0.5;
+		const Vec2 bossPos = getBossPositionForAttack();
+
+		const double explosionRadius = t * 200.0;
+		Circle(bossPos, explosionRadius).drawFrame(10, ColorF(1.0, 1.0, 1.0, 1.0 - t));
+
+		const double flashSize = 50.0 * (1.0 - t);
+		Circle(bossPos, flashSize).draw(ColorF(1.0, 1.0, 1.0, 1.0 - t));
+
+		for (int i = 0; i < 20; ++i)
+		{
+			const double angle = i * Math::TwoPi / 20.0;
+			const Vec2 dir = Vec2(Math::Cos(angle), Math::Sin(angle));
+			const double dist = t * 150.0;
+			const Vec2 particlePos = bossPos + dir * dist;
+
+			Circle(particlePos, 5.0 * (1.0 - t)).draw(ColorF(1.0, 1.0, 1.0, 0.8 * (1.0 - t)));
+		}
+		break;
+	}
+
+	default:
+		break;
+	}
+}
+
+void InGameScene::drawBossHP()
+{
+	if (!StageData::isFinalStage(currentStage_)) return;
+
+	const double centerX = Scene::Width() / 2.0;
+	const double y = 50.0;
+
+	const String hpText = U"BOSS HP: {} / {}";
+	gameFont_(Format(hpText, bossCurrentHP_, bossMaxHP_)).drawAt(centerX, y, ColorF(1.0, 0.3, 0.3));
+
+	const double barWidth = 400.0;
+	const double barHeight = 30.0;
+	const RectF barBg(Arg::center(centerX, y + 40), barWidth, barHeight);
+	const double hpRatio = static_cast<double>(bossCurrentHP_) / bossMaxHP_;
+	const RectF barFill(barBg.pos, barWidth * hpRatio, barHeight);
+
+	barBg.draw(ColorF(0.2, 0.2, 0.2, 0.8));
+	barFill.draw(ColorF(1.0, 0.2, 0.2, 0.9));
+	barBg.drawFrame(3, ColorF(0.8, 0.8, 0.8));
+
+	if (showBossHitEffect_)
+	{
+		const double t = bossHitEffectTimer_ / 1.0;
+		const double alpha = (1.0 - t) * 0.5;
+		Rect(0, 0, Scene::Width(), Scene::Height()).draw(ColorF(1.0, 1.0, 1.0, alpha));
 	}
 }

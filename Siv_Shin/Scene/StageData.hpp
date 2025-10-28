@@ -195,13 +195,7 @@ namespace StageData
 		U"                ",
 		U"                ",
 	};
-	//U"L!! iiiiii LLL",
-	//U"LL! iiiiii LLL",
-	//U"LL!        !LL",
-	//U"LL!!!      !LL",
-	//U"LL!        !LL",
-	//U"LLL!      !!!L",
-	// 10초 경과 시 타일 오버레이 (용암 첫 상승)
+
 	inline const Array<String> FINAL_STAGE_P1_TILES = {
 		U"LLL!iiiii!!LLL",
 		U"LLL!!iiiii!LLL",
@@ -240,6 +234,45 @@ namespace StageData
 		U"LLLLLLLLLLLLLL",
 		U"LLLLLLLLLLLLLL",
 	};
+
+	inline const Array<String> FINALSTAGE_PHASE1 = {
+		U"   r   y   b    ",
+		U"                ",
+		U"                ",
+		U"                ",
+		U"                ",
+		U"   T            "
+	};
+
+	inline const Array<String> FINALSTAGE_PHASE2 = {
+		U"  r   y   b   o ",
+		U"                ",
+		U"                ",
+		U"                ",
+		U"                ",
+		U"  g   v     T   "
+	};
+
+	inline const Array<String> FINALSTAGE_PHASE3 = {
+		U" r  y  b  o  g  ",
+		U"                ",
+		U"                ",
+		U"                ",
+		U"   v       T    ",
+		U"                "
+	};
+
+	inline Array<String> getFinalStageMapForPhase(int32 phase)
+	{
+		switch (phase)
+		{
+		case 1: return FINALSTAGE_PHASE1;
+		case 2: return FINALSTAGE_PHASE2;
+		case 3: return FINALSTAGE_PHASE3;
+		default: return FINALSTAGE_PHASE1;
+		}
+	}
+
 
 	inline constexpr double getNextPhaseTime(int32 phase)
 	{
@@ -299,7 +332,7 @@ namespace StageData
         case 8: return STAGE_8;
         case 9: return STAGE_9;
         case 10: return STAGE_10;
-        case 11: return FINAL_STAGE; // Final Boss Stage
+        case 11: return FINALSTAGE_PHASE1; // Final Boss Stage
         default: return STAGE_1; // 기본값: 스테이지 1
         }
     }
