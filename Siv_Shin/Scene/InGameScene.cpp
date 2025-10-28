@@ -1472,7 +1472,8 @@ void InGameScene::update()
 	if (StageData::isFinalStage(currentStage_))
 	{
 		//updateFinalStageTileOverlay();  // 새 함수 호출
-		updateBossWallFilling(dt);
+		//updateBossWallFilling(dt);
+		updateBossWallPattern(dt);
 	}
 	// ★ StageFailed 상태: R키만 동작, Z키는 불가, ESC도 불가
 	if (isFailed_ && showFailedButtons_)
@@ -3867,12 +3868,29 @@ double InGameScene::computeFitScaleToMap(double margin) const {
 	return Clamp(s, 0.25, 5.0);
 }
 
-void InGameScene::applyFixedCameraFitToMap() {
+void InGameScene::applyFixedCameraFitToMap()
+{
+	if (StageData::isFinalStage(currentStage_)) {
+		const double vw = Scene::Width();
+		const double vh = Scene::Height();
+		const double worldW = getMapWidth() * TILE_SIZE;
+		const double worldH = getMapHeight() * TILE_SIZE;
+
+		double s = Min(vw / worldW, (vh * 0.5) / worldH) * 0.9;
+		s = Clamp(s, 0.25, 5.0);
+
+		const Vec2 center(worldW * 0.5, worldH * 0.5);
+		auto& cam = camera();
+		cam.jumpToScale(s);
+
+		const Vec2 offsetCenter(center.x, center.y - (vh / s) * 0.25);
+		cam.jumpToPos(offsetCenter);
+		return;
+	}
+
 	const double s = computeFitScaleToMap(0.95);
-	const Vec2 center(
-		static_cast<double>(getMapWidth()) * TILE_SIZE * 0.5,
-		static_cast<double>(getMapHeight()) * TILE_SIZE * 0.5
-	);
+	const Vec2 center(getMapWidth() * TILE_SIZE * 0.5,
+					  getMapHeight() * TILE_SIZE * 0.5);
 	auto& cam = camera();
 	cam.jumpToScale(s);
 	cam.jumpToPos(center);
@@ -4040,24 +4058,13 @@ void InGameScene::applyTileOverlay(const Array<String>& overlayData, OverlayAppl
 	}
 }
 
-void InGameScene::initBossWallSystem() {
+void InGameScene::initBossWallSystem()
+{
 	overlayWarn_.assign(getMapHeight(), Array<OverlayType>(getMapWidth(), OverlayType::None));
-
 	wallMask_.assign(getMapHeight(), Array<bool>(getMapWidth(), false));
 
-	nextColumnL_ = 0;
-	nextColumnR_ = getMapWidth() - 1;
-
-	wallNextTime_ = gameTime_ + wallStepInterval_;
-
-	if (isInsideMap(Point{ nextColumnL_, 0 })) {
-		for (int y = 0; y < getMapHeight(); ++y) setOverlayWarning(nextColumnL_, y, true);
-	}
-	if (fillFromBothSides_ && isInsideMap(Point{ nextColumnR_, 0 })) {
-		for (int y = 0; y < getMapHeight(); ++y) setOverlayWarning(nextColumnR_, y, true);
-	}
+	initBossWallPatternSystem();
 }
-
 void InGameScene::setOverlayWarning(int32 x, int32 y, bool on) {
 	if (x < 0 || x >= getMapWidth() || y < 0 || y >= getMapHeight()) return;
 	overlayWarn_[y][x] = on ? OverlayType::Warning : OverlayType::None;
@@ -4722,4 +4729,248 @@ void InGameScene::spawnBombExplosionFXAtTile(Point tile)
 
 	wallBreakFXs << std::move(fx);
 
+}
+
+void InGameScene::initBossWallPatternSystem()
+{
+	// 히스토리 초기화
+	patternHistory_.clear();
+
+	// 랜덤 패턴 선택
+	loadRandomPattern();
+
+	currentPatternFrame_ = 0;
+	patternFrameTimer_ = 0.0;
+	isPlayingWallPattern_ = true;
+
+	// 첫 프레임 적용
+	if (!currentWallPattern_.frames.isEmpty())
+	{
+		applyWallPatternFrame(currentWallPattern_.frames[0]);
+	}
+}
+
+
+void InGameScene::updateBossWallPattern(double dt)
+{
+	if (!StageData::isFinalStage(currentStage_)) return;
+	if (!isPlayingWallPattern_) return;
+	if (isCleared_ || isPlayerDead_) return;
+	if (currentWallPattern_.frames.isEmpty()) return;
+
+	patternFrameTimer_ += dt;
+
+	const auto& currentFrame = currentWallPattern_.frames[currentPatternFrame_];
+	if (patternFrameTimer_ >= currentFrame.duration)
+	{
+		patternFrameTimer_ = 0.0;
+		currentPatternFrame_++;
+
+		if (currentPatternFrame_ >= static_cast<int32>(currentWallPattern_.frames.size()))
+		{
+			if (currentWallPattern_.looping)
+			{
+				loadRandomPattern();
+				currentPatternFrame_ = 0;
+			}
+			else
+			{
+				isPlayingWallPattern_ = false;
+				return;
+			}
+		}
+		applyWallPatternFrame(currentWallPattern_.frames[currentPatternFrame_]);
+	}
+}
+
+void InGameScene::applyWallPatternFrame(const BossWallPatternFrame& frame)
+{
+	const int32 mapW = getMapWidth();
+	const int32 mapH = getMapHeight();
+
+	const int32 patternH = static_cast<int32>(frame.pattern.size());
+
+	for (int32 y = 0; y < Min(patternH, mapH); ++y)
+	{
+		const String& row = frame.pattern[y];
+		const int32 patternW = static_cast<int32>(row.size());
+
+		for (int32 x = 0; x < Min(patternW, mapW); ++x)
+		{
+			const char32 ch = row[x];
+			const Point tile{ x, y };
+
+			if (!isInsideMap(tile)) continue;
+
+			switch (ch)
+			{
+			case U'!':
+				setWarningAtTile(tile, true);
+				break;
+
+			case U'W':
+				setWarningAtTile(tile, false);
+				spawnWallAtTile(tile);
+				break;
+
+			case U'X':
+				setWarningAtTile(tile, false);
+				destroyWallAtTile(tile);
+				break;
+
+			case U'.':
+			default:
+				setWarningAtTile(tile, false);
+				break;
+			}
+		}
+	}
+}
+
+void InGameScene::spawnWallAtTile(Point tile)
+{
+	if (!isInsideMap(tile)) return;
+
+	if (mapData_[tile.y][tile.x] == TileType::Wall) return;
+	if (!wallMask_.isEmpty() && wallMask_[tile.y][tile.x]) return;
+
+	if (!wallMask_.isEmpty())
+	{
+		wallMask_[tile.y][tile.x] = true;
+	}
+
+	spawnWallBreakFXAtTile(tile);
+
+	if (playerPos_ == tile && !isPlayerDead_)
+	{
+		isPlayerDead_ = true;
+		deathAnimTimer_ = 0.0;
+		createDeathEffect(true);
+
+		if (StageData::isFinalStage(currentStage_))
+		{
+			if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
+			{
+				savedMusicPosition_ = bossBgm_.posSec();
+				bossBgm_.stop();
+			}
+		}
+	}
+
+	const double scale = camera().getScale();
+	const double shakeIntensity = Min(5.0 / Max(0.001, scale), 15.0 / Max(0.001, scale));
+	camera().shake(0.15, shakeIntensity);
+}
+
+void InGameScene::destroyWallAtTile(Point tile)
+{
+	if (!isInsideMap(tile)) return;
+
+	bool wasWall = false;
+
+	if (!wallMask_.isEmpty() && wallMask_[tile.y][tile.x])
+	{
+		wallMask_[tile.y][tile.x] = false;
+		wasWall = true;
+	}
+
+	if (mapData_[tile.y][tile.x] == TileType::Wall)
+	{
+		mapData_[tile.y][tile.x] = TileType::Empty;
+		wasWall = true;
+	}
+
+	if (wasWall)
+	{
+		spawnWallBreakFXAtTile(tile);
+
+		const double scale = camera().getScale();
+		const double shakeIntensity = Min(3.0 / Max(0.001, scale), 10.0 / Max(0.001, scale));
+		camera().shake(0.1, shakeIntensity);
+	}
+}
+
+void InGameScene::setWarningAtTile(Point tile, bool on)
+{
+	if (!isInsideMap(tile)) return;
+
+	if (static_cast<int32>(overlayWarn_.size()) != getMapHeight() ||
+		overlayWarn_.isEmpty() ||
+		static_cast<int32>(overlayWarn_[0].size()) != getMapWidth())
+	{
+		overlayWarn_.assign(getMapHeight(), Array<OverlayType>(getMapWidth(), OverlayType::None));
+	}
+
+	overlayWarn_[tile.y][tile.x] = on ? OverlayType::Warning : OverlayType::None;
+}
+
+void InGameScene::loadRandomPattern()
+{
+
+	Array<int32> availablePatterns = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+
+
+	if (patternHistory_.size() >= 2)
+	{
+		availablePatterns.remove_if([this](int32 pattern) {
+			return patternHistory_.contains(pattern);
+		});
+	}
+
+	if (availablePatterns.isEmpty())
+	{
+		availablePatterns = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+		patternHistory_.clear();
+	}
+
+	const int32 selectedPattern = availablePatterns.choice();
+
+	patternHistory_.push_back(selectedPattern);
+	if (patternHistory_.size() > 2)
+	{
+		patternHistory_.pop_front();
+	}
+
+	switch (selectedPattern)
+	{
+	case 0:
+		currentWallPattern_ = BossWallPatternData::getVerticalFillPattern();
+		break;
+	case 1:
+		currentWallPattern_ = BossWallPatternData::getHorizontalWavePattern();
+		break;
+	case 2:
+		currentWallPattern_ = BossWallPatternData::getVerticalWavePattern();
+		break;
+	case 3:
+		currentWallPattern_ = BossWallPatternData::getCrossPattern();
+		break;
+	case 4:
+		currentWallPattern_ = BossWallPatternData::getDiagonalXPattern();
+		break;
+	case 5:
+		currentWallPattern_ = BossWallPatternData::getSpikePattern();
+		break;
+	case 6:
+		currentWallPattern_ = BossWallPatternData::getAlternatingPattern();
+		break;
+	case 7:
+		currentWallPattern_ = BossWallPatternData::getMazePattern();
+		break;
+	case 8:
+		currentWallPattern_ = BossWallPatternData::getCheckerboardPattern();
+		break;
+	case 9:
+		currentWallPattern_ = BossWallPatternData::getRandomBulletPattern();
+		break;
+	case 10:
+		currentWallPattern_ = BossWallPatternData::getRotatingPattern();
+		break;
+	case 11:
+		currentWallPattern_ = BossWallPatternData::getBoxShrinkPattern();
+		break;
+	default:
+		currentWallPattern_ = BossWallPatternData::getVerticalFillPattern();
+		break;
+	}
 }
