@@ -2,10 +2,10 @@
 
 OpeningScene::OpeningScene()
 	: elapsedTime_(0.0)
-	, slideFadeInDuration_(1.5)
-	, slideDisplayDuration_(3.0)
-	, slideFadeOutDuration_(1.5)
-	, slideInterval_(6.0)  // 1.5 + 3.0 + 1.5
+	, slideFadeInDuration_(0.7)
+	, slideDisplayDuration_(6.5)
+	, slideFadeOutDuration_(0.8)
+	, slideInterval_(8.0)
 	, textFont_(FontMethod::MSDF, 28, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, rubyFont_(FontMethod::MSDF, 14, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, skipFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
@@ -15,33 +15,31 @@ OpeningScene::OpeningScene()
 	, isFullscreen_(false)
 {
 	currentScene_ = SceneType::Opening;
-
 	// 스토리 슬라이드 데이터 초기화
 	slides_ = {
-		{ U"ArtResources/Texture2D/Story/op_0.png", U"かつて、あの【愚（おろ）】かなる【蛸（たこ）】は、深海（しんかい）のすべての【色】を手にしたと自惚（うぬぼ）れていた。" },
-		{ U"ArtResources/Texture2D/Story/op_1.png", U"身の程も知らず、【神】の領域（りょういき）たる「【パレット】」を欲（ほっ）したその【罪（つみ）】。" },
-		{ U"ArtResources/Texture2D/Story/op_2.png", U"我（われ）はやつから【光】を奪（うば）い、永遠（えいえん）の【闇（やみ）】をくれてやった。" },
-		{ U"ArtResources/Texture2D/Story/op_3.png", U"今や、やつがその狭（せま）い深海（しんかい）でできる唯一（ゆいいつ）のこととは…" },
-		{ U"ArtResources/Texture2D/Story/op_4.png", U"【蛸壺（たこつぼ）】やはかなき【夢（ゆめ）】を【夏（なつ）】の【月（つき）】" },
-		{ U"ArtResources/Texture2D/Story/op_5.png", U"その【夢】の中で、もがき続けることだけだ。" },
-		{ U"ArtResources/Texture2D/Story/op_6.png", U"さあ、【愚】かなる【蛸】よ。お前の【罪】を思い出せ。" }
+	{ U"ArtResources/Texture2D/Story/op_0.png", { U"深い海の底に、タコの家族が暮らしていた。", U"彼らはある神のペットとして、幸せな日々を送っていた。" } },
+	{ U"ArtResources/Texture2D/Story/op_1.png", { U"しかし、主人公のタコは神の一番のお気に入りであり、", U"唯一、カゴの外を自由に泳ぎ回ることを許されていた。" } },
+	{ U"ArtResources/Texture2D/Story/op_2.png", { U"好奇心旺盛なタコは、ある日、", U"キッチンのほうまで泳いでいってしまう。", U"そこには、一冊の本が開かれたまま置かれていた。" } },	{ U"ArtResources/Texture2D/Story/op_3.png", { U"タコが泳ぎ寄って覗き込むと、そこには…", U"「たこ焼きの作り方」と書かれたページが開かれていた。" } },
+	{ U"ArtResources/Texture2D/Story/op_4.png", { U"タコは気づいてしまった。", U"自分たちはペットではなく…", U"「食材」だったのだという真実に！" } },	{ U"ArtResources/Texture2D/Story/op_5.png", { U"兄弟たちを残し、タコは必死で逃げ出した。", U"心を引き裂かれるような思いで。" } },
+	{ U"ArtResources/Texture2D/Story/op_6.png", { U"こうしてタコの新たな旅が始まった。", U"深海に散らばった「色」を集め、", U"あの神に立ち向かい、兄弟たちを救い出すために！" } }
 	};
-
-	// 텍스처 로드
 	for (const auto& slide : slides_)
 	{
 		slideTextures_.push_back(Texture(Resource(slide.imagePath)));
 	}
-	// FFWD 텍스처 로드
 	ffwdTextures_.push_back(Texture(Resource(U"ArtResources/Texture2D/FFWD/ffwd_0.png")));
 	ffwdTextures_.push_back(Texture(Resource(U"ArtResources/Texture2D/FFWD/ffwd_1.png")));
 	ffwdAnimTime_ = 0.0;
+	textTypingTime_ = 0.0;
+	visibleCharCount_ = 0;
 }
 void OpeningScene::onEnter()
 {
 	elapsedTime_ = 0.0;
 	isFastForward_ = false;
 	ffwdAnimTime_ = 0.0;
+	textTypingTime_ = 0.0;
+	visibleCharCount_ = 0;
 	if (!openingBgm_.isEmpty())
 	{
 		openingBgm_.setLoop(false);
@@ -72,7 +70,19 @@ void OpeningScene::update()
 	}
 
 	elapsedTime_ += dt;
+	const size_t prevIndex = currentSlideIndex_;
 	currentSlideIndex_ = static_cast<size_t>(elapsedTime_ / slideInterval_);
+
+	if (prevIndex != currentSlideIndex_) {
+		textTypingTime_ = 0.0;
+		visibleCharCount_ = 0;
+	}
+
+	if (currentSlideIndex_ < slides_.size()) {
+		textTypingTime_ += dt;
+		const double charsPerSecond = 12.5;
+		visibleCharCount_ = static_cast<size_t>(textTypingTime_ * charsPerSecond);
+	}
 
 	if (KeyF2.down()) {
 		changeScene(SceneType::InGame);
@@ -97,17 +107,14 @@ double OpeningScene::getCurrentSlideAlpha() const
 
 	if (slideTime < slideFadeInDuration_)
 	{
-		// 페이드인
 		return slideTime / slideFadeInDuration_;
 	}
 	else if (slideTime < slideFadeInDuration_ + slideDisplayDuration_)
 	{
-		// 표시
 		return 1.0;
 	}
 	else
 	{
-		// 페이드아웃
 		const double fadeOutTime = slideTime - (slideFadeInDuration_ + slideDisplayDuration_);
 		return Math::Max(0.0, 1.0 - (fadeOutTime / slideFadeOutDuration_));
 	}
@@ -127,15 +134,28 @@ void OpeningScene::drawCurrentSlide()
 	}
 	const Texture& texture = slideTextures_[currentSlideIndex_];
 	const Vec2 center = Scene::Center();
-	const double scale = isFullscreen_ ? 1.0 : 0.66;
-	const double yOffset = isFullscreen_ ? -50 : -120;
+	const double scale = isFullscreen_ ? 0.88 : 0.66;
+	const double yOffset = isFullscreen_ ? -70 : -140;
 	const double scaledHeight = texture.height() * scale;
 	const Vec2 imagePos = Vec2{ center.x - texture.width() * scale / 2.0, center.y - scaledHeight / 2.0 + yOffset };
 	texture.scaled(scale).draw(imagePos, ColorF{ 1.0, alpha });
-	// 하단 텍스트 그리기
-	const String& text = slides_[currentSlideIndex_].text;
-	const Vec2 textPos = Vec2{ center.x, Scene::Height() - 150 };
-	drawTextWithRuby(text, textPos, ColorF{ 0.95, 0.95, 0.9 }, alpha);
+	const Array<String>& textLines = slides_[currentSlideIndex_].textLines;
+	const double lineHeight = 40.0;
+	const double startY = Scene::Height() - 260.0;
+	const double leftMargin = isFullscreen_ ? (Scene::Width() - 1280.0) / 2.0 + 80.0 : 80.0;
+	size_t charCount = 0;
+	for (size_t i = 0; i < textLines.size(); ++i) {
+		const String& line = textLines[i];
+		const size_t lineLength = line.length();
+
+		if (charCount < visibleCharCount_) {
+			const size_t visibleInLine = std::min(visibleCharCount_ - charCount, lineLength);
+			const String visibleText = line.substr(0, visibleInLine);
+			const Vec2 textPos = Vec2{ leftMargin, startY + i * lineHeight };
+			drawTextWithRuby(visibleText, textPos, ColorF{ 0.95, 0.95, 0.9 }, alpha);
+		}
+		charCount += lineLength;
+	}
 }
 void OpeningScene::drawSkipUI()
 {
@@ -146,8 +166,8 @@ void OpeningScene::drawSkipUI()
 	if (!ffwdTextures_.isEmpty()) {
 		const size_t frameIndex = isFastForward_ ? (static_cast<size_t>(ffwdAnimTime_ * 16.0) % 2) : 0;
 		const Texture& ffwdTex = ffwdTextures_[frameIndex];
-		const Vec2 texPos = Vec2{ imagePos.x - ffwdTex.width() * 0.12 / 2.0, imagePos.y - ffwdTex.height() * 0.12 / 2.0 };
-		ffwdTex.scaled(0.12).draw(texPos);
+		const Vec2 texPos = Vec2{ imagePos.x - ffwdTex.width() * 0.072 / 2.0, imagePos.y - ffwdTex.height() * 0.072 / 2.0 };
+		ffwdTex.scaled(0.072).draw(texPos, ColorF{ 1.0, 0.8 });
 	}
 
 	const Vec2 spaceTextPos = Vec2{ gameWidth - 60, gameHeight - 40 };
@@ -237,15 +257,7 @@ Array<OpeningScene::RubyText> OpeningScene::parseRubyText(const String& text) co
 void OpeningScene::drawTextWithRuby(const String& text, const Vec2& basePos, const ColorF& color, double alpha) const
 {
 	Array<RubyText> parts = parseRubyText(text);
-
-	double totalWidth = 0.0;
-	for (const auto& part : parts)
-	{
-		totalWidth += textFont_(part.baseText).region().w;
-	}
-
-	double currentX = basePos.x - (totalWidth / 2.0);
-
+	double currentX = basePos.x;
 	for (const auto& part : parts)
 	{
 		const double baseWidth = textFont_(part.baseText).region().w;

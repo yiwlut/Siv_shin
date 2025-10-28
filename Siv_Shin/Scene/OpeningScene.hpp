@@ -26,14 +26,11 @@ private:
 		}
 	};
 
-	// 스토리 슬라이드 구조체
 	struct StorySlide
 	{
-		String imagePath;  // 이미지 경로
-		String text;       // 하단 텍스트
+		String imagePath;
+		Array<String> textLines;
 	};
-
-	// 타이머
 	double elapsedTime_;
 	double slideFadeInDuration_;   // 슬라이드 페이드인 시간
 	double slideDisplayDuration_;  // 슬라이드 표시 시간
@@ -59,6 +56,9 @@ private:
 	Array<Texture> ffwdTextures_;
 	double ffwdAnimTime_;
 
+	// 타이핑 연출
+	double textTypingTime_;
+	size_t visibleCharCount_;
 	// 헬퍼 함수
 	double getCurrentSlideAlpha() const;
 	void drawCurrentSlide();
