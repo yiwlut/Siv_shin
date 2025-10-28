@@ -14,56 +14,55 @@ public:
 
 private:
 
-    // 루비(후리가나) 텍스트 구조체
-    struct RubyText
-    {
-        String baseText;  // 한자
-        String rubyText;  // 후리가나
-        ColorF color;     // 텍스트 색상 (기본은 흰색)
-        
-        RubyText(const String& base, const String& ruby, const ColorF& col = ColorF{0.95, 0.95, 0.9, 1.0})
-            : baseText(base), rubyText(ruby), color(col) {}
-    };
+	// 루비(후리가나) 텍스트 구조체
+	struct RubyText
+	{
+		String baseText;  // 한자
+		String rubyText;  // 후리가나
+		ColorF color;     // 텍스트 색상
 
-    // 타이머
-    double elapsedTime_;
-    double fadeInDuration_;
-    double displayDuration_;
-    double fadeOutDuration_;
-    double totalDuration_;
+		RubyText(const String& base, const String& ruby, const ColorF& col = ColorF{ 0.95, 0.95, 0.9, 1.0 })
+			: baseText(base), rubyText(ruby), color(col) {
+		}
+	};
 
-    // 폰트
-    Font haikuFont_;  // 하이쿠용 폰트
-    Font rubyFont_;   // 루비(후리가나)용 작은 폰트
-    Font authorFont_; // 작가명용 폰트 (하이쿠보다 작게)
-    Font skipFont_;   // 스킵 안내용 폰트
+	// 스토리 슬라이드 구조체
+	struct StorySlide
+	{
+		String imagePath;  // 이미지 경로
+		String text;       // 하단 텍스트
+	};
 
-    // 배경음악
-    Audio openingBgm_;
+	// 타이머
+	double elapsedTime_;
+	double slideFadeInDuration_;   // 슬라이드 페이드인 시간
+	double slideDisplayDuration_;  // 슬라이드 표시 시간
+	double slideFadeOutDuration_;  // 슬라이드 페이드아웃 시간
+	double slideInterval_;         // 한 슬라이드의 총 시간
 
-    // 하이쿠 애니메이션
-    double haikuLineDelay_;      // 각 줄 사이의 딜레이
-    double haikuLineFadeDuration_;  // 각 줄의 페이드인 시간
-    double typewriterSpeed_;     // 타자기 효과 속도 (문자당 초)
-    
-    // 스킵 기능
-    double skipPressTime_;       // 스페이스바를 누르고 있는 시간
-    double skipRequiredTime_;    // 스킵에 필요한 시간 (3초)
-    bool isSkipping_;            // 현재 스킵 중인지
+	// 폰트
+	Font textFont_;   // 텍스트용 폰트
+	Font rubyFont_;   // 루비(후리가나)용 작은 폰트
+	Font skipFont_;   // 스킵 안내용 폰트
 
-    // 페이드 효과
-    double getFadeAlpha() const;
-    
-    // 하이쿠 그리기
-    void drawHaiku();
-    double getHaikuLineAlpha(size_t lineIndex) const;
-    size_t getVisibleCharCount(size_t lineIndex) const;  // 타자기 효과용
-    
-    // 루비 텍스트 파싱 및 렌더링
-    Array<RubyText> parseRubyText(const String& text) const;
-    void drawTextWithRuby(const String& text, const Vec2& basePos, const ColorF& color) const;
-    void drawTextWithRubyPartial(const String& text, const Vec2& basePos, double alpha, size_t visibleCharCount) const;
-    
-    // 스킵 UI 그리기
-    void drawSkipUI();
+	// 배경음악
+	Audio openingBgm_;
+
+	// 스토리 데이터
+	Array<StorySlide> slides_;
+	Array<Texture> slideTextures_;
+	size_t currentSlideIndex_;
+
+	// 패스트포워드 기능
+	bool isFastForward_;
+	bool isFullscreen_;
+	Array<Texture> ffwdTextures_;
+	double ffwdAnimTime_;
+
+	// 헬퍼 함수
+	double getCurrentSlideAlpha() const;
+	void drawCurrentSlide();
+	void drawTextWithRuby(const String& text, const Vec2& basePos, const ColorF& color, double alpha) const;
+	Array<RubyText> parseRubyText(const String& text) const;
+	void drawSkipUI();
 };

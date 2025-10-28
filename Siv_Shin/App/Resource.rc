@@ -254,6 +254,22 @@ Resource(ArtResources/Texture2D/Taco/Color/Misc/4frame_4.png)
 Resource(ArtResources/Texture2D/BG_K.png)
 Resource(ArtResources/Texture2D/box.png)
 
+//
+// op
+//
+Resource(ArtResources/Texture2D/Story/op_0.png)
+Resource(ArtResources/Texture2D/Story/op_1.png)
+Resource(ArtResources/Texture2D/Story/op_2.png)
+Resource(ArtResources/Texture2D/Story/op_3.png)
+Resource(ArtResources/Texture2D/Story/op_4.png)
+Resource(ArtResources/Texture2D/Story/op_5.png)
+Resource(ArtResources/Texture2D/Story/op_6.png)
+
+//ffwd
+Resource(ArtResources/Texture2D/FFWD/ffwd_0.png)
+Resource(ArtResources/Texture2D/FFWD/ffwd_1.png)
+
+
 
 //
 //	SFX
