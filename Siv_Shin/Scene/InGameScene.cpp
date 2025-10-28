@@ -1890,9 +1890,9 @@ bool InGameScene::pollMoveDirection(Point& outDir, TacoDirection& outTacoDir, bo
 void InGameScene::handleInput()
 {
 	const double dt = Scene::DeltaTime();
-	
+
 	inputCooldown_ = Max(0.0, inputCooldown_ - dt);
-	bumpSoundCooldown_ = Max(0.0, bumpSoundCooldown_ - dt);  // ★ 쿨다운 감소
+	bumpSoundCooldown_ = Max(0.0, bumpSoundCooldown_ - dt);
 
 	if (isPlayerMoving_ || isPlayingPaintAnimation_ || isSliding_) {
 		bufferInputWhileMoving();
@@ -1922,10 +1922,15 @@ void InGameScene::handleInput()
 			newFacingLeft = (tdir == TacoDirection::Side) ? faceLeft : isFacingLeft_;
 		}
 		};
+	// 방향키와 WASD 키 모두 지원
 	press(KeyLeft, { -1, 0 }, TacoDirection::Side, true);
+	press(KeyA, { -1, 0 }, TacoDirection::Side, true);
 	press(KeyRight, { 1, 0 }, TacoDirection::Side, false);
+	press(KeyD, { 1, 0 }, TacoDirection::Side, false);
 	press(KeyUp, { 0,-1 }, TacoDirection::Up);
+	press(KeyW, { 0,-1 }, TacoDirection::Up);
 	press(KeyDown, { 0, 1 }, TacoDirection::Down);
+	press(KeyS, { 0, 1 }, TacoDirection::Down);
 	if (!moved) return;
 
 	const Point newPos = playerPos_ + dir;
@@ -1934,9 +1939,9 @@ void InGameScene::handleInput()
 	const bool leavingIce = (isIce(playerPos_) && !isIce(newPos));
 
 	if (!isInsideMap(newPos) || mapData_[newPos.y][newPos.x] == TileType::Wall) {
-		if (!bumpSound_.isEmpty() && bumpSoundCooldown_ <= 0.0) {  // ★ 쿨다운 체크
+		if (!bumpSound_.isEmpty() && bumpSoundCooldown_ <= 0.0) {
 			bumpSound_.playOneShot(0.4);
-			bumpSoundCooldown_ = 0.25;  
+			bumpSoundCooldown_ = 0.25;
 
 		}
 		return;
@@ -1952,9 +1957,9 @@ void InGameScene::handleInput()
 		const Point next = box->pos + dir;
 
 		if (!canPushBox(playerPos_, box->pos, dir)) {
-			if (!bumpSound_.isEmpty() && bumpSoundCooldown_ <= 0.0) {  // ★ 쿨다운 체크
+			if (!bumpSound_.isEmpty() && bumpSoundCooldown_ <= 0.0) {
 				bumpSound_.playOneShot(0.4);
-				bumpSoundCooldown_ = 0.25; 
+				bumpSoundCooldown_ = 0.25;
 
 			}
 			return;
@@ -1989,9 +1994,9 @@ void InGameScene::handleInput()
 					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
 					// 앵커 진행 중이면 UID 수집
 					if (!bombExplosionSound_.isEmpty()) {
-						bombExplosionSound_.stop();  // ✅ 기존 재생 중단
-						bombExplosionSound_.setVolume(0.6);  // ✅ 볼륨 설정
-						bombExplosionSound_.play();  // ✅ 일반 재생 (일시정지 가능)
+						bombExplosionSound_.stop();
+						bombExplosionSound_.setVolume(0.6);
+						bombExplosionSound_.play();
 					}
 
 				}
@@ -2066,7 +2071,6 @@ void InGameScene::handleInput()
 		if (isIce(newPos)) { isSliding_ = true; slideDir_ = dir; }
 	}
 }
-
 
 
 bool InGameScene::willCreateBombOnPush(Point boxPos, Point dir) const
