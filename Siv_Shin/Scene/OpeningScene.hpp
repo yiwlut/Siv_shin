@@ -13,17 +13,6 @@ public:
     void onExit() override;
 
 private:
-    // 꽃잎 파티클 구조체
-    struct Petal
-    {
-        Vec2 position;
-        Vec2 velocity;
-        double rotation;
-        double rotationSpeed;
-        double scale;
-        ColorF color;
-        double alpha;
-    };
 
     // 루비(후리가나) 텍스트 구조체
     struct RubyText
@@ -52,11 +41,6 @@ private:
     // 배경음악
     Audio openingBgm_;
 
-    // 꽃잎 파티클
-    Array<Petal> petals_;
-    double petalSpawnTimer_;
-    double petalSpawnInterval_;
-    
     // 하이쿠 애니메이션
     double haikuLineDelay_;      // 각 줄 사이의 딜레이
     double haikuLineFadeDuration_;  // 각 줄의 페이드인 시간
@@ -69,12 +53,6 @@ private:
 
     // 페이드 효과
     double getFadeAlpha() const;
-    
-    // 꽃잎 파티클 관련 함수
-    void initializePetals();
-    void updatePetals();
-    void drawPetals();
-    void spawnPetal();
     
     // 하이쿠 그리기
     void drawHaiku();
