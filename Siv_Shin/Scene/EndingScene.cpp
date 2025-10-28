@@ -5,7 +5,7 @@ EndingScene::EndingScene()
 	, textFont_(FontMethod::MSDF, 28, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, rubyFont_(FontMethod::MSDF, 14, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, skipFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
-	, endingBgm_(Resource(U"ArtResources/BGM/Ending.mp3"))
+	, endingBgm_(Resource(U"ArtResources/BGM/HappyOcean.mp3"))
 	, currentSlideIndex_(0), isFastForward_(false), isFullscreen_(false), ffwdAnimTime_(0.0), textTypingTime_(0.0), visibleCharCount_(0) {
 	currentScene_ = SceneType::Ending;
 	slides_ = {
@@ -24,7 +24,7 @@ EndingScene::EndingScene()
 
 void EndingScene::onEnter() {
 	elapsedTime_ = 0.0; isFastForward_ = false; ffwdAnimTime_ = 0.0; textTypingTime_ = 0.0; visibleCharCount_ = 0;
-	if (!endingBgm_.isEmpty()) { endingBgm_.setLoop(false); endingBgm_.setVolume(0.3); endingBgm_.play(); }
+	if (!endingBgm_.isEmpty()) { endingBgm_.setLoop(true); endingBgm_.setVolume(0.3); endingBgm_.play(); }
 }
 
 void EndingScene::onExit() { if (!endingBgm_.isEmpty() && endingBgm_.isPlaying()) endingBgm_.stop(); }
