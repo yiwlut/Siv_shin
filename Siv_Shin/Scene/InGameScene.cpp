@@ -5658,7 +5658,7 @@ void InGameScene::drawBossHP()
 	const double centerX = Scene::Width() / 2.0;
 	const double y = 50.0;
 
-	const String hpText = U"BOSS HP: {} / {}";
+	const String hpText = U"BOSS HP: {} / {}"_fmt(bossCurrentHP_, bossMaxHP_);
 	gameFont_(Format(hpText, bossCurrentHP_, bossMaxHP_)).drawAt(centerX, y, ColorF(1.0, 0.3, 0.3));
 
 	const double barWidth = 400.0;
