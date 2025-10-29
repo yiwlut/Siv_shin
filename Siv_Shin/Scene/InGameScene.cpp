@@ -2471,6 +2471,7 @@ void InGameScene::draw()
 				bossTex.resized(drawW, drawH).draw(x, y);
 			}
 		}
+		drawBossHP();
 	}
 
 
@@ -5436,15 +5437,11 @@ void InGameScene::updateBossAttackSequence(double dt)
 
 		mergedBoxPixelPos_ = Math::Lerp(startScreen, bossPos, eased);
 
-
-		if (t >= 1.0)
-		{
+		if (t >= 1.0) {
 			currentBossAttackPhase_ = BossAttackPhase::BossHit;
 			bossAttackSequenceTimer_ = 0.0;
-
 			const double scale = camera().getScale();
-			camera().shake(0.5, 30.0 / Max(0.001, scale));
-
+			camera().shake(0.5, 90.0 / Max(0.001, scale));
 			bossCurrentHP_--;
 			showBossHitEffect_ = true;
 			bossHitEffectTimer_ = 0.0;
