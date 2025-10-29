@@ -2766,47 +2766,42 @@ void InGameScene::drawPlayer()
 
 void InGameScene::drawUI()
 {
-    Rect{ 0, 0, 150, 180 }.draw(ColorF{ 0, 0, 0, 0.5 });
-    gameFont_(U"ステージ: {}"_fmt(currentStage_)).draw(Vec2{ 16, 16 }, ColorF{ 0.8, 0.8, 1.0 });
-    gameFont_(U"手数: {}"_fmt(moves_)).draw(Vec2{ 16, 45 }, ColorF{ 1.0, 1.0, 0.5 });
-    gameFont_(U"時間: {:.1f}s"_fmt(gameTime_)).draw(Vec2{ 16, 74 }, ColorF{ 0.5, 1.0, 0.5 });
-    
-    // 목표 진행도 (모든 색상)
-    int32 totalGoals = 0;
-    int32 cleared = 0;
-    
-    const Array<BoxColor> allColors = {
-        BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
-        BoxColor::Orange, BoxColor::Green, BoxColor::Violet, BoxColor::Black
-    };
-    
-    for (const auto& color : allColors)
-    {
-        const Array<Point>& goals = getGoalPositionsForColor(color);
-        totalGoals += goals.size();
-        
-        for (const auto& goal : goals)
-        {
-            const ColorBox* box = getBoxAt(goal);
-            if (box && box->color == color)
-                cleared++;
-        }
-    }
-    
-    gameFont_(U"目標: {}/{}"_fmt(cleared, totalGoals))
-        .draw(Vec2{ 16, 103 }, ColorF{ 0.9, 0.9, 0.9 });
-    
-    // 현재 가진 아이템 표시
-    if (playerHeldItem_ != ItemType::None)
-    {
-        gameFont_(U"アイテム: 持っている").draw(Vec2{ 16, 132 }, getItemColorF(playerHeldItem_));
-    }
-    else
-    {
-        gameFont_(U"アイテム: なし").draw(Vec2{ 16, 132 }, ColorF{ 0.6, 0.6, 0.6 });
-    }
-}
+	if (StageData::isFinalStage(currentStage_)) {
+		return;
+	}
+	Rect{ 0, 0, 150, 180 }.draw(ColorF{ 0, 0, 0, 0.5 });
+	gameFont_(U"ステージ: {}"_fmt(currentStage_)).draw(Vec2{ 16, 16 }, ColorF{ 0.8, 0.8, 1.0 });
+	gameFont_(U"手数: {}"_fmt(moves_)).draw(Vec2{ 16, 45 }, ColorF{ 1.0, 1.0, 0.5 });
+	gameFont_(U"時間: {:.1f}s"_fmt(gameTime_)).draw(Vec2{ 16, 74 }, ColorF{ 0.5, 1.0, 0.5 });
+	int32 totalGoals = 0;
+	int32 cleared = 0;
+	const Array<BoxColor> allColors = {
+		BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
+		BoxColor::Orange, BoxColor::Green, BoxColor::Violet, BoxColor::Black
+	};
+	for (const auto& color : allColors)
+	{
+		const Array<Point>& goals = getGoalPositionsForColor(color);
+		totalGoals += goals.size();
+		for (const auto& goal : goals)
+		{
+			const ColorBox* box = getBoxAt(goal);
+			if (box && box->color == color)
+				cleared++;
+		}
+	}
+	gameFont_(U"目標: {}/{}"_fmt(cleared, totalGoals))
+		.draw(Vec2{ 16, 103 }, ColorF{ 0.9, 0.9, 0.9 });
 
+	if (playerHeldItem_ != ItemType::None)
+	{
+		gameFont_(U"アイテム: 持っている").draw(Vec2{ 16, 132 }, getItemColorF(playerHeldItem_));
+	}
+	else
+	{
+		gameFont_(U"アイテム: なし").draw(Vec2{ 16, 132 }, ColorF{ 0.6, 0.6, 0.6 });
+	}
+}
 void InGameScene::drawHelpScreen()
 {
     // 반투명 배경 오버레이
@@ -4364,6 +4359,14 @@ void InGameScene::initBossAttacks()
 
 bool InGameScene::isSpawnableTile(Point p) const {
 	if (!isInsideMap(p)) return false;
+	if (StageData::isFinalStage(currentStage_)) {
+		const int32 mapW = getMapWidth();
+		const int32 mapH = getMapHeight();
+		if (p.y == 0) return false;
+		if (p.x == 0) return false;
+		if (p.x == mapW - 1) return false;
+		if (p.y == mapH - 1) return false;
+	}
 	if (mapData_[p.y][p.x] == TileType::Wall) return false;
 	if (!wallMask_.isEmpty() && wallMask_[p.y][p.x]) return false;
 	if (getBoxAt(p) != nullptr) return false;
@@ -4386,17 +4389,17 @@ bool InGameScene::chooseRandomSpawnTile(Point& out) {
 ColorF InGameScene::randomSixColor() const {
 	static const BoxColor pool[] = {
 		BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
-		BoxColor::Orange, BoxColor::Green, BoxColor::Violet
+		//BoxColor::Orange, BoxColor::Green, BoxColor::Violet
 	};
 
-	switch (pool[Random(5)])
+	switch (pool[Random(0,2)])
 	{
 		case BoxColor::Red:    return Palette::Red;
 		case BoxColor::Yellow: return Palette::Yellow;
 		case BoxColor::Blue:   return Palette::Blue;
-		case BoxColor::Orange: return Palette::Orange;
-		case BoxColor::Green:  return Palette::Green;
-		case BoxColor::Violet: return Palette::Violet;
+		//case BoxColor::Orange: return Palette::Orange;
+		//case BoxColor::Green:  return Palette::Green;
+		//case BoxColor::Violet: return Palette::Violet;
 		default:               return Palette::White;
 	}
 
@@ -4584,9 +4587,9 @@ void InGameScene::scheduleNextBossAttack()
 
 	static const BoxColor pool[6] = {
 		BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
-		BoxColor::Orange, BoxColor::Green, BoxColor::Violet
+		//BoxColor::Orange, BoxColor::Green, BoxColor::Violet
 	};
-	const BoxColor bc = pool[Random(0, 5)];
+	const BoxColor bc = pool[Random(0, 2)];
 	p.boxColor = bc;
 	p.telegraphColor = getBoxColorF(bc);
 
@@ -5061,11 +5064,10 @@ void InGameScene::initBossPhaseSystem()
 void InGameScene::loadBossPhase(int32 phase)
 {
 	currentBossPhase_ = phase;
-
 	const Array<String> phaseMap = StageData::getFinalStageMapForPhase(phase);
 
 	boxes_.clear();
-	items_.clear();
+	items_.clear(); // ★ items_ 초기화
 	redGoalPositions_.clear();
 	yellowGoalPositions_.clear();
 	blueGoalPositions_.clear();
@@ -5114,54 +5116,73 @@ void InGameScene::loadBossPhase(int32 phase)
 				mapData_[y][x] = TileType::Empty;
 				boxes_.push_back(ColorBox{ pos, BoxColor::Red, 0.0, nextBoxUID_++ });
 				break;
-			case U'r':
-				mapData_[y][x] = TileType::RedGoal;
-				redGoalPositions_.push_back(pos);
-				break;
-
 			case U'Y':
 				mapData_[y][x] = TileType::Empty;
 				boxes_.push_back(ColorBox{ pos, BoxColor::Yellow, 0.0, nextBoxUID_++ });
+				break;
+			case U'B':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Blue, 0.0, nextBoxUID_++ });
+				break;
+			case U'O':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Orange, 0.0, nextBoxUID_++ });
+				break;
+			case U'G':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Green, 0.0, nextBoxUID_++ });
+				break;
+			case U'V':
+				mapData_[y][x] = TileType::Empty;
+				boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ });
+				break;
+			case U'r':
+				mapData_[y][x] = TileType::RedGoal;
+				redGoalPositions_.push_back(pos);
 				break;
 			case U'y':
 				mapData_[y][x] = TileType::YellowGoal;
 				yellowGoalPositions_.push_back(pos);
 				break;
-
-			case U'B':
-				mapData_[y][x] = TileType::Empty;
-				boxes_.push_back(ColorBox{ pos, BoxColor::Blue, 0.0, nextBoxUID_++ });
-				break;
 			case U'b':
 				mapData_[y][x] = TileType::BlueGoal;
 				blueGoalPositions_.push_back(pos);
-				break;
-
-			case U'O':
-				mapData_[y][x] = TileType::Empty;
-				boxes_.push_back(ColorBox{ pos, BoxColor::Orange, 0.0, nextBoxUID_++ });
 				break;
 			case U'o':
 				mapData_[y][x] = TileType::OrangeGoal;
 				orangeGoalPositions_.push_back(pos);
 				break;
-
-			case U'G':
-				mapData_[y][x] = TileType::Empty;
-				boxes_.push_back(ColorBox{ pos, BoxColor::Green, 0.0, nextBoxUID_++ });
-				break;
 			case U'g':
 				mapData_[y][x] = TileType::GreenGoal;
 				greenGoalPositions_.push_back(pos);
 				break;
-
-			case U'V':
-				mapData_[y][x] = TileType::Empty;
-				boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ });
-				break;
 			case U'v':
 				mapData_[y][x] = TileType::VioletGoal;
 				violetGoalPositions_.push_back(pos);
+				break;
+			case U'2': // 빨강 아이템
+				items_.push_back(GameItem{ pos, ItemType::RedItem });
+				mapData_[y][x] = TileType::RedItem;
+				break;
+			case U'4': // 주황 아이템
+				items_.push_back(GameItem{ pos, ItemType::OrangeItem });
+				mapData_[y][x] = TileType::OrangeItem;
+				break;
+			case U'6': // 노랑 아이템
+				items_.push_back(GameItem{ pos, ItemType::YellowItem });
+				mapData_[y][x] = TileType::YellowItem;
+				break;
+			case U'7': // 초록 아이템
+				items_.push_back(GameItem{ pos, ItemType::GreenItem });
+				mapData_[y][x] = TileType::GreenItem;
+				break;
+			case U'8': // 파랑 아이템
+				items_.push_back(GameItem{ pos, ItemType::BlueItem });
+				mapData_[y][x] = TileType::BlueItem;
+				break;
+			case U'9': // 보라 아이템
+				items_.push_back(GameItem{ pos, ItemType::VioletItem });
+				mapData_[y][x] = TileType::VioletItem;
 				break;
 
 			default:
@@ -5456,7 +5477,6 @@ void InGameScene::updateBossAttackSequence(double dt)
 
 			if (bossHitCount_ >= 3)
 			{
-
 				isCleared_ = true;
 				score_ += 1000;
 
@@ -5470,20 +5490,17 @@ void InGameScene::updateBossAttackSequence(double dt)
 					gameData_->clearStage(currentStage_);
 				}
 
-				// ★ BGM 페이드아웃
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
 				{
 					bossBgm_.stop();
 				}
 
-				// ★ 엔딩 씬으로 전환 (2초 대기 후)
-				isFading_ = true;
-				fadeTimer_ = 0.0;
-				fadeDuration_ = 2.0;
+				// ★ 엔딩 씬으로 즉시 전환
+				changeScene(SceneType::Ending);
+				return;
 			}
 			else
 			{
-				// 다음 페이즈로
 				advanceToNextBossPhase();
 			}
 		}
