@@ -11,6 +11,7 @@ MainMenuScene::MainMenuScene()
 , fadeOutTimer_(0.0)
 , fadeOutDuration_(1.0)
 , nextScene_(SceneType::MainMenu)
+
 {
 	startButtonFrames_ = {
 		Texture(Resource(U"ArtResources/Texture2D/Menu/Start/start_0.png")),
@@ -25,6 +26,12 @@ MainMenuScene::MainMenuScene()
 
     currentScene_ = SceneType::MainMenu;
     initializeButtons();
+	for (int i = 0; i <= 1; ++i) {
+		cornerTL_ << Texture(Resource(U"ArtResources/Texture2D/MainMenu/tl_{}.png"_fmt(i)));
+		cornerTR_ << Texture(Resource(U"ArtResources/Texture2D/MainMenu/tr_{}.png"_fmt(i)));
+		cornerBL_ << Texture(Resource(U"ArtResources/Texture2D/MainMenu/bl_{}.png"_fmt(i)));
+		cornerBR_ << Texture(Resource(U"ArtResources/Texture2D/MainMenu/br_{}.png"_fmt(i)));
+	}
 }
 
 void MainMenuScene::onEnter()
@@ -142,6 +149,11 @@ void MainMenuScene::update()
     {
         System::Exit();
     }
+	cornerTimer_ += Scene::DeltaTime();
+	if (cornerTimer_ >= CORNER_ANIM_SPEED) {
+		cornerTimer_ = 0.0;
+		cornerFrame_ = (cornerFrame_ + 1) % 2;
+	}
 }
 
 void MainMenuScene::draw()
@@ -165,17 +177,30 @@ void MainMenuScene::draw()
 
 	initializeButtons();
     // 버튼들 그리기 (페이드 효과 적용)
-    drawButton(startButton_);
-    drawButton(exitButton_);
-    
-    if (isFadingOut_)
-    {
-        Scene::Rect().draw(ColorF{ 0.0, 0.0, 0.0, fadeOutTimer_ / fadeOutDuration_ });
-    }
-    else if (fadeAlpha < 1.0)
-    {
-        Scene::Rect().draw(ColorF{ 0.0, 0.0, 0.0, 1.0 - fadeAlpha });
-    }
+	drawButton(startButton_);
+	drawButton(exitButton_);
+
+	const Size window = Scene::Size();
+	const int32 f = cornerFrame_;
+	const bool isFullscreen = Window::GetState().fullscreen;
+	const double scale = isFullscreen ? 0.75 : 0.5;
+
+	if (gameData_ && gameData_->finalStageCleared)
+	{
+		cornerTL_[f].scaled(scale).draw(0, 0);
+		cornerTR_[f].scaled(scale).draw(window.x - cornerTR_[f].width() * scale, 0);
+		cornerBL_[f].scaled(scale).draw(0, window.y - cornerBL_[f].height() * scale);
+		cornerBR_[f].scaled(scale).draw(window.x - cornerBR_[f].width() * scale, window.y - cornerBR_[f].height() * scale);
+	}
+
+	if (isFadingOut_)
+	{
+		Scene::Rect().draw(ColorF{ 0.0, 0.0, 0.0, fadeOutTimer_ / fadeOutDuration_ });
+	}
+	else if (fadeAlpha < 1.0)
+	{
+		Scene::Rect().draw(ColorF{ 0.0, 0.0, 0.0, 1.0 - fadeAlpha });
+	}
 }
 
 void MainMenuScene::updateButton(Button& button)
@@ -187,6 +212,10 @@ void MainMenuScene::drawButton(const Button& button)
 {
 	const Rect& rect = button.rect;
 	const Texture* texture = nullptr;
+	double fadeAlpha = getFadeAlpha();
+	if (isFadingOut_) {
+		fadeAlpha = 1.0 - (fadeOutTimer_ / fadeOutDuration_);
+	}
 
 	if (&button == &startButton_) {
 		texture = &startButtonFrames_[animationFrameIndex_];
@@ -196,7 +225,7 @@ void MainMenuScene::drawButton(const Button& button)
 	}
 
 	if (texture && texture->isEmpty() == false) {
-		texture->resized(rect.size).draw(rect.pos);
+		texture->resized(rect.size).draw(rect.pos, ColorF(1.0, fadeAlpha));
 	}
 	else {
 		ColorF currentColor = button.isHovered ? button.hoverColor : button.normalColor;

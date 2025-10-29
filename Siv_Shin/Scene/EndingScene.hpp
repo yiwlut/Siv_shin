@@ -2,6 +2,8 @@
 #include "SceneManager.hpp"
 
 class EndingScene : public GameScene {
+	friend class GameSceneManager;  // ★ 추가
+
 public:
 	EndingScene();
 	~EndingScene() override = default;
@@ -11,6 +13,8 @@ public:
 	void onExit() override;
 
 private:
+	GameData* gameData_ = nullptr;  // ★ 추가 (가장 아래에)
+
 	struct RubyText {
 		String baseText, rubyText;
 		ColorF color;

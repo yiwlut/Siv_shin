@@ -3,6 +3,7 @@
 
 class MainMenuScene : public GameScene
 {
+	friend class GameSceneManager;  // ★ 이 줄 추가
 private:
     Font titleFont_;
     Font buttonFont_;
@@ -10,7 +11,12 @@ private:
     
     // 배경음악
     Audio bgm_;
-    
+
+	Array<Texture> cornerTL_, cornerTR_, cornerBL_, cornerBR_;
+	GameData* gameData_ = nullptr;  // ★ 추가
+	int32 cornerFrame_ = 0;
+	double cornerTimer_ = 0.0;
+	constexpr static double CORNER_ANIM_SPEED = 0.5;
     // 버튼 상태 관리
     struct Button
     {

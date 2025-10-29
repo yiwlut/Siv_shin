@@ -22,7 +22,7 @@ struct GameData
     Array<bool> stageUnlocked = { true, true, true, true, true, true, true, true };  // Stage 1~8 모두 해금 (총 8개)
     int32 currentStage = 3;  // 스테이지 3부터 시작
     int32 totalScore = 0;
-    
+	bool finalStageCleared = false;  // ★ 추가
     void unlockStage(int32 stageNumber)
     {
         if (stageNumber > 0 && stageNumber <= static_cast<int32>(stageUnlocked.size()))

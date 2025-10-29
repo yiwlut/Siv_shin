@@ -21,6 +21,9 @@ EndingScene::EndingScene()
 
 void EndingScene::onEnter() {
 	elapsedTime_ = 0.0; isFastForward_ = false; ffwdAnimTime_ = 0.0; textTypingTime_ = 0.0; visibleCharCount_ = 0;
+	if (gameData_) {
+		gameData_->finalStageCleared = true;
+	}
 	if (!endingBgm_.isEmpty()) { endingBgm_.setLoop(true); endingBgm_.setVolume(0.3); endingBgm_.play(); }
 }
 

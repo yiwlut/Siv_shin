@@ -133,45 +133,16 @@ Resource(ArtResources/Texture2D/Boss/boss_summon_4.png)
 Resource(ArtResources/Texture2D/Boss/boss_summon_5.png)
 Resource(ArtResources/Texture2D/Boss/boss_summon_6.png)
 
-//Menu - UI
-Resource(ArtResources/Texture2D/Menu/Clear/clear_0.png)
-Resource(ArtResources/Texture2D/Menu/Clear/clear_1.png)
-Resource(ArtResources/Texture2D/Menu/Clear/clear_2.png)
-
 Resource(ArtResources/Texture2D/Menu/Exit/exit_0.png)
 Resource(ArtResources/Texture2D/Menu/Exit/exit_1.png)
 Resource(ArtResources/Texture2D/Menu/Exit/exit_2.png)
 
-Resource(ArtResources/Texture2D/Menu/Menu/menu_0.png)
-Resource(ArtResources/Texture2D/Menu/Menu/menu_1.png)
-Resource(ArtResources/Texture2D/Menu/Menu/menu_2.png)
-
-Resource(ArtResources/Texture2D/Menu/Moves/moves_0.png)
-Resource(ArtResources/Texture2D/Menu/Moves/moves_1.png)
-Resource(ArtResources/Texture2D/Menu/Moves/moves_2.png)
-
-Resource(ArtResources/Texture2D/Menu/Next/next_0.png)
-Resource(ArtResources/Texture2D/Menu/Next/next_1.png)
-Resource(ArtResources/Texture2D/Menu/Next/next_2.png)
-
-Resource(ArtResources/Texture2D/Menu/Retry/retry_0.png)
-Resource(ArtResources/Texture2D/Menu/Retry/retry_1.png)
-Resource(ArtResources/Texture2D/Menu/Retry/retry_2.png)
-
 Resource(ArtResources/Texture2D/Menu/Score/tacoScoreOff.png)
 Resource(ArtResources/Texture2D/Menu/Score/tacoScoreOn.png)
-
-Resource(ArtResources/Texture2D/Menu/Select/select_0.png)
-Resource(ArtResources/Texture2D/Menu/Select/select_1.png)
-Resource(ArtResources/Texture2D/Menu/Select/select_2.png)
 
 Resource(ArtResources/Texture2D/Menu/Settings/setting_0.png)
 Resource(ArtResources/Texture2D/Menu/Settings/setting_1.png)
 Resource(ArtResources/Texture2D/Menu/Settings/setting_2.png)
-
-Resource(ArtResources/Texture2D/Menu/Stage/text_stage_0.png)
-Resource(ArtResources/Texture2D/Menu/Stage/text_stage_1.png)
-Resource(ArtResources/Texture2D/Menu/Stage/text_stage_2.png)
 
 Resource(ArtResources/Texture2D/Menu/Start/start_0.png)
 Resource(ArtResources/Texture2D/Menu/Start/start_1.png)
@@ -254,9 +225,17 @@ Resource(ArtResources/Texture2D/Taco/Color/Misc/4frame_4.png)
 Resource(ArtResources/Texture2D/BG_K.png)
 Resource(ArtResources/Texture2D/box.png)
 
-//
+//mainmenu
+Resource(ArtResources/Texture2D/MainMenu/bl_0.png)
+Resource(ArtResources/Texture2D/MainMenu/bl_1.png)
+Resource(ArtResources/Texture2D/MainMenu/br_0.png)
+Resource(ArtResources/Texture2D/MainMenu/br_1.png)
+Resource(ArtResources/Texture2D/MainMenu/tl_0.png)
+Resource(ArtResources/Texture2D/MainMenu/tl_1.png)
+Resource(ArtResources/Texture2D/MainMenu/tr_0.png)
+Resource(ArtResources/Texture2D/MainMenu/tr_1.png)
+
 // op
-//
 Resource(ArtResources/Texture2D/Story/op_0.png)
 Resource(ArtResources/Texture2D/Story/op_1.png)
 Resource(ArtResources/Texture2D/Story/op_2.png)

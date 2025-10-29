@@ -5488,14 +5488,13 @@ void InGameScene::updateBossAttackSequence(double dt)
 				if (gameData_)
 				{
 					gameData_->clearStage(currentStage_);
+					gameData_->finalStageCleared = true;  // ★ 추가
 				}
 
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
 				{
 					bossBgm_.stop();
 				}
-
-				// ★ 엔딩 씬으로 즉시 전환
 				changeScene(SceneType::Ending);
 				return;
 			}

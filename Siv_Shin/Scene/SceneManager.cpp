@@ -56,12 +56,20 @@ std::unique_ptr<GameScene> GameSceneManager::createScene(SceneType sceneType)
     {
     case SceneType::Logo:  // 로고 씬 추가
         return std::make_unique<LogoScene>();
-    case SceneType::MainMenu:
-        return std::make_unique<MainMenuScene>();
+	case SceneType::MainMenu:
+	{
+		auto scene = std::make_unique<MainMenuScene>();
+		scene->gameData_ = &gameData_;  // ★ 추가
+		return scene;
+	}
 	case SceneType::Opening:
 		return std::make_unique<OpeningScene>();
 	case SceneType::Ending:
-		return std::make_unique<EndingScene>();
+	{
+		auto scene = std::make_unique<EndingScene>();
+		scene->gameData_ = &gameData_;  // ★ 추가
+		return scene;
+	}
     case SceneType::StageSelect:
         {
             auto scene = std::make_unique<StageSelectScene>(&gameData_);
