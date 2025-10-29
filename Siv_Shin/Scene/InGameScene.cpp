@@ -139,6 +139,14 @@ void InGameScene::onEnter()
 	holo.setSpeed(1.5f);
 	holo.setHoloColor(ColorF{ 1.0, 1.0, 1.0 });
 	holo.setIntensity(0.0f);
+
+	if (gameData_ && gameData_->startPausedNextInGame) {
+		showHelpScreen_ = true;
+		gameData_->startPausedNextInGame = false;
+		if (!bgm_.isEmpty() && bgm_.isPlaying()) bgm_.pause();
+		if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) bossBgm_.pause();
+		if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) bombExplosionSound_.pause();
+	}
 }
 
 void InGameScene::onExit()

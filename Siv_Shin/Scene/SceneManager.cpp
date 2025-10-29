@@ -96,11 +96,10 @@ void GameSceneManager::changeScene(SceneType sceneType)
     {
         currentScene_->onExit();
     }
-
-    // Opening 씬에서 InGame으로 전환될 때 Stage 1로 설정
     if (currentSceneType_ == SceneType::Opening && sceneType == SceneType::InGame)
     {
         gameData_.currentStage = 1;
+		gameData_.startPausedNextInGame = true;
     }
 
     currentSceneType_ = sceneType;

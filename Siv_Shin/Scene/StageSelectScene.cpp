@@ -28,23 +28,23 @@ StageSelectScene::StageSelectScene(GameData* gameData)
 	initializeStages();
 }
 
-void StageSelectScene::onEnter()
-{
+void StageSelectScene::onEnter() {
 	animTimer_ = 0.0;
 	selectedStage_ = -1;
-
-	// 처음부터 모두 선택 가능하도록 강제 해금
-	for (auto& button : stageButtons_)
-	{
+	for (auto& button : stageButtons_) {
 		button.isLocked = false;
 	}
-
-	// 배경음악 재생
-	if (!bgm_.isEmpty())
-	{
+	if (!bgm_.isEmpty()) {
 		bgm_.setVolume(0.2);
 		bgm_.play();
 	}
+	constexpr int32 LOGICAL_WIDTH = 880;
+	const int32 totalStages = StageData::getTotalStageCount();
+	const double totalWidth = (STAGE_WIDTH + STAGE_SPACING) * totalStages - STAGE_SPACING;
+	const double firstStageX = (LOGICAL_WIDTH - totalWidth) / 2.0;
+	const double maxRightScroll = Math::Max(0.0, -firstStageX + (LOGICAL_WIDTH - STAGE_WIDTH) / 2.0);
+	targetScrollOffset_ = maxRightScroll;
+	scrollOffset_ = targetScrollOffset_;
 }
 
 void StageSelectScene::onExit()
@@ -157,116 +157,66 @@ void StageSelectScene::update()
 {
 	const double deltaTime = Scene::DeltaTime();
 	animTimer_ += deltaTime;
-
-	// 포커스 상태 확인 및 음악 제어
 	bool currentFocus = Window::GetState().focused;
-	if (!bgm_.isEmpty())
-	{
-		if (currentFocus && !bgm_.isPlaying())
-		{
+	if (!bgm_.isEmpty()) {
+		if (currentFocus && !bgm_.isPlaying()) {
 			bgm_.play();
 		}
-		else if (!currentFocus && bgm_.isPlaying())
-		{
+		else if (!currentFocus && bgm_.isPlaying()) {
 			bgm_.pause();
 		}
 	}
 	wasFocused_ = currentFocus;
-
-	// 일반 스테이지 애니메이션 프레임 업데이트
 	animationFrameTimer_ += deltaTime;
-	if (animationFrameTimer_ >= animationFrameDuration_)
-	{
+	if (animationFrameTimer_ >= animationFrameDuration_) {
 		animationFrameTimer_ -= animationFrameDuration_;
 		animationFrameIndex_ = (animationFrameIndex_ + 1) % 2;
 	}
-
-	// ★ 보스 스테이지 애니메이션 업데이트 (0→10→0 순환)
 	bossAnimationFrameTimer_ += deltaTime;
-	if (bossAnimationFrameTimer_ >= bossAnimationFrameDuration_)
-	{
+	if (bossAnimationFrameTimer_ >= bossAnimationFrameDuration_) {
 		bossAnimationFrameTimer_ -= bossAnimationFrameDuration_;
-
-		if (!bossAnimationReverse_)
-		{
-			// 정방향: 0 → 10
+		if (!bossAnimationReverse_) {
 			bossAnimationFrameIndex_++;
-			if (bossAnimationFrameIndex_ >= 10)
-			{
+			if (bossAnimationFrameIndex_ >= 10) {
 				bossAnimationFrameIndex_ = 10;
 				bossAnimationReverse_ = true;
 			}
 		}
-		else
-		{
-			// 역방향: 10 → 0
+		else {
 			bossAnimationFrameIndex_--;
-			if (bossAnimationFrameIndex_ <= 0)
-			{
+			if (bossAnimationFrameIndex_ <= 0) {
 				bossAnimationFrameIndex_ = 0;
 				bossAnimationReverse_ = false;
 			}
 		}
 	}
-
 	handleDragInput();
 	updateScrolling();
 	updateStageButtons();
-
-	// 실제 화면 크기 대비 논리적 크기의 오프셋 계산
-	const Vec2 screenCenter = Scene::CenterF();
-	const Vec2 logicalCenter = Vec2(880 / 2.0, 880 / 2.0);
-	const Vec2 offset = screenCenter - logicalCenter;
-
-	backHovered_ = backButton_.movedBy(offset.asPoint()).mouseOver();
-	if (backButton_.movedBy(offset.asPoint()).leftClicked() || KeyEscape.down())
-	{
+	if (KeyEscape.down()) {
 		changeScene(SceneType::MainMenu);
 	}
 }
-
 void StageSelectScene::updateStageButtons()
 {
-	// 실제 화면 크기 대비 논리적 크기의 오프셋 계산
 	const Vec2 screenCenter = Scene::CenterF();
 	const Vec2 logicalCenter = Vec2(880 / 2.0, 880 / 2.0);
 	const Vec2 offset = screenCenter - logicalCenter;
-
-	for (auto& button : stageButtons_)
-	{
+	for (auto& button : stageButtons_) {
 		Rect adjustedRect = button.rect.movedBy(static_cast<int32>(scrollOffset_ + offset.x), static_cast<int32>(offset.y));
-
 		button.isHovered = adjustedRect.mouseOver();
-
-		// 클릭 처리 - leftClicked()로 변경 (down + up 완료 시에만 반응)
-		if (adjustedRect.leftClicked())
-		{
-			if (!button.isLocked)
-			{
+		if (adjustedRect.leftClicked()) {
+			if (!button.isLocked) {
 				selectedStage_ = button.stageNumber;
-
-				// 선택된 스테이지를 GameData에 저장
-				if (gameData_)
-				{
-					gameData_->currentStage = button.stageNumber;
-				}
-
+				if (gameData_) gameData_->currentStage = button.stageNumber;
 				changeScene(SceneType::InGame);
 			}
-			else
-			{
-				// 잠긴 스테이지를 클릭했을 때 피드백
-			}
 		}
-
-		// 해금된 스테이지에만 선택 효과 적용
-		if (button.isHovered && !button.isLocked)
-		{
+		if (button.isHovered && !button.isLocked) {
 			selectedStage_ = button.stageNumber;
 		}
 	}
 }
-
 void StageSelectScene::draw()
 {
 	// ★ 논리적 해상도
@@ -288,14 +238,6 @@ void StageSelectScene::draw()
 	{
 		// drawStageInfo();
 	}
-
-	ColorF backColor = backHovered_ ? ColorF{ 0.3, 0.5, 0.7 } : ColorF{ 0.2, 0.4, 0.6 };
-	Rect adjustedBackButton = backButton_.movedBy(offset.asPoint());
-	adjustedBackButton.draw(backColor);
-	adjustedBackButton.drawFrame(2, Palette::White);
-	stageFont_(U"戻る").drawAt(adjustedBackButton.center(),  // ★ "Back" → "戻る"
-		backHovered_ ? Palette::Yellow : Palette::White);
-
 }
 
 void StageSelectScene::drawStageButtons()
@@ -436,35 +378,20 @@ void StageSelectScene::drawStageInfo()
 void StageSelectScene::handleDragInput()
 {
 	const Vec2 mousePos = Cursor::PosF();
-
-	// 실제 화면 크기 대비 논리적 크기의 오프셋 계산
-	const Vec2 screenCenter = Scene::CenterF();
-	const Vec2 logicalCenter = Vec2(880 / 2.0, 880 / 2.0);
-	const Vec2 offset = screenCenter - logicalCenter;
-
-	const bool isOverBackButton = backButton_.movedBy(offset.asPoint()).mouseOver();
-
-	if (MouseL.down() && !isOverBackButton)
-	{
-		if (!isDragging_)
-		{
+	if (MouseL.down()) {
+		if (!isDragging_) {
 			isDragging_ = true;
 			dragStartPos_ = mousePos;
 			dragStartOffset_ = scrollOffset_;
 		}
 	}
-	else if (MouseL.up())
-	{
+	else if (MouseL.up()) {
 		isDragging_ = false;
 	}
-
-	if (isDragging_)
-	{
+	if (isDragging_) {
 		const double dragDistance = mousePos.x - dragStartPos_.x;
 		targetScrollOffset_ = dragStartOffset_ + dragDistance;
 		clampScrollOffset();
-
-		// 드래그 중일 때는 즉시 스크롤 적용
 		scrollOffset_ = targetScrollOffset_;
 	}
 }
