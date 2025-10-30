@@ -122,11 +122,29 @@ void InGameScene::onEnter()
 			bgm_.play();
 		}
 	}
-	if (StageData::isFinalStage(currentStage_) && KeyF2.down()) {
-		isCleared_ = true;
-		changeScene(SceneType::Ending);
-		return;
-	}
+	//if (KeyF2.down()) {
+	//	isCleared_ = true;
+	//	score_ += 1000;
+
+	//	// 게임 데이터에 클리어 반영
+	//	if (gameData_) {
+	//		gameData_->clearStage(currentStage_);
+	//	}
+
+	//	// 파이널 스테이지는 엔딩으로
+	//	if (StageData::isFinalStage(currentStage_)) {
+	//		changeScene(SceneType::Ending);
+	//	}
+	//	// 6번 스테이지는 보스 인트로로
+	//	else if (currentStage_ == 6) {
+	//		changeScene(SceneType::BossIntro);
+	//	}
+	//	// 그 외는 스테이지 선택으로
+	//	else {
+	//		changeScene(SceneType::StageSelect);
+	//	}
+	//	return;
+	//}
 
 	auto& holo = g_Shaders.holographic();
 	holo.setRainbowMode(false);
@@ -1470,240 +1488,92 @@ void InGameScene::update()
 	camera().update();
 	if (StageData::isFinalStage(currentStage_)) updateBossBgmFade_(dt);
 	const bool focused = Window::GetState().focused;
-	// 페이드 업데이트
-	if (isFading_)
-	{
+	if (KeyF2.down()) {
+		isCleared_ = true;
+		score_ += 1000;
+
+		// 게임 데이터에 클리어 반영
+		if (gameData_) {
+			gameData_->clearStage(currentStage_);
+		}
+
+		// 파이널 스테이지는 엔딩으로
+		if (StageData::isFinalStage(currentStage_)) {
+			changeScene(SceneType::Ending);
+		}
+		// 6번 스테이지는 보스 인트로로
+		else if (currentStage_ == 6) {
+			changeScene(SceneType::BossIntro);
+		}
+		// 그 외는 스테이지 선택으로
+		else {
+			changeScene(SceneType::StageSelect);
+		}
+		return;
+	}
+	if (isFading_) {
 		fadeTimer_ += dt;
-		if (fadeTimer_ >= fadeDuration_)
-		{
+		if (fadeTimer_ >= fadeDuration_) {
 			isFading_ = false;
 		}
 	}
-	// ★ Final Stage 시간 기반 타일 오버레이 업데이트
-	if (StageData::isFinalStage(currentStage_))
-	{
-		if (isCleared_ && isFading_)
-		{
-			fadeTimer_ += dt;
+	if (isPlayerDead_) {
+		deathAnimTimer_ += dt;
+		updateDeathEffect();
+	}
 
-			if (fadeTimer_ >= fadeDuration_)
-			{
-				// ★ 엔딩 씬으로 전환
+	if (!focused && !showHelpScreen_ && !isCleared_) {
+		showHelpScreen_ = true;
+		if (!bgm_.isEmpty() && bgm_.isPlaying()) bgm_.pause();
+		if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) bossBgm_.pause();
+		if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) bombExplosionSound_.pause();
+	}
+	if (KeyEscape.down()) {
+		showHelpScreen_ = !showHelpScreen_;
+		if (showHelpScreen_) {
+			if (!bgm_.isEmpty() && bgm_.isPlaying()) bgm_.pause();
+			if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) bossBgm_.pause();
+			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) bombExplosionSound_.pause();
+		}
+		else {
+			if (!isPlayerDead_) {
+				if (StageData::isFinalStage(currentStage_)) {
+					if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying()) bossBgm_.play();
+				}
+				else {
+					if (!bgm_.isEmpty() && !bgm_.isPlaying()) bgm_.play();
+				}
+			}
+			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPaused()) bombExplosionSound_.play();
+		}
+	}
+	if (showHelpScreen_) {
+		updateMergePaintFX();
+		return;
+	}
+
+	if (StageData::isFinalStage(currentStage_)) {
+		if (isCleared_ && isFading_) {
+			fadeTimer_ += dt;
+			if (fadeTimer_ >= fadeDuration_) {
 				changeScene(SceneType::Ending);
 				return;
 			}
 		}
-
-		// 보스 공격 시퀀스 중이 아니고, 모든 골이 채워졌을 때
-		if (!isBossAttackSequenceActive_ && !isCleared_ && !isPlayerDead_ && checkAllGoalsFilledForBoss())
-		{
+		if (!isBossAttackSequenceActive_ && !isCleared_ && !isPlayerDead_ && checkAllGoalsFilledForBoss()) {
 			startBossAttackSequence();
 		}
-
-		// 보스 공격 시퀀스 업데이트
-		if (isBossAttackSequenceActive_)
-		{
+		if (isBossAttackSequenceActive_) {
 			updateBossAttackSequence(dt);
 			updateMergePaintFX();
 			updateBossHitEffect(dt);
 			return;
 		}
-
-		// 보스 패턴 업데이트
-		if (!isBossAttackSequenceActive_ && !isPlayerDead_ && !isCleared_)
-		{
+		if (!isBossAttackSequenceActive_ && !isPlayerDead_ && !isCleared_) {
 			updateBossWallPattern(dt);
 		}
 	}
-	// ★ StageFailed 상태: R키만 동작, Z키는 불가, ESC도 불가
-	if (isFailed_ && showFailedButtons_)
-	{
-		// R키로 리트라이
-		if (!isCleared_ && KeyR.down()) {
-			isFailed_ = false;
-			showFailedButtons_ = false;
-			isPlayerDead_ = false;
-			deathAnimTimer_ = 0.0;
-			deathParticles_.clear();
-			gameTime_ = 0.0;
-			moves_ = 0;
-			score_ = 0;
-			playerHealth_ = MAX_HEALTH;
-			const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
-			if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay,StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly: OverlayApplyMode::WriteToMap); }
-			
 
-			loadStage(currentStage_);
-
-			if (StageData::isFinalStage(currentStage_))
-			{
-				currentBossPhase_ = 1;
-				bossHitCount_ = 0;
-				bossCurrentHP_ = 3;
-				showBossHitEffect_ = false;
-				bossHitEffectTimer_ = 0.0;
-
-				isBossAttackSequenceActive_ = false;
-				currentBossAttackPhase_ = BossAttackPhase::None;
-				bossAttackSequenceTimer_ = 0.0;
-				gatheringBoxes_.clear();
-				mergedBoxCreated_ = false;
-
-				bossProjectiles_.clear();
-				bossExplosionParticles_.clear();
-				bossAttackTimer_ = 0.0;
-
-				loadBossPhase(1);
-
-				if (!bossBgm_.isEmpty())
-				{
-					bossBgm_.setVolume(bossBgmTargetVolume_);
-					bossBgm_.play();
-				}
-			}
-			else
-			{
-				loadStage(currentStage_);
-
-				if (!bgm_.isEmpty())
-				{
-					bgm_.setVolume(0.33);
-					bgm_.play();
-				}
-			}
-
-			updateMergePaintFX();
-			return;
-		}
-
-		updateMergePaintFX();
-		return;
-	}
-
-	if (isPlayerDead_) {
-		deathAnimTimer_ += dt;
-		updateDeathEffect();
-		updateBossExplosions(dt); 
-
-		if (!isCleared_ && KeyR.down()) {
-			gameTime_ = 0.0;
-			moves_ = 0;
-			score_ = 0;
-			playerHeldItem_ = ItemType::None;
-			isPlayerDead_ = false;
-			deathAnimTimer_ = 0.0;
-			deathParticles_.clear();
-
-			isFailed_ = false;
-			showFailedButtons_ = false;
-
-			bombFXs_.clear();
-			wallBreakFXs.clear();
-			bombExpiryAbs_.clear();
-
-			loadStage(currentStage_);
-
-			if (StageData::isFinalStage(currentStage_))
-			{
-				currentBossPhase_ = 1;
-				bossHitCount_ = 0;
-				bossCurrentHP_ = 3;
-				showBossHitEffect_ = false;
-				bossHitEffectTimer_ = 0.0;
-
-				isBossAttackSequenceActive_ = false;
-				currentBossAttackPhase_ = BossAttackPhase::None;
-				bossAttackSequenceTimer_ = 0.0;
-				gatheringBoxes_.clear();
-				mergedBoxCreated_ = false;
-
-				bossProjectiles_.clear();
-				bossExplosionParticles_.clear();
-				bossAttackTimer_ = 0.0;
-
-				loadBossPhase(1);
-
-				if (!bossBgm_.isEmpty())
-				{
-					bossBgm_.setVolume(bossBgmTargetVolume_);
-					bossBgm_.play();
-				}
-			}
-			else
-			{
-				loadStage(currentStage_);
-
-				if (!bgm_.isEmpty())
-				{
-					bgm_.setVolume(0.33);
-					bgm_.play();
-				}
-			}
-
-			updateMergePaintFX();
-			return;
-		}
-
-		return;
-	}
-	if (!focused && !showHelpScreen_ && !isCleared_) {
-		showHelpScreen_ = true;
-		if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-			bgm_.pause();
-		}
-		if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) {
-			bombExplosionSound_.pause();
-		}
-	}
-
-	// ESC 키 처리
-	if (KeyEscape.down()) {
-		showHelpScreen_ = !showHelpScreen_;
-		if (showHelpScreen_) {
-			// 일시정지 시작
-			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-				bgm_.pause();
-			}
-			// ★ 보스 배경음악도 멈춤
-			if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
-				bossBgm_.pause();
-			}
-			// ✅ 폭탄 생성 사운드도 멈춤
-			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPlaying()) {
-				bombExplosionSound_.pause();
-			}
-		}
-		else {
-			// 일시정지 해제
-			if (!isPlayerDead_)
-			{
-				if (StageData::isFinalStage(currentStage_))
-				{
-					if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying())
-					{
-						bossBgm_.play();
-					}
-				}
-				else
-				{
-					if (!bgm_.isEmpty() && !bgm_.isPlaying())
-					{
-						bgm_.play();
-					}
-				}
-			}
-			if (!bombExplosionSound_.isEmpty() && bombExplosionSound_.isPaused()) {
-				bombExplosionSound_.play();
-			}
-		}
-	}
-
-	// ★★★ 일시정지 중이면 여기서 완전히 멈춤 ★★★
-	if (showHelpScreen_) {
-		// 일시정지 중에는 비주얼 이펙트만 업데이트
-		updateMergePaintFX();
-		return;
-	}
 	bombClock_ += dt;
 
 	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {

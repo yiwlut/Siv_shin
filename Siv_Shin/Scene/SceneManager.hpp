@@ -17,40 +17,76 @@ enum class SceneType
     BossIntro
 };
 
-// 게임 데이터 저장 구조체
 struct GameData
 {
-	Array<bool> stageUnlocked = { true, true, true, true, true, true, true, true };
-	int32 currentStage = 3;
+	Array<bool> stageUnlocked = { true, false, false, false, false, false, false, false, false, false };  // 1~10번 스테이지
+	bool finalStageUnlocked = false;  // ★ 파이널 스테이지 별도 플래그
+	int32 currentStage = 1;
 	int32 totalScore = 0;
 	bool finalStageCleared = false;
 	bool startPausedNextInGame = false;
+
 	void unlockStage(int32 stageNumber)
 	{
-		if (stageNumber > 0 && stageNumber <= static_cast<int32>(stageUnlocked.size()))
+		if (stageNumber == 11)  // ★ 파이널 스테이지
+		{
+			finalStageUnlocked = true;
+		}
+		else if (stageNumber > 0 && stageNumber <= static_cast<int32>(stageUnlocked.size()))
 		{
 			stageUnlocked[stageNumber - 1] = true;
 		}
 	}
+
 	bool isStageUnlocked(int32 stageNumber) const
 	{
+		if (stageNumber == 11)  // ★ 파이널 스테이지
+		{
+			return finalStageUnlocked;
+		}
 		if (stageNumber > 0 && stageNumber <= static_cast<int32>(stageUnlocked.size()))
 		{
 			return stageUnlocked[stageNumber - 1];
 		}
 		return false;
 	}
+
 	void clearStage(int32 stageNumber)
 	{
-		if (stageNumber < static_cast<int32>(stageUnlocked.size()))
+		unlockStage(stageNumber);  // 현재 스테이지 해금
+
+		if (stageNumber == 6)  // ★ 6번 클리어 시 파이널 스테이지 해금
+		{
+			finalStageUnlocked = true;
+		}
+		else if (stageNumber == 11)  // ★ 파이널 클리어 시
+		{
+			finalStageCleared = true;
+			finalStageUnlocked = true;  // 재플레이 가능하도록
+			unlockStage(7);  // 7번 스테이지 해금
+		}
+		else if (stageNumber < 10)  // 일반 스테이지
 		{
 			unlockStage(stageNumber + 1);
 		}
 	}
+
+	void unlockAllStages()  // ★ 디버그용: 모든 스테이지 해금
+	{
+		for (int32 i = 0; i < stageUnlocked.size(); ++i)
+		{
+			stageUnlocked[i] = true;
+		}
+		finalStageUnlocked = true;
+		finalStageCleared = true;
+	}
+
 	void initializeForStageCount(int32 totalStages)
 	{
-		stageUnlocked.clear();
-		stageUnlocked.resize(totalStages, true);
+		stageUnlocked.assign(10, false);  // 항상 10개 (1~10번)
+		stageUnlocked[0] = true;  // 1번만 해금
+		finalStageUnlocked = false;
+		finalStageCleared = false;
 	}
 };
 

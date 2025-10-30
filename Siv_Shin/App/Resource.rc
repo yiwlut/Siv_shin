@@ -245,6 +245,7 @@ Resource(ArtResources/Texture2D/Story/bossIntro_2.png)
 Resource(ArtResources/Texture2D/Story/ed_0.png)
 Resource(ArtResources/Texture2D/Story/ed_1.png)
 Resource(ArtResources/Texture2D/Story/ed_2.png)
+Resource(ArtResources/Texture2D/Story/ed_3.png)
 
 //ffwd
 Resource(ArtResources/Texture2D/FFWD/ffwd_0.png)

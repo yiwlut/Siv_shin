@@ -32,7 +32,7 @@ void StageSelectScene::onEnter() {
 	animTimer_ = 0.0;
 	selectedStage_ = -1;
 	for (auto& button : stageButtons_) {
-		button.isLocked = false;
+		button.isLocked = !(gameData_ && gameData_->isStageUnlocked(button.stageNumber));
 	}
 	if (!bgm_.isEmpty()) {
 		bgm_.setVolume(0.2);
@@ -91,7 +91,7 @@ void StageSelectScene::initializeStages()
 			STAGE_WIDTH, STAGE_HEIGHT
 		};
 		b.stageNumber = sn;
-		b.isLocked = false;
+		b.isLocked = !(gameData_ && gameData_->isStageUnlocked(sn));
 		b.stageName = (1 <= sn && sn <= 10) ? stageNames[sn - 1] : U"真";
 		stageButtons_ << b;
 	}
