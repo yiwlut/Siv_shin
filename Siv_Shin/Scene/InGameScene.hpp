@@ -3,6 +3,7 @@
 #include "StageData.hpp"  // 스테이지 데이터 포함
 #include "../Shader/Manager/ShaderManager.hpp"
 #include "../Camera/CustomCamera2D.hpp"
+#include "BossWallPatternData.hpp"
 
 // 상자 색상
 enum class BoxColor
@@ -103,14 +104,7 @@ private:
         Up
     };
 
-
-    // 배경 이미지
-    Texture stageBackground_;
-    // 보스 이미지 (Final stage 전용) - 3프레임 애니메이션
-    Array<Texture> bossIdleFrames_;
-    int32 bossAnimFrame_ = 0;
-	double bossAnimTimer_;
-    
+	const Texture* getBossCurrentFrame() const;
     // 플레이어 - 부드러운 이동 추가
     Point playerPos_;           // 논리적 타일 위치
     Vec2 playerPixelPos_;       // 실제 픽셀 위치 (부드러운 이동용)
@@ -120,6 +114,8 @@ private:
     double inputCooldown_;
     double moveDelay_;
     ColorF playerColor_;
+
+	double bumpSoundCooldown_ = 0.0;  // ★ bump 사운드 쿨다운 추가
 
 	Optional<Point> queuedDir_; // 방향 전환 입력 버퍼
 	bool pollMoveDirection(Point& outDir, TacoDirection& outTacoDir, bool& outFacingLeft);
@@ -294,7 +290,7 @@ private:
 	//holographic
 	void applyHoloFromHeldItem_();
 
-
+	enum class OverlayApplyMode { OverlayOnly, WriteToMap };
 
     bool isSliding_ = false;      
     Point slideDir_{ 0, 0 };
@@ -304,9 +300,193 @@ private:
     void continueSliding();
     void slideBoxOnIce(ColorBox* box, Point dir);
 
-	void applyTileOverlay(const Array<String>& overlayData);
+	void applyTileOverlay(const Array<String>& overlayData, OverlayApplyMode mode);
+	void drawGoalMarkersTop();
+	bool isGoalTile(TileType t);
+
+	enum class OverlayType : uint8 { None = 0, Warning = 1 };
+
+	Array<Array<OverlayType>> overlayWarn_;
+	double wallStepInterval_ = 6.0;
+	double wallNextTime_ = 0.0;
+	int32 nextColumnL_ = 0;
+	int32 nextColumnR_ = 0;
+	bool fillFromBothSides_ = true;
+
+	void initBossWallSystem();
+	void updateBossWallFilling(double dt);
+	void spawnWallColumn(int32 x);
+	void setOverlayWarning(int32 x, int32 y, bool on);
+	void clearOverlayWarningCol(int32 x);
+	void drawOverlayWarnings();
+
+	Array<Array<bool>> wallMask_;
+
+	bool isBlocked(Point pos) const;
+
+	void clearWallMask();
+	void setWallMaskCol(int x, bool on);
+
+	void drawWallMask();
+
+	enum class BossAttackType : uint8 { ColorSpawn, BlackHoming };
+	enum class AttackPhase : uint8 { Telegraph, Fire, Done };
+
+	struct HomingBullet {
+		Vec2 pos;
+		Vec2 vel;
+		Point targetTile;
+		double speed = 420.0;
+		double armTime = 0.25;
+		double life = 5.0;
+		bool armed = false;
+		bool alive = true;
+		Point sourceTile{ -1, -1 };
+	};
+
+	struct PendingAttack {
+		BossAttackType type;
+		AttackPhase phase = AttackPhase::Telegraph;
+		Point targetTile{ -1, -1 };
+		Point sourceTile{ -1, -1 };
+		ColorF telegraphColor = ColorF{ 1,1,1,1 };
+		BoxColor boxColor = BoxColor::Red;
+		double telegraphTime = 1.0;
+	};
+
+	// 보스 공격 스케줄러
+	double attackInterval_ = 3;
+	double nextAttackTime_ = 0.0;
+	double attackRatioColor_ = 1.0;
+	double attackRatioBlack_ = 0;
+	Point lastAttackTile_{ -1, -1 };
+
+	int32 currentBossPhase_ = 1;
+	int32 bossHitCount_ = 0;
+
+	BossWallPattern currentWallPattern_;
+	int32 currentPatternFrame_ = 0;
+	double patternFrameTimer_ = 0.0;
+	bool isPlayingWallPattern_ = false;
+	Array<int32> patternHistory_;
+
+	bool isBossAttackSequenceActive_ = false;
+	double bossAttackSequenceTimer_ = 0.0;
+
+	struct BoxGatherData
+	{
+		Point originalPos;
+		Vec2 currentPixelPos;
+		BoxColor color;
+		bool gathered = false;
+	};
+	Array<BoxGatherData> gatheringBoxes_;
+
+	Vec2 mergedBoxPixelPos_;
+	bool mergedBoxCreated_ = false;
+
+	enum class BossAttackPhase
+	{
+		None,
+		GatherBoxes,
+		MergeEffect,
+		ChargeRainbow,
+		LaunchTowardsBoss,
+		BossHit,
+		Complete
+	};
+	BossAttackPhase currentBossAttackPhase_ = BossAttackPhase::None;
+
+	int32 bossMaxHP_ = 3;
+	int32 bossCurrentHP_ = 3;
+	double bossHitEffectTimer_ = 0.0;
+	bool showBossHitEffect_ = false;
+
+	void initBossPhaseSystem();
+	void loadBossPhase(int32 phase);
+	void advanceToNextBossPhase();
+
+	void initBossWallPatternSystem();
+	void updateBossWallPattern(double dt);
+	void applyWallPatternFrame(const BossWallPatternFrame& frame);
+	void spawnWallAtTile(Point tile);
+	void destroyWallAtTile(Point tile);
+	void setWarningAtTile(Point tile, bool on);
+	void loadRandomPattern();
+
+	void startBossAttackSequence();
+	void updateBossAttackSequence(double dt);
+	void drawBossAttackSequence();
+	bool checkAllGoalsFilledForBoss() const;
+	Point getMapCenterTile() const;
+	Vec2 getBossPositionForAttack() const;
+
+	void damageBoss();
+	void drawBossHP();
+	void updateBossHitEffect(double dt);
+
+	Array<HomingBullet> homingBullets_;
+	Array<PendingAttack> pendingAttacks_;
+
+	Vec2 getBossStartUIPos() const;
+	void initBossAttacks();
+	void scheduleNextBossAttack();
+	void updateBossAttacks(double dt);
+	void drawBossAttacks();
+	void spawnColorAttack();
+	void spawnBlackHomingAttack();
+	bool chooseRandomSpawnTile(Point& out);
+	bool isSpawnableTile(Point p) const;
+	ColorF randomSixColor() const;
+
+	void fireColorAttack(const PendingAttack& p);
+	void fireBlackHoming(const PendingAttack& p);
+	void drawTelegraphMarker(Point tile, const ColorF& col, double t, double pulse01) const;
+
+	struct EnergyBall
+	{
+		Vec2 startPosScreen;
+		Point targetTile;
+		Vec2 currentPosScreen;
+		ColorF color;
+		double progress = 0.0;
+		double duration = 0.5;
+		double elapsedTime = 0.0;
+		bool active = true;
+		bool spawnBoxOnArrive = false;
+		BoxColor spawnBoxColor = BoxColor::Red;
+		bool arrivalHandled = false;
+	};
+
+	Array<EnergyBall> energyBalls;
+
+	void createEnergyBallEffect(Vec2 screenStart, Point targetTile, const ColorF& color, double duration, bool spawnBoxOnArrive, BoxColor boxColor);
+	void updateEnergyBalls(double dt);
+	void drawEnergyBalls();
+	void drawHomingBullets();
+
+	void drawBossChargeTelegraphs();
+	void drawBossChargeAtStart(const ColorF& col, double remain, double total);
+
+	void spawnBombExplosionFXAtTile(Point tile);
 
 public:
+	Texture stageBackground_;
+	Array<Texture> bossIdleFrames_;
+	Array<Texture> bossAtkFrames_;
+	Array<Texture> bossCloakFrames_;
+	Array<Texture> bossConfusedFrames_;
+	Array<Texture> bossSummonFrames_;
+	Texture bossKOFrame_;
+	enum class BossAnimState { None, Cloak, Idle, Summon, Attack, Confused, KO };
+	BossAnimState bossAnimState_ = BossAnimState::None;
+	int32 bossAnimFrame_ = 0;
+	double bossAnimTimer_ = 0.0;
+	double bossFrameDuration_ = 0.12;
+	double bossAtkFrameDuration_ = 0.18;
+	bool bossAnimLoop_ = true;
+	void setBossState(BossAnimState s, bool loop = true, double frameDuration = -1);
+	void updateBossAnimation(double dt);
     InGameScene();
     InGameScene(int32 stageNumber);
     InGameScene(int32 stageNumber, GameData* gameData);
@@ -401,6 +581,12 @@ private:
     Audio bgm_;  // 배경음악
 	Audio bossBgm_;
 	double savedMusicPosition_ = 0.0;
+	double bossBgmFadeTimer_ = 0.0;
+	double bossBgmFadeDuration_ = 1.5;
+	double bossBgmTargetVolume_ = 0.5;
+	bool bossBgmFadingIn_ = false;
+	void startBossBgmFadeIn_();
+	void updateBossBgmFade_(double dt);
 
     // 블록 밀기 효과음
     Audio noteE5_;  // 노랑 (E5)
@@ -409,6 +595,7 @@ private:
 
 	Audio stageClearSound_;  // 스테이지 클리어 사운드
 	Audio bombExplosionSound_;
+	Audio bumpSound_;  // ★ bump 사운드 (벽/밀리지 않는 박스)
     // 블록 색상에 따라 음악 재생
     void playBoxSound(BoxColor color);
 
@@ -499,7 +686,7 @@ private:
 	void updateDeathEffect();
 	void drawDeathEffect();
 
-	void updateBossAttack(double dt);
+	//void updateBossAttack(double dt);
 	void spawnBossProjectile();
 	void updateBossProjectiles(double dt);
 	void createBossExplosion(Vec2 pos, ColorF color);

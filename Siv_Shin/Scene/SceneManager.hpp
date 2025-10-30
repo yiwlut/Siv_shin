@@ -12,49 +12,82 @@ enum class SceneType
     InGame,
     Settings,
     GameOver,
-    Pause
+    Pause,
+    Ending,
+    BossIntro
 };
 
-// 게임 데이터 저장 구조체
 struct GameData
 {
-    Array<bool> stageUnlocked = { true, true, true, true, true, true, true, true };  // Stage 1~8 모두 해금 (총 8개)
-    int32 currentStage = 3;  // 스테이지 3부터 시작
-    int32 totalScore = 0;
-    
-    void unlockStage(int32 stageNumber)
-    {
-        if (stageNumber > 0 && stageNumber <= static_cast<int32>(stageUnlocked.size()))
-        {
-            stageUnlocked[stageNumber - 1] = true;
-        }
-    }
-    
-    bool isStageUnlocked(int32 stageNumber) const
-    {
-        if (stageNumber > 0 && stageNumber <= static_cast<int32>(stageUnlocked.size()))
-        {
-            return stageUnlocked[stageNumber - 1];
-        }
-        return false;
-    }
-    
-    // 스테이지 클리어 시 다음 스테이지 해금
-    void clearStage(int32 stageNumber)
-    {
-        if (stageNumber < static_cast<int32>(stageUnlocked.size()))
-        {
-            unlockStage(stageNumber + 1);  // 다음 스테이지 해금
-        }
-    }
-    
-    // 스테이지 개수에 따라 동적으로 해금 배열 조정
-    void initializeForStageCount(int32 totalStages)
-    {
-        stageUnlocked.clear();
-        // 처음부터 모든 스테이지 해금
-        stageUnlocked.resize(totalStages, true);
-    }
+	Array<bool> stageUnlocked = { true, false, false, false, false, false, false, false, false, false };  // 1~10번 스테이지
+	bool finalStageUnlocked = false;  // ★ 파이널 스테이지 별도 플래그
+	int32 currentStage = 1;
+	int32 totalScore = 0;
+	bool finalStageCleared = false;
+	bool startPausedNextInGame = false;
+
+	void unlockStage(int32 stageNumber)
+	{
+		if (stageNumber == 11)  // ★ 파이널 스테이지
+		{
+			finalStageUnlocked = true;
+		}
+		else if (stageNumber > 0 && stageNumber <= static_cast<int32>(stageUnlocked.size()))
+		{
+			stageUnlocked[stageNumber - 1] = true;
+		}
+	}
+
+	bool isStageUnlocked(int32 stageNumber) const
+	{
+		if (stageNumber == 11)  // ★ 파이널 스테이지
+		{
+			return finalStageUnlocked;
+		}
+		if (stageNumber > 0 && stageNumber <= static_cast<int32>(stageUnlocked.size()))
+		{
+			return stageUnlocked[stageNumber - 1];
+		}
+		return false;
+	}
+
+	void clearStage(int32 stageNumber)
+	{
+		unlockStage(stageNumber);  // 현재 스테이지 해금
+
+		if (stageNumber == 6)  // ★ 6번 클리어 시 파이널 스테이지 해금
+		{
+			finalStageUnlocked = true;
+		}
+		else if (stageNumber == 11)  // ★ 파이널 클리어 시
+		{
+			finalStageCleared = true;
+			finalStageUnlocked = true;  // 재플레이 가능하도록
+			unlockStage(7);  // 7번 스테이지 해금
+		}
+		else if (stageNumber < 10)  // 일반 스테이지
+		{
+			unlockStage(stageNumber + 1);
+		}
+	}
+
+	void unlockAllStages()  // ★ 디버그용: 모든 스테이지 해금
+	{
+		for (int32 i = 0; i < stageUnlocked.size(); ++i)
+		{
+			stageUnlocked[i] = true;
+		}
+		finalStageUnlocked = true;
+		finalStageCleared = true;
+	}
+
+	void initializeForStageCount(int32 totalStages)
+	{
+		stageUnlocked.assign(10, false);  // 항상 10개 (1~10번)
+		stageUnlocked[0] = true;  // 1번만 해금
+		finalStageUnlocked = false;
+		finalStageCleared = false;
+	}
 };
 
 // 게임 씬 기본 인터페이스

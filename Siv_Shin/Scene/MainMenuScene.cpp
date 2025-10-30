@@ -11,6 +11,7 @@ MainMenuScene::MainMenuScene()
 , fadeOutTimer_(0.0)
 , fadeOutDuration_(1.0)
 , nextScene_(SceneType::MainMenu)
+
 {
 	startButtonFrames_ = {
 		Texture(Resource(U"ArtResources/Texture2D/Menu/Start/start_0.png")),
@@ -25,6 +26,12 @@ MainMenuScene::MainMenuScene()
 
     currentScene_ = SceneType::MainMenu;
     initializeButtons();
+	for (int i = 0; i <= 1; ++i) {
+		cornerTL_ << Texture(Resource(U"ArtResources/Texture2D/MainMenu/tl_{}.png"_fmt(i)));
+		cornerTR_ << Texture(Resource(U"ArtResources/Texture2D/MainMenu/tr_{}.png"_fmt(i)));
+		cornerBL_ << Texture(Resource(U"ArtResources/Texture2D/MainMenu/bl_{}.png"_fmt(i)));
+		cornerBR_ << Texture(Resource(U"ArtResources/Texture2D/MainMenu/br_{}.png"_fmt(i)));
+	}
 }
 
 void MainMenuScene::onEnter()
@@ -41,18 +48,15 @@ void MainMenuScene::onEnter()
         bgm_.play();            
     }
     
-    // Print << U"메인메뉴 진입";
 }
 
 void MainMenuScene::onExit()
 {
-    // 배경음악 정지
     if (bgm_.isPlaying())
     {
         bgm_.stop();
     }
     
-    // Print << U"메인메뉴 종료";
 }
 
 void MainMenuScene::initializeButtons()
@@ -100,48 +104,33 @@ void MainMenuScene::update()
     const double deltaTime = Scene::DeltaTime();
     titleAnimTimer_ += deltaTime;
     
-    // 페이드아웃 중이면 페이드아웃 처리
     if (isFadingOut_)
     {
         fadeOutTimer_ += deltaTime;
-        
-        // 페이드아웃 완료 시 씬 전환
         if (fadeOutTimer_ >= fadeOutDuration_)
         {
             changeScene(nextScene_);
             return;
         }
         
-        // 페이드아웃 중에는 버튼 입력 무시
         return;
     }
     
-    // 페이드 타이머 업데이트
     fadeTimer_ += deltaTime;
 
-    // 포커스 상태 확인 및 음악 제어
     bool currentFocus = Window::GetState().focused;
     if (!bgm_.isEmpty())
     {
         if (currentFocus && !bgm_.isPlaying())
         {
-            // 포커스를 다시 얻었을 때 음악 재생
             bgm_.play();
         }
         else if (!currentFocus && bgm_.isPlaying())
         {
-            // 포커스를 잃었을 때 음악 일시정지
             bgm_.pause();
         }
     }
     wasFocused_ = currentFocus;
-
-    // ESC 키로 Settings 씬으로 이동
-    if (KeyEscape.down())
-    {
-        startFadeOut(SceneType::Settings);
-        return;
-    }
 
 	animationFrameTimer_ += deltaTime;
 	if (animationFrameTimer_ >= animationFrameDuration_) {
@@ -149,61 +138,70 @@ void MainMenuScene::update()
 		animationFrameIndex_ = (animationFrameIndex_ + 1) % 3; // 3프레임 순환
 	}
 
-    // 버튼 업데이트
     updateButton(startButton_);
     updateButton(exitButton_);
     
-    // 버튼 클릭 처리
-    if (startButton_.rect.leftClicked())
-    {
-        startFadeOut(SceneType::Opening);  // 페이드아웃 시작
-    }
+	if (startButton_.rect.leftClicked()) {
+		SceneType target = SceneType::Opening;
+		if (gameData_ && gameData_->finalStageCleared) target = SceneType::StageSelect;
+		startFadeOut(target);
+	}
     else if (exitButton_.rect.leftClicked())
     {
         System::Exit();
     }
+	cornerTimer_ += Scene::DeltaTime();
+	if (cornerTimer_ >= CORNER_ANIM_SPEED) {
+		cornerTimer_ = 0.0;
+		cornerFrame_ = (cornerFrame_ + 1) % 2;
+	}
 }
 
 void MainMenuScene::draw()
 {
-    // 배경 그리기
     Scene::SetBackground(backgroundColor_);
-    
-    // 페이드 알파값 (페이드아웃 중이면 페이드아웃 알파 사용)
     double fadeAlpha = getFadeAlpha();
     
     if (isFadingOut_)
     {
-        // 페이드아웃 알파 계산
         fadeAlpha = 1.0 - (fadeOutTimer_ / fadeOutDuration_);
     }
     
-    // 동적 중앙 계산
     const double centerX = Scene::Size().x / 2.0;
     const double centerY = Scene::Size().y / 2.0;
     
-    // 타이틀 애니메이션 (펄스 효과) - 동적 위치 계산
     const double titlePulse = 0.9 + 0.1 * Math::Sin(titleAnimTimer_ * 2.0);
     const double titleY = centerY - 150;  // 버튼 위로 위치
     
     titleFont_(U"タコの伝説")  
         .drawAt(centerX, titleY, ColorF(1.0, 1.0, 1.0, fadeAlpha));  // 페이드 효과 적용
-    
+
+	initializeButtons();
     // 버튼들 그리기 (페이드 효과 적용)
-    drawButton(startButton_);
-    drawButton(exitButton_);
-    
-    // 검은색 오버레이로 페이드 효과
-    if (isFadingOut_)
-    {
-        // 페이드아웃 중 - 검은색이 점점 진해짐
-        Scene::Rect().draw(ColorF{ 0.0, 0.0, 0.0, fadeOutTimer_ / fadeOutDuration_ });
-    }
-    else if (fadeAlpha < 1.0)
-    {
-        // 페이드인 중 - 검은색이 점점 옅어짐
-        Scene::Rect().draw(ColorF{ 0.0, 0.0, 0.0, 1.0 - fadeAlpha });
-    }
+	drawButton(startButton_);
+	drawButton(exitButton_);
+
+	const Size window = Scene::Size();
+	const int32 f = cornerFrame_;
+	const bool isFullscreen = Window::GetState().fullscreen;
+	const double scale = isFullscreen ? 0.75 : 0.5;
+
+	if (gameData_ && gameData_->finalStageCleared)
+	{
+		cornerTL_[f].scaled(scale).draw(0, 0);
+		cornerTR_[f].scaled(scale).draw(window.x - cornerTR_[f].width() * scale, 0);
+		cornerBL_[f].scaled(scale).draw(0, window.y - cornerBL_[f].height() * scale);
+		cornerBR_[f].scaled(scale).draw(window.x - cornerBR_[f].width() * scale, window.y - cornerBR_[f].height() * scale);
+	}
+
+	if (isFadingOut_)
+	{
+		Scene::Rect().draw(ColorF{ 0.0, 0.0, 0.0, fadeOutTimer_ / fadeOutDuration_ });
+	}
+	else if (fadeAlpha < 1.0)
+	{
+		Scene::Rect().draw(ColorF{ 0.0, 0.0, 0.0, 1.0 - fadeAlpha });
+	}
 }
 
 void MainMenuScene::updateButton(Button& button)
@@ -215,8 +213,11 @@ void MainMenuScene::drawButton(const Button& button)
 {
 	const Rect& rect = button.rect;
 	const Texture* texture = nullptr;
+	double fadeAlpha = getFadeAlpha();
+	if (isFadingOut_) {
+		fadeAlpha = 1.0 - (fadeOutTimer_ / fadeOutDuration_);
+	}
 
-	// 버튼에 따라 애니메이션 프레임 선택
 	if (&button == &startButton_) {
 		texture = &startButtonFrames_[animationFrameIndex_];
 	}
@@ -225,7 +226,7 @@ void MainMenuScene::drawButton(const Button& button)
 	}
 
 	if (texture && texture->isEmpty() == false) {
-		texture->resized(rect.size).draw(rect.pos);
+		texture->resized(rect.size).draw(rect.pos, ColorF(1.0, fadeAlpha));
 	}
 	else {
 		ColorF currentColor = button.isHovered ? button.hoverColor : button.normalColor;
@@ -240,10 +241,8 @@ double MainMenuScene::getFadeAlpha() const
 {
     if (fadeTimer_ < fadeDuration_)
     {
-        // 페이드인 중
         return fadeTimer_ / fadeDuration_;
     }
-    // 페이드인 완료
     return 1.0;
 }
 

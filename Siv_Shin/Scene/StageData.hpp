@@ -8,178 +8,289 @@ namespace StageData
 		int32 x, y;
 		char tileChar;  // 'i' = Ice, 'l' = Lava
 	};
-
-	//7x7
-    inline const Array<String> STAGE_1 = {
-		U"   v   ",
-		U"       ",
-		U"      ",
-		U"   V   ",
-        U"   Y   ",
-		U"   T   ",
-		U"       ",
-
-    };
-
-
-	inline const Array<String> STAGE_1_TILES = {
-		U"       ",  // 첫 줄은 변경 없음
-		U"iiiiii ",
-		U"iiiiii ",
-		U"iiiiii ",  // T, R, Y 위치를 얼음으로, o는 변경 없음
-		U"       ",
-		U"       ",
-		U"       ",
+	inline const Array<String> STAGE_1 = {
+		U"###g###",
+		U"###B###",
+		U"###Y###",
+		U"T R Y o",
+		U"###R###",
+		U"###B###",
+		U"###v###",
 	};
-
-	//inline const Array<String> STAGE_2 = {
-	//	U"  o",
-	//	U"TRY",
-	//	U"   ",
-	//};
-
-	//8x8
     inline const Array<String> STAGE_2 = {
 		U"########",
-		U"# vB R #",
-		U"# R    #",  
-		U"# T    #",
+		U"# vB ###",
+		U"# R   ##",  
+		U"# T R  #",
 		U"#    Y #",
-		U"#  Rr o#",
-		U"#      #",  
+		U"## Rr o#",
+		U"###    #",  
 		U"########"
 	};
 
-	//7x7
 	inline const Array<String> STAGE_3 = {
-		U"#######",
-		U"###  ##",
-		U"YBR  ##",  
-		U" V#  ##",
+		U"LL####L",
+		U"###  #L",
+		U"YBR  #L",  
+		U" V#  #L",
 		U"    T##",  
 		U"## OBv#",
-		U"#######",
+		U"L######",
 	};
-
     inline const Array<String> STAGE_4 = {
-		U"## VOv#",  
-		U"#     #",  
-		U" R    #",
-		U"T  BO #",  
-		U"# Y   #",  
-		U"##BV ##",  
-		U"##v####",
+		U"L# VOvL",  
+		U"#     L",  
+		U" R    L",
+		U"T  BO L",  
+		U"# Y   L",  
+		U"##BV LL",  
+		U"LLvLLLL",
+	};
+	inline const Array<String> STAGE_5 = {
+		U"#    T #",
+		U"# R   B#",
+		U"###### #",
+		U"##   #O#",
+		U" GV  ###",
+		U"        ",
+		U"     Y  ",
+		U"  r     ",
+	};
+	inline const Array<String> STAGE_5_TILES = {
+		U"   ii   ",
+		U" iiiii  ",
+		U"      i ",
+		U"  iii i ",
+		U" iiii   ",
+		U" iiiii  ",
+		U"  iii   ",
+		U"        ",
 	};
 
-    inline const Array<String> STAGE_5 = {
-		U"#### ####",
-		U"###gY ###",  
-		U"###R BG##",
-		U"# Y T R #",  
-		U"#    Y  #",
-		U"##BB  R##",
-		U"### B v##",  
-		U"#### ####",
-		U"#### ####",
+	inline const Array<String> STAGE_6 = {
+		U"   ####    ",
+		U" ##        ",
+		U" #   R ##  ",
+		U"#     #8O# ",
+		U"# V   ##  #",
+		U"# R##b##Y #",
+		U"#  ##     #",
+		U" # 7#   T #",
+		U"  ## O   # ",
+		U"        ## ",
+		U"    ####   ",
+	};
+	inline const Array<String> STAGE_6_TILES = {
+		U"iii    iiii",
+		U"i        ii",
+		U"i         i",
+		U"    ii     ",
+		U"   iii     ",
+		U"           ",
+		U"     iii   ",
+		U"     ii    ",
+		U"i         i",
+		U"iii       i",
+		U"iiii    iii",
 	};
 
-    inline const Array<String> STAGE_6 = {
-		U"###########",
-		U"###########",  
-		U"###########",
-		U"#####v#####",  
-		U"###  R  ###",  
-		U"#        9#",
-		U"##   T   ##",
-		U"###     ###",  
-		U"####   ####",
-		U"#####T#####",  
-		U"###########"
+	inline const Array<String> FINAL_STAGE = {
+		U"     r         ",
+		U"      v         ",
+		U"       y        ",
+		U"       Tg       ",
+		U"         b      ",
+		U"          o     ",
+
 	};
 
-    inline const Array<String> STAGE_7 = {
+	inline const Array<String> FINAL_STAGE_P0_TILES = {
+		U"                ",
+		U"                ",
+		U"                ",
+		U"                ",
+		U"                ",
+		U"                ",
+	};
+
+	inline const Array<String> FINAL_STAGE_P1_TILES = {
+		U"LLL!iiiii!!LLL",
+		U"LLL!!iiiii!LLL",
+		U"LLL!!     !LLL",
+		U"LLLLL!   !!LLL",
+		U"LLL!      !LLL",
+		U"LLLL!    !LLLL",
+
+	};
+
+	// 20초 경과 시 타일 오버레이 (용암 두 번째 상승)
+	inline const Array<String> FINAL_STAGE_P2_TILES = {
+		U"LLLL!ii!!LLLLL",
+		U"LLLLL!ii!!LLLL",
+		U"LLLLL!   !LLLL",
+		U"LLLLLL  !LLLLL",
+		U"LLLL!!   !LLLL",
+		U"LLLLL! !!LLLLL",
+	};
+
+	// 30초 경과 시 타일 오버레이 (용암 세 번째 상승)
+	inline const Array<String> FINAL_STAGE_P3_TILES = {
+		U"LLLLL!!LLLLLLL",
+		U"LLLLLL!!LLLLLL",
+		U"LLLLLL!!!LLLLL",
+		U"LLLLLL!!LLLLLL",
+		U"LLLLLL!!!LLLLL",
+		U"LLLLLL!LLLLLLL",
+	};
+
+	inline const Array<String> FINAL_STAGE_P4_TILES = {
+		U"LLLLLLLLLLLLLL",
+		U"LLLLLLLLLLLLLL",
+		U"LLLLLLLLLLLLLL",
+		U"LLLLLLLLLLLLLL",
+		U"LLLLLLLLLLLLLL",
+		U"LLLLLLLLLLLLLL",
+	};
+
+	inline const Array<String> FINALSTAGE_PHASE1 = {
+		U"   r        b   ",
+		U"                ",
+		U"         2      ",
+		U"     T        8 ",
+		U"                ",
+		U"                "
+	};
+
+	inline const Array<String> FINALSTAGE_PHASE2 = {
+		U"   r        b   ",
+		U"      R    B    ",
+		U"                ",
+		U"     T          ",
+		U" Y         Y    ",
+		U"   y        g   ",
+	};
+
+	inline const Array<String> FINALSTAGE_PHASE3 = {
+		U"      ygvo      ",
+		U"   9            ",
+		U"           6    ",
+		U"     T          ",
+		U"                ",
+		U"                ",
+	};
+
+	inline const Array<String> STAGE_7 = {
 		U"###########",
-		U"# R R R R #",  
+		U"# R R R R #",
 		U"#R R R6R R#",
-		U"# R R R R #",  
-		U"#R R R R R#",  
+		U"# R R R R #",
+		U"#R R R R R#",
 		U"g R R R R T",
 		U"#R R R R R#",
-		U"# R R R R #",  
+		U"# R R R R #",
 		U"#R R8R R R#",
-		U"# R R R R #",  
+		U"# R R R R #",
 		U"###########"
 	};
 
-    inline const Array<String> STAGE_8 = {
+
+
+	inline const Array<String> STAGE_8 = {
 		U"##6########",
-		U"## # #   ##",  
+		U"## # #   ##",
 		U"oG R   #  #",
 		U"2#       ##",
 		U"Y #      #v",
 		U" O   o    B",
 		U"  #     # B",
 		U"#    R     ",
-		U"#  #   #  #",
-		U"##B      ##",  
+		U"#  #iii#  #",
+		U"##B iii  ##",
 		U"##2##T#####"
 	};
+	
 
-	// 10x5 Final Boss Stage (always referenced as FINAL_STAGE)
-    inline const Array<String> FINAL_STAGE = {
-		U"LL   iiii   LL",
-		U"LL  Bii iR  LL",
-		U"LL          LL",
-		U"LL  roybg T LL",
-		U"LL          LL",
-		U"LL          LL"
+	inline const Array<String> STAGE_9 = {
+		U"       #   ",
+		U" ## # ## # ",
+		U" #  #    # ",
+		U" # #  # ## ",
+		U" ######### ",
+		U" #VYoTR#GR ",
+		U" #######4# ",
+		U" # ## # ## ",
+		U" #    #    ",
+		U" ## # # ## ",
+		U"    #    # ",
 	};
 
-	// 10초 경과 시 타일 오버레이 (용암 첫 상승)
-	inline const Array<String> FINAL_STAGE_P1_TILES = {
-		U"LL   iiii   LL",
-		U"LL  Lii iL  LL",
-		U"LL          LL",
-		U"LL  L  L    LL",
-		U"LL   L      LL",
-		U"LL          LL"
+	inline const Array<String> STAGE_10 = {
+		U"LL## ##ii",
+		U"###gY ###",
+		U"###R BG##",
+		U"# Y T R #",
+		U"#    Y  #",
+		U"##BB  R##",
+		U"### B v##",
+		U"#### ###L",
+		U"LL## ##LL",
 	};
 
-	// 20초 경과 시 타일 오버레이 (용암 두 번째 상승)
-	inline const Array<String> FINAL_STAGE_P2_TILES = {
-		U"LL   iiii   LL",
-		U"LL   LiiL	  LL",
-		U"LLLL  LLLLLLLL",
-		U"LL  L  L    LL",
-		U"LL   L      LL",
-		U"LL          LL"
-	};
+	
+	inline Array<String> getFinalStageMapForPhase(int32 phase)
+	{
+		switch (phase)
+		{
+		case 1: return FINALSTAGE_PHASE1;
+		case 2: return FINALSTAGE_PHASE2;
+		case 3: return FINALSTAGE_PHASE3;
+		default: return FINALSTAGE_PHASE1;
+		}
+	}
 
-	// 30초 경과 시 타일 오버레이 (용암 세 번째 상승)
-	inline const Array<String> FINAL_STAGE_P3_TILES = {
-		U"LL   iiii   LL",
-		U"LL  LiiL    LL",
-		U"LLLLLLLLLLLLLL",
-		U"LL  LLLLLLL LL",
-		U"LL   L      LL",
-		U"LL          LL"
-	};
+
+	inline constexpr double getNextPhaseTime(int32 phase)
+	{
+		double nextPhaseTime = 10.0;
+
+		return nextPhaseTime * phase;
+	}
+
+	inline constexpr double getPhaseTimeByGameTime(double elapsedTime)
+	{
+		if (elapsedTime >= getNextPhaseTime(4)) return 4;
+		if (elapsedTime >= getNextPhaseTime(3)) return 3;
+		if (elapsedTime >= getNextPhaseTime(2)) return 2;
+		if (elapsedTime >= getNextPhaseTime(1)) return 1;
+
+		return 0;
+	}
 
 	inline Array<String> getFinalStageTileOverlay(double elapsedTime)
 	{
-		if (elapsedTime >= 30.0)
+		
+
+		if (elapsedTime >= getNextPhaseTime(4))  // ★ 18초 (6초 * 3)
+		{
+			return FINAL_STAGE_P4_TILES;
+		}
+		else if (elapsedTime >= getNextPhaseTime(3))  // ★ 12초 (6초 * 2)
 		{
 			return FINAL_STAGE_P3_TILES;
 		}
-		else if (elapsedTime >= 20.0)
+		else if (elapsedTime >= getNextPhaseTime(2))  // ★ 12초 (6초 * 2)
 		{
 			return FINAL_STAGE_P2_TILES;
 		}
-		else if (elapsedTime >= 10.0)
+		else if (elapsedTime >= getNextPhaseTime(1))  // ★ 6초 (6초 * 1)
 		{
 			return FINAL_STAGE_P1_TILES;
 		}
-		return Array<String>{}; 
+		else if (elapsedTime >= 0.0)  // 0초 (시작)
+		{
+			return FINAL_STAGE_P0_TILES;
+		}
+		return Array<String>{};
 	}
 
     inline Array<String> getStageMap(int32 stageNumber)
@@ -194,23 +305,24 @@ namespace StageData
         case 6: return STAGE_6;
         case 7: return STAGE_7;
         case 8: return STAGE_8;
-        case 9: return FINAL_STAGE; // Final Boss Stage (명명: finalStage)
+        case 9: return STAGE_9;
+        case 10: return STAGE_10;
+        case 11: return FINALSTAGE_PHASE1; // Final Boss Stage
         default: return STAGE_1; // 기본값: 스테이지 1
         }
     }
 
 	inline Array<String> getStageTileOverlay(int32 stageNumber) {
 		switch (stageNumber) {
-		case 1: return STAGE_1_TILES;
-		// case 4: return STAGE_4_TILES;
-		// case 5: return STAGE_5_TILES;
+		case 5: return STAGE_5_TILES;
+		case 6: return STAGE_6_TILES;
 		default: return {};
 		}
 	}
 
     inline constexpr int32 getTotalStageCount()
     {
-        return 9;
+        return 11;  // 10 normal stages + 1 final stage
     }
 
     inline Array<String> getFinalStageMap()
