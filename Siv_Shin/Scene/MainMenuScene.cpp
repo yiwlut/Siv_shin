@@ -141,10 +141,11 @@ void MainMenuScene::update()
     updateButton(startButton_);
     updateButton(exitButton_);
     
-    if (startButton_.rect.leftClicked())
-    {
-        startFadeOut(SceneType::Opening);  // 페이드아웃 시작
-    }
+	if (startButton_.rect.leftClicked()) {
+		SceneType target = SceneType::Opening;
+		if (gameData_ && gameData_->finalStageCleared) target = SceneType::StageSelect;
+		startFadeOut(target);
+	}
     else if (exitButton_.rect.leftClicked())
     {
         System::Exit();

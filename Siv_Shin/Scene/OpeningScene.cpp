@@ -15,7 +15,6 @@ OpeningScene::OpeningScene()
 	, isFullscreen_(false)
 {
 	currentScene_ = SceneType::Opening;
-	// 스토리 슬라이드 데이터 초기화
 	slides_ = {
 	{ U"ArtResources/Texture2D/Story/op_0.png", { U"深い海の底に、タコの家族が暮らしていた。", U"彼らはある神のペットとして、幸せな日々を送っていた。" } },
 	{ U"ArtResources/Texture2D/Story/op_1.png", { U"しかし、主人公のタコは神の一番のお気に入りであり、", U"唯一、カゴの外を自由に泳ぎ回ることを許されていた。" } },

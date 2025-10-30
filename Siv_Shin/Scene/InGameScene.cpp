@@ -115,7 +115,7 @@ void InGameScene::onEnter()
 
 		if (!bossBgm_.isEmpty())
 		{
-			bossBgm_.setVolume(0.4);
+			bossBgm_.setVolume(bossBgmTargetVolume_);
 			bossBgm_.play();
 		}
 	}
@@ -1470,9 +1470,8 @@ void InGameScene::checkPlayerLavaCollision()
 void InGameScene::update()
 {
 	const double dt = Scene::DeltaTime();
-
 	camera().update();
-
+	if (StageData::isFinalStage(currentStage_)) updateBossBgmFade_(dt);
 	const bool focused = Window::GetState().focused;
 	// 페이드 업데이트
 	if (isFading_)
@@ -1561,7 +1560,7 @@ void InGameScene::update()
 
 				if (!bossBgm_.isEmpty())
 				{
-					bossBgm_.setVolume(0.4);
+					bossBgm_.setVolume(bossBgmTargetVolume_);
 					bossBgm_.play();
 				}
 			}
@@ -1629,7 +1628,7 @@ void InGameScene::update()
 
 				if (!bossBgm_.isEmpty())
 				{
-					bossBgm_.setVolume(0.4);
+					bossBgm_.setVolume(bossBgmTargetVolume_);
 					bossBgm_.play();
 				}
 			}
@@ -1833,7 +1832,7 @@ void InGameScene::update()
 
 			if (!bossBgm_.isEmpty())
 			{
-				bossBgm_.setVolume(0.4);
+				bossBgm_.setVolume(bossBgmTargetVolume_);
 				bossBgm_.play();
 			}
 		}
@@ -1853,7 +1852,6 @@ void InGameScene::update()
 		return;
 	}
 
-	// 클리어 상태 처리
 	if (isCleared_) {
 		if (!showClearButtons_) {
 			showClearButtons_ = true;
@@ -1861,7 +1859,22 @@ void InGameScene::update()
 		gameTime_ += dt;
 
 		if (KeySpace.down() || KeyEnter.down()) {
-			if (currentStage_ < StageData::getTotalStageCount()) {
+			if (currentStage_ == 6) {
+				currentStage_ = 11;
+				loadStage(currentStage_);
+				isCleared_ = false;
+				showClearButtons_ = false;
+				showClearEffect_ = false;
+				clearParticles_.clear();
+				gameTime_ = 0.0;
+				moves_ = 0;
+				if (StageData::isFinalStage(currentStage_)) {
+					initBossAttacks();
+					initBossWallSystem();
+					startBossBgmFadeIn_();
+				}
+			}
+			else if (currentStage_ < StageData::getTotalStageCount()) {
 				currentStage_++;
 				loadStage(currentStage_);
 				isCleared_ = false;
@@ -2514,9 +2527,7 @@ void InGameScene::draw()
 	{
 		drawBossAttackSequence();
 	}
-
-	// Stage 6: 플레이어 주변 80px만 보이도록 화면 어둡게 처리
-	if (currentStage_ == 5)
+	if (currentStage_ == 9)
 	{
 		const Mat3x2 transform = camera().getMat3x2();
 		const Vec2 screenPos = transform.transformPoint(playerPixelPos_);
@@ -3321,7 +3332,25 @@ void InGameScene::initializeClearButtons()
     nextStageButton_.normalColor = ColorF{ 0.2, 0.6, 0.3 };
     nextStageButton_.hoverColor = ColorF{ 0.3, 0.7, 0.4 };
 }
+void InGameScene::startBossBgmFadeIn_() {
+	if (!bgm_.isEmpty() && bgm_.isPlaying()) bgm_.stop();
+	if (!bossBgm_.isEmpty()) {
+		bossBgm_.setVolume(0.0);
+		bossBgm_.play();
+	}
+	bossBgmFadeTimer_ = 0.0;
+	bossBgmFadingIn_ = true;
+}
 
+void InGameScene::updateBossBgmFade_(double dt) {
+	if (!StageData::isFinalStage(currentStage_)) return;
+	if (!bossBgmFadingIn_) return;
+	bossBgmFadeTimer_ += dt;
+	double t = Clamp(bossBgmFadeTimer_ / Max(0.001, bossBgmFadeDuration_), 0.0, 1.0);
+	double v = bossBgmTargetVolume_ * t;
+	if (!bossBgm_.isEmpty()) bossBgm_.setVolume(v);
+	if (t >= 1.0) bossBgmFadingIn_ = false;
+}
 void InGameScene::updateClearButtons()
 {
     updateClearButton(retryButton_);
@@ -3347,27 +3376,38 @@ void InGameScene::updateClearButtons()
     }
     else if (stageSelectButton_.rect.leftClicked())
     {
-        // 스테이지 선택으로 돌아가기
         changeScene(SceneType::StageSelect);
     }
-    else if (nextStageButton_.rect.leftClicked())
-    {
-        if (currentStage_ < StageData::getTotalStageCount())
-        {
-            // 다음 스테이지로
-            currentStage_++;
-            loadStage(currentStage_);
-            isCleared_ = false;
-            showClearButtons_ = false;
-            gameTime_ = 0.0;
-            moves_ = 0;
-        }
-        else
-        {
-            // 모든 스테이지 클리어 -> 스테이지 선택으로
-            changeScene(SceneType::StageSelect);
-        }
-    }
+	else if (nextStageButton_.rect.leftClicked())
+	{
+		if (currentStage_ == 6)
+		{
+			currentStage_ = 11;
+			loadStage(currentStage_);
+			isCleared_ = false;
+			showClearButtons_ = false;
+			gameTime_ = 0.0;
+			moves_ = 0;
+			if (StageData::isFinalStage(currentStage_)) {
+				initBossAttacks();
+				initBossWallSystem();
+				startBossBgmFadeIn_();
+			}
+		}
+		else if (currentStage_ < StageData::getTotalStageCount())
+		{
+			currentStage_++;
+			loadStage(currentStage_);
+			isCleared_ = false;
+			showClearButtons_ = false;
+			gameTime_ = 0.0;
+			moves_ = 0;
+		}
+		else
+		{
+			changeScene(SceneType::StageSelect);
+		}
+	}
 }
 
 void InGameScene::updateClearButton(ClearButton& button)
@@ -3742,11 +3782,7 @@ void InGameScene::drawFailedScreen()
 		// ★ 배경음악 재생 (Final Stage 구분) ★
 		if (StageData::isFinalStage(currentStage_))
 		{
-			if (!bossBgm_.isEmpty())
-			{
-				bossBgm_.setVolume(0.4);
-				bossBgm_.play();
-			}
+			startBossBgmFadeIn_();
 		}
 		else
 		{
@@ -5658,8 +5694,7 @@ void InGameScene::drawBossHP()
 	const double centerX = Scene::Width() / 2.0;
 	const double y = 50.0;
 
-	const String hpText = U"BOSS HP: {} / {}"_fmt(bossCurrentHP_, bossMaxHP_);
-	gameFont_(Format(hpText, bossCurrentHP_, bossMaxHP_)).drawAt(centerX, y, ColorF(1.0, 0.3, 0.3));
+	gameFont_(U"BOSS HP: {} / {}"_fmt(bossCurrentHP_, bossMaxHP_)).drawAt(centerX, y, ColorF(1.0, 0.3, 0.3));
 
 	const double barWidth = 400.0;
 	const double barHeight = 30.0;

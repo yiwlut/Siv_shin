@@ -572,6 +572,12 @@ private:
     Audio bgm_;  // 배경음악
 	Audio bossBgm_;
 	double savedMusicPosition_ = 0.0;
+	double bossBgmFadeTimer_ = 0.0;
+	double bossBgmFadeDuration_ = 1.5;
+	double bossBgmTargetVolume_ = 0.5;
+	bool bossBgmFadingIn_ = false;
+	void startBossBgmFadeIn_();
+	void updateBossBgmFade_(double dt);
 
     // 블록 밀기 효과음
     Audio noteE5_;  // 노랑 (E5)

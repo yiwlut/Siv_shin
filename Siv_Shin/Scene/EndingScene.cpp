@@ -1,18 +1,32 @@
 ﻿#include "EndingScene.hpp"
 
 EndingScene::EndingScene()
-	: elapsedTime_(0.0), slideFadeInDuration_(0.7), slideDisplayDuration_(6.5), slideFadeOutDuration_(0.8), slideInterval_(8.0)
-	, textFont_(FontMethod::MSDF, 28, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
+	: elapsedTime_(0.0), slideFadeInDuration_(1.0), slideDisplayDuration_(9.0), slideFadeOutDuration_(1.0), slideInterval_(11.0), textFont_(FontMethod::MSDF, 28, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, rubyFont_(FontMethod::MSDF, 14, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, skipFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, endingBgm_(Resource(U"ArtResources/BGM/HappyOcean.mp3"))
 	, currentSlideIndex_(0), isFastForward_(false), isFullscreen_(false), ffwdAnimTime_(0.0), textTypingTime_(0.0), visibleCharCount_(0) {
 	currentScene_ = SceneType::Ending;
 	slides_ = {
-	{ U"ArtResources/Texture2D/Story/ed_0.png", { U"彼は、力を失い意識のない神のそばに落ちていた鍵を見つける。「これこそが、檻の鍵に違いない！」" } },
-	{ U"ArtResources/Texture2D/Story/ed_1.png", { U"彼は鍵を頭に乗せて、懐かしい我が家へと急いで戻った。" } },
-	{ U"ArtResources/Texture2D/Story/ed_2.png", { U"彼が鍵を扉に差し込むと……カチッ！ 鍵は扉を開き、すべての兄弟たちを解放した。" } },
-	{ U"ArtResources/Texture2D/Story/ed_3.png", { U"彼らは抱き合った。すると、眩い色彩の渦が彼らの周りで弾けた。彼の旅路で得た色合いが、彼と兄弟たちを光り輝くスペクトルに染め上げる。それこそが、彼らが深海（シンかい）の新（あら）たな守護者となった証だった。" } },
+	{ U"ArtResources/Texture2D/Story/ed_0.png", {
+		U"力を失い意識のない神のそばで、",
+		U"あなたは探していた鍵を見つける。",
+		U"「これこそが、檻の鍵に違いない！」",
+	} },
+	{ U"ArtResources/Texture2D/Story/ed_1.png", {
+		U"鍵を頭に乗せ、兄弟たちのいるあの檻へと急いで戻る。"
+	} },
+	{ U"ArtResources/Texture2D/Story/ed_2.png", {
+		U"檻の扉に鍵を差し込むと……カチッ！",
+		U"扉は開き、すべての兄弟たちを解放した。",
+	} },
+	{ U"ArtResources/Texture2D/Story/ed_3.png", {
+		U"解放された兄弟たちと抱き合うと、",
+		U"眩い色彩の渦があなたを包み込む。",
+		U"旅路で得た色合いが、",
+		U"あなたを光り輝くスペクトルに染め上げる。",
+		U"それこそが、あなたが深海の新たな守護者となった証だ。"
+	} },
 	};
 	for (const auto& slide : slides_) slideTextures_.push_back(Texture(Resource(slide.imagePath)));
 	ffwdTextures_.push_back(Texture(Resource(U"ArtResources/Texture2D/FFWD/ffwd_0.png")));
@@ -36,7 +50,7 @@ void EndingScene::update() {
 	elapsedTime_ += dt;
 	const size_t prevIndex = currentSlideIndex_; currentSlideIndex_ = static_cast<size_t>(elapsedTime_ / slideInterval_);
 	if (prevIndex != currentSlideIndex_) { textTypingTime_ = 0.0; visibleCharCount_ = 0; }
-	if (currentSlideIndex_ < slides_.size()) { textTypingTime_ += dt; visibleCharCount_ = static_cast<size_t>(textTypingTime_ * 12.5); }
+	if (currentSlideIndex_ < slides_.size()) { textTypingTime_ += dt; visibleCharCount_ = static_cast<size_t>(textTypingTime_ * 15); }
 	if (KeyF2.down()) { changeScene(SceneType::MainMenu); return; }
 	if (currentSlideIndex_ >= slides_.size()) { changeScene(SceneType::MainMenu); return; }
 }

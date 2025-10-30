@@ -8,10 +8,6 @@ namespace StageData
 		int32 x, y;
 		char tileChar;  // 'i' = Ice, 'l' = Lava
 	};
-
-	
-
-	//7x7
 	inline const Array<String> STAGE_1 = {
 		U"###g###",
 		U"###B###",
@@ -21,7 +17,6 @@ namespace StageData
 		U"###B###",
 		U"###v###",
 	};
-	//8x8
     inline const Array<String> STAGE_2 = {
 		U"########",
 		U"# vB ###",
@@ -33,7 +28,6 @@ namespace StageData
 		U"########"
 	};
 
-	//7x7
 	inline const Array<String> STAGE_3 = {
 		U"LL####L",
 		U"###  #L",
@@ -43,7 +37,6 @@ namespace StageData
 		U"## OBv#",
 		U"L######",
 	};
-
     inline const Array<String> STAGE_4 = {
 		U"L# VOvL",  
 		U"#     L",  
@@ -53,66 +46,7 @@ namespace StageData
 		U"##BV LL",  
 		U"LLvLLLL",
 	};
-
-	/*
-    inline const Array<String> STAGE_5 = {
-		U"iiiii#iiiii",
-		U"iiiii#iiiii",
-		U"iiiii#iiiii",
-		U"iiiiiviiiii",  
-		U"iii  R  iii",  
-		U"L        9L",
-		U"#L   T   LL",
-		U"LLL     LLL",  
-		U"LLLL   LLLL",
-		U"LLLLLTLLLLL",  
-		U"LLLLLLLLLLL"
-	};
-
-	*/
 	inline const Array<String> STAGE_5 = {
-		U"       #   ",
-		U" ## # ## # ",
-		U" #  #    # ",
-		U" # #  # ## ",
-		U" ######### ",
-		U" #VYoTR#GR ",
-		U" #######4# ",
-		U" # ## # ## ",
-		U" #    #    ",
-		U" ## # # ## ",
-		U"    #    # ",
-	};
-
-	inline const Array<String> STAGE_6 = {
-		U"LL## ##ii",
-		U"###gY ###",
-		U"###R BG##",
-		U"# Y T R #",
-		U"#    Y  #",
-		U"##BB  R##",
-		U"### B v##",
-		U"#### ###L",
-		U"LL## ##LL",
-	};
-
-    inline const Array<String> STAGE_7 = {
-		U"###########",
-		U"# R R R R #",  
-		U"#R R R6R R#",
-		U"# R R R R #",  
-		U"#R R R R R#",  
-		U"g R R R R T",
-		U"#R R R R R#",
-		U"# R R R R #",  
-		U"#R R8R R R#",
-		U"# R R R R #",  
-		U"###########"
-	};
-
-
-
-	inline const Array<String> STAGE_8 = {
 		U"#    T #",
 		U"# R   B#",
 		U"###### #",
@@ -122,32 +56,18 @@ namespace StageData
 		U"     Y  ",
 		U"  r     ",
 	};
-	inline const Array<String> STAGE_8_TILES = {
-		U"   ii   ", 
+	inline const Array<String> STAGE_5_TILES = {
+		U"   ii   ",
 		U" iiiii  ",
 		U"      i ",
-		U"  iii i ", 
+		U"  iii i ",
 		U" iiii   ",
 		U" iiiii  ",
 		U"  iii   ",
 		U"        ",
 	};
 
-	inline const Array<String> STAGE_9 = {
-		U"##6########",
-		U"## # #   ##",
-		U"oG R   #  #",
-		U"2#       ##",
-		U"Y #      #v",
-		U" O   o    B",
-		U"  #     # B",
-		U"#    R     ",
-		U"#  #iii#  #",
-		U"##B iii  ##",
-		U"##2##T#####"
-	};
-
-	inline const Array<String> STAGE_10 = {
+	inline const Array<String> STAGE_6 = {
 		U"   ####    ",
 		U" ##        ",
 		U" #   R ##  ",
@@ -160,9 +80,7 @@ namespace StageData
 		U"        ## ",
 		U"    ####   ",
 	};
-
-
-	inline const Array<String> STAGE_10_TILES = {
+	inline const Array<String> STAGE_6_TILES = {
 		U"iii    iiii",
 		U"i        ii",
 		U"i         i",
@@ -186,7 +104,6 @@ namespace StageData
 
 	};
 
-	// 첫 시작 시 오버레이 
 	inline const Array<String> FINAL_STAGE_P0_TILES = {
 		U"                ",
 		U"                ",
@@ -262,6 +179,64 @@ namespace StageData
 		U"                ",
 	};
 
+	inline const Array<String> STAGE_7 = {
+		U"###########",
+		U"# R R R R #",
+		U"#R R R6R R#",
+		U"# R R R R #",
+		U"#R R R R R#",
+		U"g R R R R T",
+		U"#R R R R R#",
+		U"# R R R R #",
+		U"#R R8R R R#",
+		U"# R R R R #",
+		U"###########"
+	};
+
+
+
+	inline const Array<String> STAGE_8 = {
+		U"##6########",
+		U"## # #   ##",
+		U"oG R   #  #",
+		U"2#       ##",
+		U"Y #      #v",
+		U" O   o    B",
+		U"  #     # B",
+		U"#    R     ",
+		U"#  #iii#  #",
+		U"##B iii  ##",
+		U"##2##T#####"
+	};
+	
+
+	inline const Array<String> STAGE_9 = {
+		U"       #   ",
+		U" ## # ## # ",
+		U" #  #    # ",
+		U" # #  # ## ",
+		U" ######### ",
+		U" #VYoTR#GR ",
+		U" #######4# ",
+		U" # ## # ## ",
+		U" #    #    ",
+		U" ## # # ## ",
+		U"    #    # ",
+	};
+
+	inline const Array<String> STAGE_10 = {
+		U"LL## ##ii",
+		U"###gY ###",
+		U"###R BG##",
+		U"# Y T R #",
+		U"#    Y  #",
+		U"##BB  R##",
+		U"### B v##",
+		U"#### ###L",
+		U"LL## ##LL",
+	};
+
+	
 	inline Array<String> getFinalStageMapForPhase(int32 phase)
 	{
 		switch (phase)
@@ -339,8 +314,8 @@ namespace StageData
 
 	inline Array<String> getStageTileOverlay(int32 stageNumber) {
 		switch (stageNumber) {
-		case 8: return STAGE_8_TILES;
-		case 10: return STAGE_10_TILES;
+		case 5: return STAGE_5_TILES;
+		case 6: return STAGE_6_TILES;
 		default: return {};
 		}
 	}

@@ -59,42 +59,42 @@ void StageSelectScene::onExit()
 void StageSelectScene::initializeStages()
 {
 	stageButtons_.clear();
-
-	// ★ 논리적 해상도
 	constexpr int32 LOGICAL_WIDTH = 880;
 	constexpr int32 LOGICAL_HEIGHT = 880;
-
 	const int32 centerY = LOGICAL_HEIGHT / 2;
 	const int32 totalStages = StageData::getTotalStageCount();
-
 	Array<String> stageNames = {
-	U"神罰", U"ここはどこ", U"爆発",
-	U"灼熱海流", U"深淵の門", U"歪む色彩",
-	U"裁きの間", U"氷結の迷路", U"上昇海流",
-	U"心臓部"
+	U"神罰",
+	U"ここはどこ",
+	U"爆発",
+	U"灼熱海流",
+	U"氷結の迷路",
+	U"心臓部",
+	U"裁きの間",
+	U"深淵の門",
+	U"上昇海流",
+	U"歪む色彩"
 	};
-
-	// 화면 중앙 기준으로 스테이지 버튼 배치
-	const int32 totalWidth = (STAGE_WIDTH + STAGE_SPACING) * totalStages - STAGE_SPACING;
+	Array<int32> order;
+	for (int32 n = 1; n <= Min(6, totalStages); ++n) order << n;
+	if (totalStages >= 11) order << 11;
+	for (int32 n = 7; n <= Min(10, totalStages); ++n) order << n;
+	for (int32 n = 12; n <= totalStages; ++n) order << n;
+	const int32 totalWidth = (STAGE_WIDTH + STAGE_SPACING) * static_cast<int32>(order.size()) - STAGE_SPACING;
 	const int32 startX = (LOGICAL_WIDTH - totalWidth) / 2;
-
-	for (int32 i = 0; i < totalStages; i++)
-	{
-		StageButton button;
-
-		button.rect = Rect{
+	for (int32 i = 0; i < order.size(); ++i) {
+		const int32 sn = order[i];
+		StageButton b;
+		b.rect = Rect{
 			startX + i * (STAGE_WIDTH + STAGE_SPACING),
 			centerY - STAGE_HEIGHT / 2,
 			STAGE_WIDTH, STAGE_HEIGHT
 		};
-		button.stageNumber = i + 1;
-		button.isLocked = false;
-		button.stageName = (i < stageNames.size()) ? stageNames[i] : U"ステージ {}"_fmt(i + 1);
-
-		stageButtons_.push_back(button);
+		b.stageNumber = sn;
+		b.isLocked = false;
+		b.stageName = (1 <= sn && sn <= 10) ? stageNames[sn - 1] : U"真";
+		stageButtons_ << b;
 	}
-
-	// 뒤로가기 버튼을 화면 왼쪽 하단에 배치 (비율 기준)
 	const int32 backButtonMargin = static_cast<int32>(LOGICAL_WIDTH * 0.04);
 	const int32 backButtonBottom = static_cast<int32>(LOGICAL_HEIGHT * 0.92);
 	backButton_ = Rect{ backButtonMargin, backButtonBottom, 180, 60 };
@@ -242,11 +242,8 @@ void StageSelectScene::draw()
 
 void StageSelectScene::drawStageButtons()
 {
-	// ★ 논리적 해상도
 	constexpr int32 LOGICAL_WIDTH = 880;
 	constexpr int32 LOGICAL_HEIGHT = 880;
-
-	// 실제 화면 크기 대비 논리적 크기의 오프셋 계산
 	const Vec2 screenCenter = Scene::CenterF();
 	const Vec2 logicalCenter = Vec2(LOGICAL_WIDTH / 2.0, LOGICAL_HEIGHT / 2.0);
 	const Vec2 offset = screenCenter - logicalCenter;
@@ -255,37 +252,23 @@ void StageSelectScene::drawStageButtons()
 	{
 		const auto& button = stageButtons_[i];
 		Rect drawRect = button.rect.movedBy(static_cast<int32>(scrollOffset_ + offset.x), static_cast<int32>(offset.y));
+		if (drawRect.x + drawRect.w < -100 || drawRect.x > Scene::Width() + 100) continue;
 
-		// 화면 밖에 있는 버튼은 그리지 않음
-		if (drawRect.x + drawRect.w < -100 || drawRect.x > Scene::Width() + 100)
-			continue;
-
-		// 텍스처 렌더링
 		bool textureRendered = false;
-		if (i < stageTextures_.size() && !stageTextures_[i].isEmpty())
+		const int sn = button.stageNumber;
+		if (sn >= 1 && sn - 1 < stageTextures_.size() && !stageTextures_[sn - 1].isEmpty())
 		{
-			const auto& frames = stageTextures_[i];
-
-			const bool isBossStage = (button.stageNumber == 11);
+			const auto& frames = stageTextures_[sn - 1];
+			const bool isBossStage = (sn == 11);
 			const int32 frameIndex = isBossStage ? bossAnimationFrameIndex_ : animationFrameIndex_;
-
 			if (frameIndex < static_cast<int32>(frames.size()) && !frames[frameIndex].isEmpty())
 			{
 				const Texture& currentFrame = frames[frameIndex];
-
-				if (button.isLocked)
-				{
-					currentFrame.resized(drawRect.size).draw(drawRect.pos, ColorF(0.3, 0.3, 0.3));
-				}
-				else
-				{
-					currentFrame.resized(drawRect.size).draw(drawRect.pos);
-				}
+				if (button.isLocked) currentFrame.resized(drawRect.size).draw(drawRect.pos, ColorF(0.3, 0.3, 0.3));
+				else currentFrame.resized(drawRect.size).draw(drawRect.pos);
 				textureRendered = true;
 			}
 		}
-
-		// 텍스처가 없거나 실패한 경우 폴백
 		if (!textureRendered)
 		{
 			ColorF buttonColor;
