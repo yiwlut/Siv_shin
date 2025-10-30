@@ -116,6 +116,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Scene\BossIntroScene.cpp" />
     <ClCompile Include="Scene\BossWallPatternData.hpp" />
     <ClCompile Include="Scene\EndingScene.cpp" />
     <ClCompile Include="Scene\GameOverScene.cpp" />
@@ -341,6 +342,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera\CustomCamera2D.hpp" />
+    <ClInclude Include="Scene\BossIntroScene.hpp" />
     <ClInclude Include="Scene\EndingScene.hpp" />
     <ClInclude Include="Scene\GameOverScene.hpp" />
     <ClInclude Include="Scene\InGameScene.hpp" />

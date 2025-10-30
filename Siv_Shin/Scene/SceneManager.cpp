@@ -8,6 +8,7 @@
 #include "GameOverScene.hpp"
 #include "StageData.hpp"  // 스테이지 데이터 포함
 #include "EndingScene.hpp"
+#include "BossIntroScene.hpp"
 
 GameSceneManager::GameSceneManager() 
     : currentScene_(nullptr), currentSceneType_(SceneType::Logo)  // 로고부터 시작
@@ -85,6 +86,8 @@ std::unique_ptr<GameScene> GameSceneManager::createScene(SceneType sceneType)
         return std::make_unique<SettingsScene>();
     case SceneType::GameOver:
         return std::make_unique<GameOverScene>();
+    case SceneType::BossIntro:  // 보스 인트로 씬 추가
+        return std::make_unique<BossIntroScene>();
     default:
         return std::make_unique<MainMenuScene>();
     }
@@ -100,6 +103,13 @@ void GameSceneManager::changeScene(SceneType sceneType)
     {
         gameData_.currentStage = 1;
 		gameData_.startPausedNextInGame = true;
+    }
+
+    // BossIntro → InGame 전환 시 보스 스테이지로 진입하도록 설정
+    if (currentSceneType_ == SceneType::BossIntro && sceneType == SceneType::InGame)
+    {
+        gameData_.currentStage = 11;
+        gameData_.startPausedNextInGame = true;
     }
 
     currentSceneType_ = sceneType;

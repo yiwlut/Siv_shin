@@ -13,7 +13,8 @@ enum class SceneType
     Settings,
     GameOver,
     Pause,
-	Ending
+    Ending,
+    BossIntro
 };
 
 // 게임 데이터 저장 구조체
