@@ -914,5 +914,8 @@
     <ClInclude Include="Scene\BossIntroScene.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\SaveManager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

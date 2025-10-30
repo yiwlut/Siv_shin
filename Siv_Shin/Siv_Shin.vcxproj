@@ -349,6 +349,7 @@
     <ClInclude Include="Scene\LogoScene.hpp" />
     <ClInclude Include="Scene\MainMenuScene.hpp" />
     <ClInclude Include="Scene\OpeningScene.hpp" />
+    <ClInclude Include="Scene\SaveManager.hpp" />
     <ClInclude Include="Scene\SceneManager.hpp" />
     <ClInclude Include="Scene\SettingsScene.hpp" />
     <ClInclude Include="Scene\StageData.hpp" />

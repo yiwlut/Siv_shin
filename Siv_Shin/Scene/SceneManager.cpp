@@ -53,44 +53,64 @@ void GameSceneManager::draw()
 
 std::unique_ptr<GameScene> GameSceneManager::createScene(SceneType sceneType)
 {
-    switch (sceneType)
-    {
-    case SceneType::Logo:  // 로고 씬 추가
-        return std::make_unique<LogoScene>();
+	std::unique_ptr<GameScene> result;
+
+	switch (sceneType)
+	{
+	case SceneType::Logo:
+		result = std::make_unique<LogoScene>();
+		break;
+
 	case SceneType::MainMenu:
 	{
-		auto scene = std::make_unique<MainMenuScene>();
-		scene->gameData_ = &gameData_;  // ★ 추가
-		return scene;
+		auto s = std::make_unique<MainMenuScene>();
+		s->gameData_ = &gameData_;
+		result = std::move(s);
+		break;
 	}
+
 	case SceneType::Opening:
-		return std::make_unique<OpeningScene>();
+	{
+		auto s = std::make_unique<OpeningScene>();
+		s->setGameData(&gameData_);
+		result = std::move(s);
+		break;
+	}
+
 	case SceneType::Ending:
 	{
-		auto scene = std::make_unique<EndingScene>();
-		scene->gameData_ = &gameData_;  // ★ 추가
-		return scene;
+		auto s = std::make_unique<EndingScene>();
+		s->gameData_ = &gameData_;
+		result = std::move(s);
+		break;
 	}
-    case SceneType::StageSelect:
-        {
-            auto scene = std::make_unique<StageSelectScene>(&gameData_);
-            return scene;
-        }
-    case SceneType::InGame:
-        {
-            // 선택된 스테이지 번호와 GameData로 InGameScene 생성
-            auto scene = std::make_unique<InGameScene>(gameData_.currentStage, &gameData_);
-            return scene;
-        }
-    case SceneType::Settings:
-        return std::make_unique<SettingsScene>();
-    case SceneType::GameOver:
-        return std::make_unique<GameOverScene>();
-    case SceneType::BossIntro:  // 보스 인트로 씬 추가
-        return std::make_unique<BossIntroScene>();
-    default:
-        return std::make_unique<MainMenuScene>();
-    }
+
+	case SceneType::StageSelect:
+		result = std::make_unique<StageSelectScene>(&gameData_);
+		break;
+
+	case SceneType::InGame:
+		result = std::make_unique<InGameScene>(gameData_.currentStage, &gameData_);
+		break;
+
+	case SceneType::Settings:
+		result = std::make_unique<SettingsScene>();
+		break;
+
+	case SceneType::GameOver:
+		result = std::make_unique<GameOverScene>();
+		break;
+
+	case SceneType::BossIntro:
+		result = std::make_unique<BossIntroScene>();
+		break;
+
+	default:
+		result = std::make_unique<MainMenuScene>();
+		break;
+	}
+
+	return result;
 }
 
 void GameSceneManager::changeScene(SceneType sceneType)
@@ -99,11 +119,12 @@ void GameSceneManager::changeScene(SceneType sceneType)
     {
         currentScene_->onExit();
     }
-    if (currentSceneType_ == SceneType::Opening && sceneType == SceneType::InGame)
-    {
-        gameData_.currentStage = 1;
+	if (currentSceneType_ == SceneType::Opening && sceneType == SceneType::InGame)
+	{
+		const int32 saved = gameData_.saveManager.getCurrentStage();
+		gameData_.currentStage = (saved >= 1 ? saved : 1);
 		gameData_.startPausedNextInGame = true;
-    }
+	}
 
     // BossIntro → InGame 전환 시 보스 스테이지로 진입하도록 설정
     if (currentSceneType_ == SceneType::BossIntro && sceneType == SceneType::InGame)
@@ -119,4 +140,19 @@ void GameSceneManager::changeScene(SceneType sceneType)
     {
         currentScene_->onEnter();
     }
+}
+
+
+void GameData::initializeForStageCount(int32 totalStages)
+{
+	if (!saveManager.isStageUnlocked(1)) {
+		saveManager.unlockStage(1);
+	}
+
+	int32 s = saveManager.getCurrentStage();
+	if (s < 1) s = 1;
+	if (s > totalStages) s = totalStages;
+
+	saveManager.setCurrentStage(s);
+	currentStage = s;
 }

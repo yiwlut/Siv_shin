@@ -34,6 +34,12 @@ OpeningScene::OpeningScene()
 }
 void OpeningScene::onEnter()
 {
+
+	if (gameData_ && gameData_->saveManager.hasSeenOpening()) {
+		changeScene(SceneType::InGame);
+		return;
+	}
+
 	elapsedTime_ = 0.0;
 	isFastForward_ = false;
 	ffwdAnimTime_ = 0.0;
@@ -84,15 +90,18 @@ void OpeningScene::update()
 	}
 
 	if (KeyF2.down()) {
+		if (gameData_) { gameData_->saveManager.markOpeningSeen(); }
 		changeScene(SceneType::InGame);
 		return;
 	}
 
 	if (currentSlideIndex_ >= slides_.size()) {
+		if (gameData_) { gameData_->saveManager.markOpeningSeen(); }
 		changeScene(SceneType::InGame);
 		return;
 	}
 }
+
 void OpeningScene::draw()
 {
 	Scene::SetBackground(ColorF{ 0.0, 0.0, 0.0 });

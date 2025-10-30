@@ -101,57 +101,73 @@ void MainMenuScene::initializeButtons()
 
 void MainMenuScene::update()
 {
-    const double deltaTime = Scene::DeltaTime();
-    titleAnimTimer_ += deltaTime;
-    
-    if (isFadingOut_)
-    {
-        fadeOutTimer_ += deltaTime;
-        if (fadeOutTimer_ >= fadeOutDuration_)
-        {
-            changeScene(nextScene_);
-            return;
-        }
-        
-        return;
-    }
-    
-    fadeTimer_ += deltaTime;
+	const double deltaTime = Scene::DeltaTime();
+	titleAnimTimer_ += deltaTime;
 
-    bool currentFocus = Window::GetState().focused;
-    if (!bgm_.isEmpty())
-    {
-        if (currentFocus && !bgm_.isPlaying())
-        {
-            bgm_.play();
-        }
-        else if (!currentFocus && bgm_.isPlaying())
-        {
-            bgm_.pause();
-        }
-    }
-    wasFocused_ = currentFocus;
+	if (isFadingOut_)
+	{
+		fadeOutTimer_ += deltaTime;
+		if (fadeOutTimer_ >= fadeOutDuration_)
+		{
+			changeScene(nextScene_);
+			return;
+		}
+		return;
+	}
+
+	fadeTimer_ += deltaTime;
+
+	bool currentFocus = Window::GetState().focused;
+	if (!bgm_.isEmpty())
+	{
+		if (currentFocus && !bgm_.isPlaying())
+			bgm_.play();
+		else if (!currentFocus && bgm_.isPlaying())
+			bgm_.pause();
+	}
+	wasFocused_ = currentFocus;
 
 	animationFrameTimer_ += deltaTime;
-	if (animationFrameTimer_ >= animationFrameDuration_) {
+	if (animationFrameTimer_ >= animationFrameDuration_)
+	{
 		animationFrameTimer_ -= animationFrameDuration_;
-		animationFrameIndex_ = (animationFrameIndex_ + 1) % 3; // 3프레임 순환
+		animationFrameIndex_ = (animationFrameIndex_ + 1) % 3;
 	}
 
-    updateButton(startButton_);
-    updateButton(exitButton_);
-    
-	if (startButton_.rect.leftClicked()) {
-		SceneType target = SceneType::Opening;
-		if (gameData_ && gameData_->finalStageCleared) target = SceneType::StageSelect;
+	updateButton(startButton_);
+	updateButton(exitButton_);
+
+	if (startButton_.rect.leftClicked())
+	{
+		SceneType target = SceneType::StageSelect;
+
+		// 오프닝을 본 적이 없으면 오프닝으로
+		if (gameData_ && !gameData_->saveManager.hasSeenOpening())
+		{
+			target = SceneType::Opening;
+		}
+		// 파이널 스테이지를 클리어했으면 스테이지 선택으로
+		else if (gameData_ && gameData_->finalStageCleared())
+		{
+			target = SceneType::StageSelect;
+		}
+		// 진행중인 스테이지로 바로 이동
+		else if (gameData_)
+		{
+			gameData_->currentStage = gameData_->saveManager.getCurrentStage();
+			target = SceneType::InGame;
+		}
+
 		startFadeOut(target);
 	}
-    else if (exitButton_.rect.leftClicked())
-    {
-        System::Exit();
-    }
+	else if (exitButton_.rect.leftClicked())
+	{
+		System::Exit();
+	}
+
 	cornerTimer_ += Scene::DeltaTime();
-	if (cornerTimer_ >= CORNER_ANIM_SPEED) {
+	if (cornerTimer_ >= CORNER_ANIM_SPEED)
+	{
 		cornerTimer_ = 0.0;
 		cornerFrame_ = (cornerFrame_ + 1) % 2;
 	}
@@ -186,7 +202,7 @@ void MainMenuScene::draw()
 	const bool isFullscreen = Window::GetState().fullscreen;
 	const double scale = isFullscreen ? 0.75 : 0.5;
 
-	if (gameData_ && gameData_->finalStageCleared)
+	if (gameData_ && gameData_->finalStageCleared())
 	{
 		cornerTL_[f].scaled(scale).draw(0, 0);
 		cornerTR_[f].scaled(scale).draw(window.x - cornerTR_[f].width() * scale, 0);

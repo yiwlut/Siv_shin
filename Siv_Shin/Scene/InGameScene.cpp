@@ -1799,6 +1799,7 @@ void InGameScene::update()
 		}
 		if (gameData_) {
 			gameData_->clearStage(currentStage_);
+			gameData_->saveManager.setCurrentStage(currentStage_ + 1);
 		}
 	}
 
@@ -5357,7 +5358,8 @@ void InGameScene::updateBossAttackSequence(double dt)
 				if (gameData_)
 				{
 					gameData_->clearStage(currentStage_);
-					gameData_->finalStageCleared = true;  // ★ 추가
+					//gameData_->finalStageCleared = true;  // ★ 추가
+					gameData_->setFinalStageCleared(true);
 				}
 
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())

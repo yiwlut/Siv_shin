@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "SceneManager.hpp"
 
+
 class OpeningScene : public GameScene
 {
 public:
@@ -12,7 +13,10 @@ public:
     void onEnter() override;
     void onExit() override;
 
+	void setGameData(GameData* gd) { gameData_ = gd; }
+
 private:
+	GameData* gameData_ = nullptr;
 
 	// 루비(후리가나) 텍스트 구조체
 	struct RubyText
