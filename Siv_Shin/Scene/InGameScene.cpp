@@ -1857,19 +1857,8 @@ void InGameScene::update()
 
 		if (KeySpace.down() || KeyEnter.down()) {
 			if (currentStage_ == 6) {
-				currentStage_ = 11;
-				loadStage(currentStage_);
-				isCleared_ = false;
-				showClearButtons_ = false;
-				showClearEffect_ = false;
-				clearParticles_.clear();
-				gameTime_ = 0.0;
-				moves_ = 0;
-				if (StageData::isFinalStage(currentStage_)) {
-					initBossAttacks();
-					initBossWallSystem();
-					startBossBgmFadeIn_();
-				}
+				changeScene(SceneType::BossIntro);  // ★ 11번 대신 BossIntro 호출
+				return;
 			}
 			else if (currentStage_ < StageData::getTotalStageCount()) {
 				currentStage_++;

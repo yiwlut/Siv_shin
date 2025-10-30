@@ -1,7 +1,7 @@
 ﻿#include "BossIntroScene.hpp"
 
 BossIntroScene::BossIntroScene()
-	: elapsedTime_(0.0), slideFadeInDuration_(1.0), slideDisplayDuration_(9.0), slideFadeOutDuration_(1.0), slideInterval_(11.0), textFont_(FontMethod::MSDF, 28, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
+	: elapsedTime_(0.0), slideFadeInDuration_(1.0), gameData_(nullptr), slideDisplayDuration_(9.0), slideFadeOutDuration_(1.0), slideInterval_(11.0), textFont_(FontMethod::MSDF, 28, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, rubyFont_(FontMethod::MSDF, 14, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, skipFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, introBgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"))
@@ -41,8 +41,16 @@ void BossIntroScene::update() {
 	const size_t prevIndex = currentSlideIndex_; currentSlideIndex_ = static_cast<size_t>(elapsedTime_ / slideInterval_);
 	if (prevIndex != currentSlideIndex_) { textTypingTime_ = 0.0; visibleCharCount_ = 0; }
 	if (currentSlideIndex_ < slides_.size()) { textTypingTime_ += dt; visibleCharCount_ = static_cast<size_t>(textTypingTime_ * 15); }
-	if (KeyF2.down()) { changeScene(SceneType::InGame); return; }
-	if (currentSlideIndex_ >= slides_.size()) { changeScene(SceneType::InGame); return; }
+	if (KeyF2.down()) {
+		if (gameData_) gameData_->currentStage = 11;
+		changeScene(SceneType::InGame);
+		return;
+	}
+	if (currentSlideIndex_ >= slides_.size()) {
+		if (gameData_) gameData_->currentStage = 11;
+		changeScene(SceneType::InGame);
+		return;
+	}
 }
 
 void BossIntroScene::draw() {

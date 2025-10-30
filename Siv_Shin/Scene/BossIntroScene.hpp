@@ -11,6 +11,7 @@ public:
 	void onExit() override;
 
 private:
+	GameData* gameData_;
 	struct RubyText {
 		String baseText, rubyText;
 		ColorF color;

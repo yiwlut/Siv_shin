@@ -239,6 +239,7 @@ Resource(ArtResources/Texture2D/Story/op_6.png)
 //bossIntro
 Resource(ArtResources/Texture2D/Story/bossIntro_0.png)
 Resource(ArtResources/Texture2D/Story/bossIntro_1.png)
+Resource(ArtResources/Texture2D/Story/bossIntro_2.png)
 
 //ed
 Resource(ArtResources/Texture2D/Story/ed_0.png)
