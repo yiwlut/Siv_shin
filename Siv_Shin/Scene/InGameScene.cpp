@@ -103,18 +103,13 @@ void InGameScene::onEnter()
 	bossProjectiles_.clear();
 	bossExplosionParticles_.clear();
 	bossAttackTimer_ = 0.0;
-	if (StageData::isFinalStage(currentStage_))
-	{
+	if (StageData::isFinalStage(currentStage_)) {
 		currentBossPhase_ = 1;
-		bossHitCount_ = 0;
-		bossCurrentHP_ = 3;
-
 		initBossPhaseSystem();
 		initBossAttacks();
 		initBossWallSystem();
-
-		if (!bossBgm_.isEmpty())
-		{
+		setBossState(BossAnimState::Cloak, false, 0.10);
+		if (!bossBgm_.isEmpty()) {
 			bossBgm_.setVolume(bossBgmTargetVolume_);
 			bossBgm_.play();
 		}
@@ -211,20 +206,22 @@ void InGameScene::loadAssets()
 	stageClearSound_ = Audio{ Resource(U"ArtResources/SFX/StageClear.wav") };
 	bombExplosionSound_ = Audio{ Resource(U"ArtResources/SFX/bomb.wav") };
 	bumpSound_ = Audio{ Resource(U"ArtResources/SFX/bump.wav") };  // ★ 추가
-
-
-	// ★ 보스 등장 애니메이션 로드 (boss_cloak_5.png → boss_cloak_0.png 역순)
-	bossIdleFrames_.clear();
-	for (int32 i = 5; i >= 0; --i)
-	{
-		Texture f{ Resource(U"ArtResources/Texture2D/Boss/boss_cloak_{}.png"_fmt(i)) };
-		if (!f.isEmpty())
-		{
-			bossIdleFrames_.push_back(f);
+	auto loadSeq = [&](Array<Texture>& dst, String prefix, int32 last) {
+		dst.clear();
+		for (int32 i = 0; i <= last; ++i) {
+			Texture t{ Resource(U"ArtResources/Texture2D/Boss/{}_{}.png"_fmt(prefix, i)) };
+			if (!t.isEmpty()) dst.push_back(t);
 		}
-	}
+		};
+	loadSeq(bossIdleFrames_, U"boss_Idle", 2);
+	loadSeq(bossAtkFrames_, U"boss_Atk", 7);
+	loadSeq(bossCloakFrames_, U"boss_cloak", 5);
+	loadSeq(bossConfusedFrames_, U"boss_confused", 2);
+	loadSeq(bossSummonFrames_, U"boss_summon", 6);
+	bossKOFrame_ = Texture{ Resource(U"ArtResources/Texture2D/Boss/boss_KO.png") };
 	bossAnimFrame_ = 0;
 	bossAnimTimer_ = 0.0;
+	setBossState(BossAnimState::Cloak, false, 0.10);
 }
 
 void InGameScene::loadStage(int32 stageNumber)
@@ -2449,19 +2446,15 @@ void InGameScene::updatePlayer()
 
 void InGameScene::updateAnimations()
 {
-    const double deltaTime = Scene::DeltaTime();
-    tacoAnimTimer_ += deltaTime;
-    if (tacoAnimTimer_ >= 0.4)
-    {
-        tacoAnimTimer_ -= 0.4;
-        tacoAnimFrame_ = (tacoAnimFrame_ + 1) % 2;
-        // 보스 애니메이션도 Taco와 동일 속도로 진행
-        if (!bossIdleFrames_.isEmpty())
-        {
-            bossAnimFrame_ = (bossAnimFrame_ + 1) % static_cast<int32>(bossIdleFrames_.size());
-        }
-    }
+	const double dt = Scene::DeltaTime();
+	tacoAnimTimer_ += dt;
+	if (tacoAnimTimer_ >= 0.4) {
+		tacoAnimTimer_ -= 0.4;
+		tacoAnimFrame_ = (tacoAnimFrame_ + 1) % 2;
+	}
+	updateBossAnimation(dt);
 }
+
 void InGameScene::draw()
 {
 	applyFixedCameraFitToMap();
@@ -2469,35 +2462,24 @@ void InGameScene::draw()
 
 	if (StageData::isFinalStage(currentStage_))
 	{
-		if (!bossIdleFrames_.isEmpty())
-		{
-			const int32 screenW = Scene::Width();
-			const int32 screenH = Scene::Height();
-			const int32 topH = screenH / 2;
-
-			const Texture& bossTex = bossIdleFrames_[bossAnimFrame_ % static_cast<int32>(bossIdleFrames_.size())];
-			const Size bossSize = bossTex.size();
-
-			if (bossSize.x > 0 && bossSize.y > 0)
-			{
+		const int32 screenW = Scene::Width();
+		const int32 screenH = Scene::Height();
+		const int32 topH = screenH / 2;
+		if (const Texture* bossTex = getBossCurrentFrame()) {
+			const Size bossSize = bossTex->size();
+			if (bossSize.x > 0 && bossSize.y > 0) {
 				const double sx = static_cast<double>(screenW) / bossSize.x;
 				const double sy = static_cast<double>(topH) / bossSize.y;
 				const double s = Min(sx, sy) * 0.9;
-
 				const int32 drawW = static_cast<int32>(bossSize.x * s);
 				const int32 drawH = static_cast<int32>(bossSize.y * s);
 				const int32 x = (screenW - drawW) / 2;
 				const int32 y = (topH - drawH) / 2;
-
-				bossTex.resized(drawW, drawH).draw(x, y);
+				bossTex->resized(drawW, drawH).draw(x, y);
 			}
 		}
 		drawBossHP();
 	}
-
-
-
-	// 카메라 변환 시작 (월드 렌더링 + 인게임 UI)
 	{
 		const auto _t = camera().createTransformer();
 
@@ -4621,9 +4603,9 @@ Vec2 InGameScene::getBossStartUIPos() const
 
 void InGameScene::scheduleNextBossAttack()
 {
+	setBossState(BossAnimState::Summon, false, 0.09);
 	PendingAttack p;
 	p.type = BossAttackType::ColorSpawn;
-
 	Point t;
 	if (!chooseRandomSpawnTile(t))
 		return;
@@ -4646,23 +4628,11 @@ void InGameScene::scheduleNextBossAttack()
 	// 다음 예약 시간 갱신(기존 간격 사용)
 	nextAttackTime_ = gameTime_ + attackInterval_;
 }
-
 void InGameScene::fireColorAttack(const PendingAttack& p)
 {
+	setBossState(BossAnimState::Attack, false, 0.12);  // ★ 0.08 → 0.12로 변경
 	const Vec2 bossScreenPos = getBossStartUIPos();
-	createEnergyBallEffect(
-		bossScreenPos,
-		p.targetTile,
-		p.telegraphColor,
-		1.2,
-		true,
-		p.boxColor
-	);
-}
-
-void InGameScene::fireBlackHoming(const PendingAttack& p)
-{
-
+	createEnergyBallEffect(bossScreenPos, p.targetTile, p.telegraphColor, 1.2, true, p.boxColor);
 }
 
 void InGameScene::drawTelegraphMarker(Point tile, const ColorF& col, double t, double pulse01) const
@@ -5483,12 +5453,10 @@ void InGameScene::updateBossAttackSequence(double dt)
 
 		if (t >= 1.0) {
 			currentBossAttackPhase_ = BossAttackPhase::BossHit;
-			bossAttackSequenceTimer_ = 0.0;
-			const double scale = camera().getScale();
-			camera().shake(0.5, 90.0 / Max(0.001, scale));
 			bossCurrentHP_--;
 			showBossHitEffect_ = true;
 			bossHitEffectTimer_ = 0.0;
+			setBossState(BossAnimState::Confused, false, 0.12);
 		}
 		break;
 	}
@@ -5518,6 +5486,7 @@ void InGameScene::updateBossAttackSequence(double dt)
 
 			if (bossHitCount_ >= 3)
 			{
+				setBossState(BossAnimState::KO, false, 0.0);
 				isCleared_ = true;
 				score_ += 1000;
 
@@ -5712,4 +5681,71 @@ void InGameScene::drawBossHP()
 		const double alpha = (1.0 - t) * 0.5;
 		Rect(0, 0, Scene::Width(), Scene::Height()).draw(ColorF(1.0, 1.0, 1.0, alpha));
 	}
+}
+void InGameScene::setBossState(BossAnimState s, bool loop, double frameDuration)
+{
+	bossAnimState_ = s;
+	bossAnimLoop_ = loop;
+	if (frameDuration > 0.0) bossFrameDuration_ = frameDuration;
+	switch (s) {
+	case BossAnimState::Idle: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.30; break;
+	case BossAnimState::Attack: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.12; break;  // ★ 0.08 → 0.12로 변경
+	case BossAnimState::Summon: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.09; break;
+	case BossAnimState::Cloak: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.10; break;
+	case BossAnimState::Confused: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.12; break;
+	case BossAnimState::KO: bossFrameDuration_ = 0.0; break;
+	default: break;
+	}
+	bossAnimFrame_ = 0;
+	bossAnimTimer_ = 0.0;
+}
+
+static inline const Array<Texture>& pickFrames(const InGameScene* self, InGameScene::BossAnimState s)
+{
+	switch (s) {
+	case InGameScene::BossAnimState::Idle: return self->bossIdleFrames_;
+	case InGameScene::BossAnimState::Attack: return self->bossAtkFrames_;
+	case InGameScene::BossAnimState::Summon: return self->bossSummonFrames_;
+	case InGameScene::BossAnimState::Cloak: return self->bossCloakFrames_;
+	case InGameScene::BossAnimState::Confused: return self->bossConfusedFrames_;
+	default: return self->bossIdleFrames_;
+	}
+}
+
+void InGameScene::updateBossAnimation(double dt)
+{
+	if (!StageData::isFinalStage(currentStage_)) return;
+	if (bossAnimState_ == BossAnimState::KO) return;
+	const auto& frames = pickFrames(this, bossAnimState_);
+	if (frames.isEmpty() && bossAnimState_ != BossAnimState::KO) { setBossState(BossAnimState::Idle, true, 0.30); return; }
+	if (bossFrameDuration_ <= 0.0) return;
+	bossAnimTimer_ += dt;
+	while (bossAnimTimer_ >= bossFrameDuration_) {
+		bossAnimTimer_ -= bossFrameDuration_;
+		bossAnimFrame_++;
+		const int32 n = (bossAnimState_ == BossAnimState::KO) ? 1 : static_cast<int32>(frames.size());
+		if (bossAnimLoop_) {
+			if (n > 0) bossAnimFrame_ %= n;
+		}
+		else {
+			if (bossAnimFrame_ >= n) {
+				setBossState(BossAnimState::Idle, true, 0.30);
+				break;
+			}
+		}
+	}
+}
+
+const Texture* InGameScene::getBossCurrentFrame() const
+{
+	if (!StageData::isFinalStage(currentStage_)) return nullptr;
+	if (bossAnimState_ == BossAnimState::KO) {
+		if (bossKOFrame_.isEmpty()) return nullptr;
+		return &bossKOFrame_;
+	}
+	const auto& frames = pickFrames(this, bossAnimState_);
+	if (frames.isEmpty()) return nullptr;
+	const int32 n = static_cast<int32>(frames.size());
+	const int32 i = Clamp(bossAnimFrame_, 0, Max(0, n - 1));
+	return &frames[i];
 }

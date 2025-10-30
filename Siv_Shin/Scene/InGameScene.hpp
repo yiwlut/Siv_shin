@@ -104,14 +104,7 @@ private:
         Up
     };
 
-
-    // 배경 이미지
-    Texture stageBackground_;
-    // 보스 이미지 (Final stage 전용) - 3프레임 애니메이션
-    Array<Texture> bossIdleFrames_;
-    int32 bossAnimFrame_ = 0;
-	double bossAnimTimer_;
-    
+	const Texture* getBossCurrentFrame() const;
     // 플레이어 - 부드러운 이동 추가
     Point playerPos_;           // 논리적 타일 위치
     Vec2 playerPixelPos_;       // 실제 픽셀 위치 (부드러운 이동용)
@@ -478,6 +471,22 @@ private:
 	void spawnBombExplosionFXAtTile(Point tile);
 
 public:
+	Texture stageBackground_;
+	Array<Texture> bossIdleFrames_;
+	Array<Texture> bossAtkFrames_;
+	Array<Texture> bossCloakFrames_;
+	Array<Texture> bossConfusedFrames_;
+	Array<Texture> bossSummonFrames_;
+	Texture bossKOFrame_;
+	enum class BossAnimState { None, Cloak, Idle, Summon, Attack, Confused, KO };
+	BossAnimState bossAnimState_ = BossAnimState::None;
+	int32 bossAnimFrame_ = 0;
+	double bossAnimTimer_ = 0.0;
+	double bossFrameDuration_ = 0.12;
+	double bossAtkFrameDuration_ = 0.18;
+	bool bossAnimLoop_ = true;
+	void setBossState(BossAnimState s, bool loop = true, double frameDuration = -1);
+	void updateBossAnimation(double dt);
     InGameScene();
     InGameScene(int32 stageNumber);
     InGameScene(int32 stageNumber, GameData* gameData);

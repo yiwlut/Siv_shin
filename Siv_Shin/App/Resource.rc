@@ -125,14 +125,6 @@ Resource(ArtResources/Texture2D/Boss/boss_Idle_2.png)
 
 Resource(ArtResources/Texture2D/Boss/boss_KO.png)
 
-Resource(ArtResources/Texture2D/Boss/boss_summon_0.png)
-Resource(ArtResources/Texture2D/Boss/boss_summon_1.png)
-Resource(ArtResources/Texture2D/Boss/boss_summon_2.png)
-Resource(ArtResources/Texture2D/Boss/boss_summon_3.png)
-Resource(ArtResources/Texture2D/Boss/boss_summon_4.png)
-Resource(ArtResources/Texture2D/Boss/boss_summon_5.png)
-Resource(ArtResources/Texture2D/Boss/boss_summon_6.png)
-
 Resource(ArtResources/Texture2D/Menu/Exit/exit_0.png)
 Resource(ArtResources/Texture2D/Menu/Exit/exit_1.png)
 Resource(ArtResources/Texture2D/Menu/Exit/exit_2.png)
