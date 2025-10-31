@@ -10,7 +10,6 @@ public:
 
 	bool isValid() const noexcept { return m_vs && m_ps; }
 
-	// Texture implementations
 	void draw(const Texture& tex, const Vec2& pos) const override
 	{
 		beginTexture(tex);
@@ -36,7 +35,6 @@ public:
 		end();
 	}
 
-	// Shape implementations (bounds -> ShapeInfo UBO)
 	void draw(const RectF& s) const override { setShapeInfo(s); beginShape(); s.draw(); end(); }
 	void draw(const Circle& s) const override { setShapeInfo(s.boundingRect()); beginShape(); s.draw(); end(); }
 	void draw(const Triangle& s) const override { setShapeInfo(s.boundingRect()); beginShape(); s.draw(); end(); }
@@ -53,25 +51,20 @@ public:
 	}
 
 protected:
-	// Common UBO: DrawMode (PS slot 3)
 	struct DrawMode { float hasTexture; Float3 _pad; };
 	static constexpr uint32 kSlot_DrawMode = 3;
 	mutable ConstantBuffer<DrawMode> m_cbDrawMode{ {1.0f, {}} };
 
-	// Common UBO: ShapeInfo (PS slot 4)
 	struct ShapeInfo { Float4 rect; Float2 view; Float2 _pad; };
 	static constexpr uint32 kSlot_ShapeInfo = 4;
 	mutable ConstantBuffer<ShapeInfo> m_cbShape;
 
-	// Common shaders
 	Optional<VertexShader> m_vs;
 	Optional<PixelShader>  m_ps;
 
-	// Scope + white texture
 	mutable std::unique_ptr<ScopedCustomShader2D> m_scope;
 	mutable Optional<Texture> m_whiteTex;
 
-	// Helpers
 	RectF computeAABB(const LineString& ls, double thickness = 1.0) const
 	{
 		if (ls.isEmpty())
@@ -91,7 +84,6 @@ protected:
 			maxY = Max(maxY, p.y);
 		}
 
-		// 두께를 고려해 패딩
 		const double pad = thickness * 0.5;
 		minX -= pad; minY -= pad;
 		maxX += pad; maxY += pad;
@@ -138,7 +130,6 @@ protected:
 		m_scope.reset();
 	}
 
-	// I/F glue
 	void beginTexture(const Texture& tex) const override
 	{
 		updateEffectCBs();
@@ -155,6 +146,5 @@ protected:
 		endCommon();
 	}
 
-	// Per-effect UBO update
 	virtual void updateEffectCBs() const = 0;
 };

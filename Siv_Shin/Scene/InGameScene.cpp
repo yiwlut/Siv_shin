@@ -2,7 +2,7 @@
 #include "StageData.hpp"
 
 InGameScene::InGameScene()
-    : InGameScene(1)  // 기본은 스테이지 1
+    : InGameScene(1)     
 {
 }
 
@@ -13,13 +13,13 @@ InGameScene::InGameScene(int32 stageNumber)
 
 InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 : playerPos_(1, 1)
-, playerMoveSpeed_(400.0)  // 픽셀/초 (TILE_SIZE * 5, 타일 크기 증가에 맞춤)
+, playerMoveSpeed_(400.0)          
 , isPlayerMoving_(false)
 , inputCooldown_(0.0)
 , moveDelay_(0.3)
 , playerColor_(0.2, 0.8, 0.3)
 , currentStage_(stageNumber)
-, playerHeldItem_(ItemType::None)  // 초기에는 아이템 없음
+, playerHeldItem_(ItemType::None)     
 , tacoDirection_(TacoDirection::Down)
 , isFacingLeft_(false)
 , tacoAnimFrame_(0)
@@ -30,21 +30,21 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 , paintAnimFrame_(0)
 , playerAnimTimer_(0.0)
 , currentPlayerFrame_(0)
-, gameFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 수정
-, debugFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))       // ★ 수정
-, clearFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 수정
-, buttonFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 수정
+, gameFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))    
+, debugFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))         
+, clearFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))    
+, buttonFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))    
 , gameTime_(0.0)
 , score_(0)
 , moves_(0)
 , isCleared_(false)
-, showClearButtons_(false)  // 클리어 버튼 표시 상태 초기화
-, showHelpScreen_(false)  // 조작법 도움말 화면 초기화
+, showClearButtons_(false)       
+, showHelpScreen_(false)      
 , isFailed_(false)
 , showFailedButtons_(false)
 , stageBackground_(Resource(U"ArtResources/Texture2D/BG_K.png"))
 , fadeTimer_(0.0)
-, fadeDuration_(1.0)  // 1초 페이드
+, fadeDuration_(1.0)    
 , isFading_(true)
 , gameData_(gameData)
 {
@@ -61,7 +61,7 @@ InGameScene::InGameScene(int32 stageNumber, GameData* gameData)
 	}
 
     loadAssets();
-    initializeClearButtons();  // 클리어 버튼 초기화
+    initializeClearButtons();     
     
 }
 
@@ -96,7 +96,6 @@ void InGameScene::onEnter()
 
 	loadStage(currentStage_);
 
-	// 픽셀 위치 재설정
 	playerPixelPos_ = tileToPixel(playerPos_);
 	targetPixelPos_ = playerPixelPos_;
 
@@ -122,30 +121,6 @@ void InGameScene::onEnter()
 			bgm_.play();
 		}
 	}
-	//if (KeyF2.down()) {
-	//	isCleared_ = true;
-	//	score_ += 1000;
-
-	//	// 게임 데이터에 클리어 반영
-	//	if (gameData_) {
-	//		gameData_->clearStage(currentStage_);
-	//	}
-
-	//	// 파이널 스테이지는 엔딩으로
-	//	if (StageData::isFinalStage(currentStage_)) {
-	//		changeScene(SceneType::Ending);
-	//	}
-	//	// 6번 스테이지는 보스 인트로로
-	//	else if (currentStage_ == 6) {
-	//		changeScene(SceneType::BossIntro);
-	//	}
-	//	// 그 외는 스테이지 선택으로
-	//	else {
-	//		changeScene(SceneType::StageSelect);
-	//	}
-	//	return;
-	//}
-
 	auto& holo = g_Shaders.holographic();
 	holo.setRainbowMode(false);
 	holo.setScale(0.05f);
@@ -164,12 +139,10 @@ void InGameScene::onEnter()
 
 void InGameScene::onExit()
 {
-    // 배경음악 정지
     if (!bgm_.isEmpty() && bgm_.isPlaying())
     {
         bgm_.stop();
     }
-	// ★ 보스 배경음악 정지
 	if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
 	{
 		bossBgm_.stop();
@@ -191,13 +164,11 @@ void InGameScene::loadAssets()
         if (!upFrame.isEmpty()) tacoUpFrames_.push_back(upFrame);
     }
     
-    // 타코 점수 이미지 로드
     tacoScoreTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOn.png") };
     tacoScoreOffTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOff.png") };
 
 	heartFullTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOn.png") };
 	heartEmptyTexture_ = Texture{ Resource(U"ArtResources/Texture2D/Menu/Score/tacoScoreOff.png") };
-    // 타코 페인트 애니메이션 프레임 로드 (tacoPaint_0.png ~ tacoPaint_4.png)
     tacoPaintFrames_.clear();
     for (int32 i = 0; i < PAINT_ANIM_FRAME_COUNT; i++)
     {
@@ -208,22 +179,19 @@ void InGameScene::loadAssets()
         }
         else
         {
-            // Print << U"Warning: Failed to load tacoPaint_{}.png"_fmt(i);
         }
     }
     
-    // 배경음악 로드
     bgm_ = Audio{ Resource(U"ArtResources/BGM/HappyOcean.mp3"), Loop::Yes };
 	bossBgm_ = Audio{ Resource(U"ArtResources/BGM/Boss.mp3"), Loop::Yes };
     
-    // 블록 밀기 효과음 로드
     noteE5_ = Audio{ Resource(U"ArtResources/SFX/E5.wav") };
     noteG5_ = Audio{ Resource(U"ArtResources/SFX/G5.wav") };
     noteC6_ = Audio{ Resource(U"ArtResources/SFX/C6.wav") };
 
 	stageClearSound_ = Audio{ Resource(U"ArtResources/SFX/StageClear.wav") };
 	bombExplosionSound_ = Audio{ Resource(U"ArtResources/SFX/bomb.wav") };
-	bumpSound_ = Audio{ Resource(U"ArtResources/SFX/bump.wav") };  // ★ 추가
+	bumpSound_ = Audio{ Resource(U"ArtResources/SFX/bump.wav") };    
 	auto loadSeq = [&](Array<Texture>& dst, String prefix, int32 last) {
 		dst.clear();
 		for (int32 i = 0; i <= last; ++i) {
@@ -246,35 +214,31 @@ void InGameScene::loadStage(int32 stageNumber)
 {
 	currentStage_ = stageNumber;
 
-	// StageData에서 맵 텍스트 획득
 	const Array<String> mapText = StageData::getStageMap(stageNumber);
 
-	// 가변 크기 파서 호출
 	loadStageFromText_VarSize(mapText);
 
 	wallMask_.assign(getMapHeight(), Array<bool>(getMapWidth(), false));
 
 	overlayWarn_.assign(getMapHeight(), Array<OverlayType>(getMapWidth(), OverlayType::None));
 	const Array<String> tileOverlay = StageData::getStageTileOverlay(stageNumber);
-	applyTileOverlay(tileOverlay, StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly   // 보스전: 오버레이만
+	applyTileOverlay(tileOverlay, StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly     
 										   : OverlayApplyMode::WriteToMap);
 
 
-	// 맵 크기에 맞춘 고정 카메라 적용
 	onStageLoaded_FixedCamera();
 
 }
 
 void InGameScene::loadStageFromText(const Array<String>& mapText)
 {
-    // 맵 초기화
     for (auto& row : mapData_)
     {
         row.assign(getMapWidth(), TileType::Empty);
     }
     
     boxes_.clear();
-    items_.clear();  // 아이템 초기화
+    items_.clear();    
     redGoalPositions_.clear();
     yellowGoalPositions_.clear();
     blueGoalPositions_.clear();
@@ -283,7 +247,6 @@ void InGameScene::loadStageFromText(const Array<String>& mapText)
     violetGoalPositions_.clear();
     blackGoalPositions_.clear();
     
-    // 텍스트 맵 파싱
     for (int32 y = 0; y < Min((int32)mapText.size(), getMapHeight()); y++)
     {
         const String& line = mapText[y];
@@ -294,111 +257,108 @@ void InGameScene::loadStageFromText(const Array<String>& mapText)
             
             switch (ch)
             {
-            case U'#':  // 벽
+            case U'#':   
                 mapData_[y][x] = TileType::Wall;
                 break;
-            case U'i':  // 얼음
+            case U'i':   
                 mapData_[y][x] = TileType::Ice;
                 break;
                 
-            case U'T':  // 플레이어 시작 위치 (Taco)
+            case U'T':      
                 playerPos_ = pos;
                 playerPixelPos_ = tileToPixel(pos);
                 targetPixelPos_ = playerPixelPos_;
                 isPlayerMoving_ = false;
                 break;
                 
-            // 대문자 = 상자
-			case U'R': // 빨간 상자
-				boxes_.push_back(ColorBox{ pos, BoxColor::Red, 0.0, nextBoxUID_++ }); // ★ uid 추가
+			case U'R':   
+				boxes_.push_back(ColorBox{ pos, BoxColor::Red, 0.0, nextBoxUID_++ });    
 				break;
-			case U'Y': // 노란 상자
-				boxes_.push_back(ColorBox{ pos, BoxColor::Yellow, 0.0, nextBoxUID_++ }); // ★ uid 추가
+			case U'Y':   
+				boxes_.push_back(ColorBox{ pos, BoxColor::Yellow, 0.0, nextBoxUID_++ });    
 				break;
-			case U'B': // 파간 상자
-				boxes_.push_back(ColorBox{ pos, BoxColor::Blue, 0.0, nextBoxUID_++ }); // ★ uid 추가
+			case U'B':   
+				boxes_.push_back(ColorBox{ pos, BoxColor::Blue, 0.0, nextBoxUID_++ });    
 				break;
-			case U'O': // 주황 상자
-				boxes_.push_back(ColorBox{ pos, BoxColor::Orange, 0.0, nextBoxUID_++ }); // ★ uid 추가
+			case U'O':   
+				boxes_.push_back(ColorBox{ pos, BoxColor::Orange, 0.0, nextBoxUID_++ });    
 				break;
-			case U'G': // 초록 상자
-				boxes_.push_back(ColorBox{ pos, BoxColor::Green, 0.0, nextBoxUID_++ }); // ★ uid 추가
+			case U'G':   
+				boxes_.push_back(ColorBox{ pos, BoxColor::Green, 0.0, nextBoxUID_++ });    
 				break;
-			case U'V': // 보라 상자
-				boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ }); // ★ uid 추가
+			case U'V':   
+				boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ });    
 				break;
-			case U'K': // 검은 상자
-				boxes_.push_back(ColorBox{ pos, BoxColor::Black, 0.0, nextBoxUID_++ }); // ★ uid 추가
+			case U'K':   
+				boxes_.push_back(ColorBox{ pos, BoxColor::Black, 0.0, nextBoxUID_++ });    
 				break;
                 
-            // 소문자 = 목표
-            case U'r':  // 빨강 목표
+            case U'r':    
                 redGoalPositions_.push_back(pos);
                 mapData_[y][x] = TileType::RedGoal;
                 break;
                 
-            case U'y':  // 노랑 목표
+            case U'y':    
                 yellowGoalPositions_.push_back(pos);
                 mapData_[y][x] = TileType::YellowGoal;
                 break;
                 
-            case U'b':  // 파랑 목표
+            case U'b':    
                 blueGoalPositions_.push_back(pos);
                 mapData_[y][x] = TileType::BlueGoal;
                 break;
                 
-            case U'o':  // 주황 목표
+            case U'o':    
                 orangeGoalPositions_.push_back(pos);
                 mapData_[y][x] = TileType::OrangeGoal;
                 break;
                 
-            case U'g':  // 초록 목표
+            case U'g':    
                 greenGoalPositions_.push_back(pos);
                 mapData_[y][x] = TileType::GreenGoal;
                 break;
                 
-            case U'v':  // 보라 목표
+            case U'v':    
                 violetGoalPositions_.push_back(pos);
                 mapData_[y][x] = TileType::VioletGoal;
                 break;
                 
-            case U'k':  // 검정 목표
+            case U'k':    
                 blackGoalPositions_.push_back(pos);
                 mapData_[y][x] = TileType::BlackGoal;
                 break;
                 
-            // 아이템들 (숫자)
-            case U'2':  // 빨강 아이템
+            case U'2':    
                 items_.push_back(GameItem{ pos, ItemType::RedItem });
                 mapData_[y][x] = TileType::RedItem;
                 break;
                 
-            case U'4':  // 주황 아이템
+            case U'4':    
                 items_.push_back(GameItem{ pos, ItemType::OrangeItem });
                 mapData_[y][x] = TileType::OrangeItem;
                 break;
                 
-            case U'6':  // 노랑 아이템
+            case U'6':    
                 items_.push_back(GameItem{ pos, ItemType::YellowItem });
                 mapData_[y][x] = TileType::YellowItem;
                 break;
                 
-            case U'7':  // 초록 아이템
+            case U'7':    
                 items_.push_back(GameItem{ pos, ItemType::GreenItem });
                 mapData_[y][x] = TileType::GreenItem;
                 break;
                 
-            case U'8':  // 파랑 아이템
+            case U'8':    
                 items_.push_back(GameItem{ pos, ItemType::BlueItem });
                 mapData_[y][x] = TileType::BlueItem;
                 break;
                 
-            case U'9':  // 보라 아이템
+            case U'9':    
                 items_.push_back(GameItem{ pos, ItemType::VioletItem });
                 mapData_[y][x] = TileType::VioletItem;
                 break;
                 
-            case U'.':  // 빈 공간
+            case U'.':    
             case U' ':
             default:
                 mapData_[y][x] = TileType::Empty;
@@ -409,31 +369,28 @@ void InGameScene::loadStageFromText(const Array<String>& mapText)
 }
 
 static Vec2 impactOriginLocalUVForDir(const Point& pushDir) {
-	if (pushDir == Point{ 1, 0 })       return Vec2(0.0, 0.5); // →로 밀면 타깃의 왼쪽 변
-	else if (pushDir == Point{ -1, 0 }) return Vec2(1.0, 0.5); // ←로 밀면 타깃의 오른쪽 변
-	else if (pushDir == Point{ 0, 1 })  return Vec2(0.5, 0.0); // ↓로 밀면 타깃의 위쪽 변
-	else                                 return Vec2(0.5, 1.0); // ↑로 밀면 타깃의 아래쪽 변
+	if (pushDir == Point{ 1, 0 })       return Vec2(0.0, 0.5);      
+	else if (pushDir == Point{ -1, 0 }) return Vec2(1.0, 0.5);      
+	else if (pushDir == Point{ 0, 1 })  return Vec2(0.5, 0.0);      
+	else                                 return Vec2(0.5, 1.0);      
 }
 
 void InGameScene::triggerMergePaintFX_Directional(Point tile,
 	const ColorF& baseColor, const ColorF& resultColor, Point pushDir)
 {
 	mergeFX_.active = true;
-	//mergeFX_.tile = tile;
-	mergeFX_.baseColor = baseColor;     // 박스 베이스는 합성 전 타깃 색
-	mergeFX_.paintColor = resultColor;   // 퍼질 색은 합성 결과 색
-	mergeFX_.originUV = impactOriginLocalUVForDir(pushDir); // 타일 로컬 0~1 원점
+	mergeFX_.baseColor = baseColor;           
+	mergeFX_.paintColor = resultColor;        
+	mergeFX_.originUV = impactOriginLocalUVForDir(pushDir);     
 
-	// PaintSpread 파라미터 즉시 세팅 및 시작 (지연 없음)
 	g_Shaders.paintSpread().setPaintColor(mergeFX_.paintColor);
 	g_Shaders.paintSpread().setOriginPoint(mergeFX_.originUV);
 	g_Shaders.paintSpread().setNoiseScale(1.0f);
 	g_Shaders.paintSpread().setWaveStrength(0.4f);
 	g_Shaders.paintSpread().setSpreadSpeed(0.6f);
-	g_Shaders.paintSpread().startAnimation();          // 즉시 0→1 시작
+	g_Shaders.paintSpread().startAnimation();             
 }
 
-// InGameScene.cpp
 ColorBox* InGameScene::getBoxByUid(uint64 uid)
 {
 	for (auto& b : boxes_) {
@@ -453,7 +410,7 @@ void InGameScene::updateMergePaintFX()
 	if (g_Shaders.paintSpread().isAnimationComplete()) {
 		if (mergeFX_.commitPending) {
 			if (ColorBox* b = getBoxByUid(mergeFX_.targetUid)) {
-				b->color = mergeFX_.finalColor; // 이 시점에만 논리색 변경
+				b->color = mergeFX_.finalColor;     
 			}
 			mergeFX_.commitPending = false;
 		}
@@ -476,19 +433,16 @@ void InGameScene::forceMergePaintFXCompletion()
 }
 
 BoxColor InGameScene::getEffectiveBoxColor(uint64 uid) const {
-	// 현재 합성 중인 박스라면 최종 색상을 반환
 	if (mergeFX_.active && mergeFX_.commitPending && mergeFX_.targetUid == uid) {
 		return mergeFX_.finalColor;
 	}
 
-	// 아니면 실제 박스 색상 반환
 	for (const auto& box : boxes_) {
 		if (box.uid == uid) {
 			return box.color;
 		}
 	}
 
-	// 박스를 찾지 못한 경우 (shouldn't happen)
 	return BoxColor::Red;
 }
 
@@ -536,14 +490,13 @@ void InGameScene::updateBombBoxFX_Multi(double dt)
 					destroyWalls8(b->pos);
 
 					
-					// ★ 폭발 시 플레이어가 8방향 안에 있으면 흰색 파티클로 죽임
 					if (isPlayerInExplosionRange(b->pos) && !isPlayerDead_) {
 						isPlayerDead_ = true;
 						deathAnimTimer_ = 0.0;
-						createDeathEffect(true);  // ★ true = 흰색 파티클 사용
+						createDeathEffect(true);        
 
 						if (!bgm_.isEmpty() && bgm_.isPlaying()) {
-							savedMusicPosition_ = bgm_.posSec();  // 현재 위치 저장
+							savedMusicPosition_ = bgm_.posSec();     
 							bgm_.stop();
 						}
 					}
@@ -595,8 +548,8 @@ void InGameScene::drawBombBoxFX_Multi()
 	const Mat3x2 transform = camera().getMat3x2();
 	const double scale = camera().getScale();
 
-	Array<RectF> logicRects;    // 분해 기준(기존 inner)
-	Array<RectF> drawRects;     // 실제 그릴 AABB(확장)
+	Array<RectF> logicRects;       
+	Array<RectF> drawRects;        
 	Array<BombBoxEffect::Params> batchParams;
 	Array<double> batchTimes;
 	Array<double> batchExplodeTs;
@@ -618,28 +571,22 @@ void InGameScene::drawBombBoxFX_Multi()
 			const Vec2 worldCenter = inner.center();
 			const Vec2 screenCenter = transform.transformPoint(worldCenter);
 
-			// 논리 반폭(스크린 px)
 			const Vec2 logicHalfScreen = (inner.size * 0.5) * scale;
 
-			// 논리 사각형(기존과 동일)
 			const RectF logicRect(Arg::center = screenCenter, logicHalfScreen * 2.0);
 
-			// 폭발 진행도
 			double explodeT = 0.0;
 			if (fx.effect->isInExplode()) {
 				explodeT = (fx.effect->getExplodeT() / fx.params.explodeTime);
 			}
 
-			// 폭발 중에만 드로우 AABB 확장
 			RectF drawRect = logicRect;
 			if (explodeT > 0.0) {
-				// 안전 계수와 AA 패딩(튜닝 포인트)
-				constexpr float kSpreadSafety = 1.30f;   // spread 계수
-				constexpr float kAApad = 6.0f;    // 가장자리 여유
+				constexpr float kSpreadSafety = 1.30f;     
+				constexpr float kAApad = 6.0f;      
 
-				// 파편 중심 후보(pc) 분산 + 논리 반폭 + 이동 여유(spread)
-				const Vec2 pcMax = logicHalfScreen * 1.30;       // 후보 교점 분산 상한
-				const Vec2 polyMax = logicHalfScreen * 1.00;       // 조각 자체 최대 반폭 근사
+				const Vec2 pcMax = logicHalfScreen * 1.30;           
+				const Vec2 polyMax = logicHalfScreen * 1.00;            
 				const float spreadMargin = (float)fx.params.spread * kSpreadSafety + kAApad;
 
 				const Vec2 halfDraw = pcMax + polyMax + Vec2{ spreadMargin, spreadMargin };
@@ -655,7 +602,6 @@ void InGameScene::drawBombBoxFX_Multi()
 	}
 
 	if (!logicRects.isEmpty()) {
-		// 확장된 API 사용: 논리Rect(분해 기준) vs 드로우Rect(확장 AABB) 분리
 		BombBoxEffect::drawBatchedExpanded(
 			bombFXs_[0].effect->getPixelShader(),
 			logicRects, drawRects,
@@ -784,9 +730,9 @@ void InGameScene::rebuildBombFXFromState_() {
 void InGameScene::destroyWalls8(Point centerTile)
 {
 	const Array<Point> directions = {
-		Point{-1, -1}, Point{0, -1}, Point{1, -1},  // 위쪽 3칸
-		Point{-1,  0},               Point{1,  0},  // 좌우
-		Point{-1,  1}, Point{0,  1}, Point{1,  1}   // 아래쪽 3칸
+		Point{-1, -1}, Point{0, -1}, Point{1, -1},    
+		Point{-1,  0},               Point{1,  0},   
+		Point{-1,  1}, Point{0,  1}, Point{1,  1}     
 	};
 
 	for (const auto& d : directions) {
@@ -826,13 +772,12 @@ void InGameScene::spawnWallBreakFXAtTile(Point tile)
 	fx.finished = false;
 	fx.shakeStarted = false;
 
-	// 소형 흔들림 즉시 트리거
 	const Vec2 worldCenter = tileToPixel(tile) + Vec2(TILE_SIZE * 0.5, TILE_SIZE * 0.5);
 	const Vec2 camC = camera().getCenter();
 	const double dist = (worldCenter - camC).length();
 	const double scale = camera().getScale();
 
-	double basePx = 5.0; // 벽 파괴는 약하게
+	double basePx = 5.0;    
 	double maxR = 700.0 / Max(0.001, scale);
 	double falloff = Saturate(1.0 - dist / maxR);
 	double intenWorld = (basePx * falloff) / Max(0.001, scale);
@@ -850,38 +795,30 @@ void InGameScene::updateWallBreakFX()
 
 	for (auto& fx : wallBreakFXs)
 	{
-		// 이펙트 핸들 없으면 바로 종료 표시
 		if (!fx.effect)
 		{
 			fx.finished = true;
 			continue;
 		}
 
-		// 시간 진행
 		fx.effect->update(dt);
 
-		// 현재 폭발 구간 여부
 		const bool inExplode = fx.effect->isInExplode();
 
-		// 폭발 구간에 들어간 뒤 아직 벽 파괴를 하지 않았다면 1회만 수행
-		// (폭탄 스타일: params.useWallColor == false 라고 가정)
 		if (inExplode && !fx.params.useWallColor && !fx.params.wallsDestroyed)
 		{
-			destroyWalls8(fx.tilePos);   // 중심 8방향 벽 파괴
+			destroyWalls8(fx.tilePos);       
 			fx.params.wallsDestroyed = true;
 		}
 
-		// 폭발 경과 시간(초) 조회
 		const double expTime = fx.effect->getExplodeT();
 
-		// 지정된 폭발 지속시간을 지나면 FX 종료
 		if (inExplode && (expTime >= fx.params.explodeTime))
 		{
 			fx.finished = true;
 		}
 	}
 
-	// 종료된 FX 정리
 	wallBreakFXs.remove_if([](const WallBreakFX& e) { return e.finished; });
 }
 
@@ -909,16 +846,13 @@ void InGameScene::drawWallBreakFX() {
 		const Vec2 screenCenter = transform.transformPoint(worldCenter);
 		const Vec2 logicHalf = (inner.size * 0.5) * scale;
 
-		// 논리Rect: 기존과 동일
 		const RectF logicRect(Arg::center = screenCenter, logicHalf * 2.0);
 
-		// 진행도
 		double explodeT = 0.0;
 		if (fx.effect->isInExplode()) {
-			explodeT = fx.effect->getExplodeT() / fx.params.explodeTime; // 0..1
+			explodeT = fx.effect->getExplodeT() / fx.params.explodeTime;  
 		}
 
-		// 폭발 중에만 AABB 확장
 		RectF drawRect = logicRect;
 		if (explodeT > 0.0) {
 			constexpr float kSpreadSafety = 1.30f;
@@ -972,36 +906,31 @@ bool InGameScene::canMoveTo(Point pos) const
 	if (getBoxAt(pos) != nullptr)
 		return false;
 
-	// 미끄러지는 중인 박스들의 목표 위치 확인
 	for (const auto& task : iceSlideTasks_)
 	{
 		if (!task.active) continue;
 
-		// 현재 박스의 위치와 방향을 기반으로 최종 도착 위치 예측
 		if (const ColorBox* box = getBoxByUid_const(task.uid))
 		{
 			Point currentPos = box->pos;
 			Point testPos = currentPos;
 
-			// 박스가 최종적으로 멈출 위치까지 계산
 			while (true)
 			{
-				const Point nextPos = testPos + task.dir; // 다음 후보 [attached_file:7]
+				const Point nextPos = testPos + task.dir;    
 
-				// 맵 밖이거나 "차단 칸"(기존 Wall + 마스크)이면 현재 testPos에서 멈춤
 				if (!isInsideMap(nextPos) || isBlocked(nextPos) || getBoxAt(nextPos) != nullptr)
 				{
-					if (testPos == pos) return false; // 플레이어가 가려는 칸이 그 박스의 최종 정지칸 [attached_file:7]
-					break; // 시뮬 종료 [attached_file:7]
+					if (testPos == pos) return false;         
+					break;    
 				}
 
-				testPos = nextPos; // 전진 [attached_file:7]
+				testPos = nextPos;   
 
-				// 얼음이 아니면 여기서 멈춤
 				if (!isIce(testPos))
 				{
-					if (testPos == pos) return false; // 최종 정지칸과 충돌 [attached_file:7]
-					break; // 시뮬 종료 [attached_file:7]
+					if (testPos == pos) return false;     
+					break;    
 				}
 			}
 		}
@@ -1010,7 +939,6 @@ bool InGameScene::canMoveTo(Point pos) const
 	return true;
 }
 
-// const 버전의 getBoxByUid 추가 (헬퍼 함수)
 const ColorBox* InGameScene::getBoxByUid_const(uint64 uid) const
 {
 	for (const auto& b : boxes_) {
@@ -1023,7 +951,6 @@ ColorBox* InGameScene::getBoxAt(Point pos)
 {
 	for (auto& box : boxes_) {
 		if (box.pos != pos) continue;
-		// 충돌 제외는 '폭발 구간'에서만
 		if (box.color == BoxColor::Black && isBombNonBlocking(box.uid)) {
 			continue;
 		}
@@ -1032,7 +959,6 @@ ColorBox* InGameScene::getBoxAt(Point pos)
 	return nullptr;
 }
 
-// const 버전
 const ColorBox* InGameScene::getBoxAt(Point pos) const
 {
 	for (const auto& box : boxes_) {
@@ -1071,37 +997,31 @@ void InGameScene::pushBox(ColorBox* box, Point direction)
 {
     box->pos = box->pos + direction;
     
-    // 블록 밀기 효과음 재생
     playBoxSound(box->color);
 }
 
 void InGameScene::playBoxSound(BoxColor color)
 {
-    // 볼륨 설정 (5배 증가: 0.6 * 5 = 3.0)
     const double volume = 2.2;
     
     switch (color)
     {
     case BoxColor::Red:
-        // 빨강 = C6
         if (!noteC6_.isEmpty())
             noteC6_.playOneShot(volume);
         break;
         
     case BoxColor::Yellow:
-        // 노랑 = E5
         if (!noteE5_.isEmpty())
             noteE5_.playOneShot(volume);
         break;
         
     case BoxColor::Blue:
-        // 파랑 = G5
         if (!noteG5_.isEmpty())
             noteG5_.playOneShot(volume);
         break;
         
     case BoxColor::Orange:
-        // 주황 = Red(C6) + Yellow(E5)
         if (!noteC6_.isEmpty())
             noteC6_.playOneShot(volume);
         if (!noteE5_.isEmpty())
@@ -1109,7 +1029,6 @@ void InGameScene::playBoxSound(BoxColor color)
         break;
         
     case BoxColor::Green:
-        // 초록 = Yellow(E5) + Blue(G5)
         if (!noteE5_.isEmpty())
             noteE5_.playOneShot(volume);
         if (!noteG5_.isEmpty())
@@ -1117,7 +1036,6 @@ void InGameScene::playBoxSound(BoxColor color)
         break;
         
     case BoxColor::Violet:
-        // 보라 = Blue(G5) + Red(C6)
         if (!noteG5_.isEmpty())
             noteG5_.playOneShot(volume);
         if (!noteC6_.isEmpty())
@@ -1125,7 +1043,6 @@ void InGameScene::playBoxSound(BoxColor color)
         break;
         
     case BoxColor::Black:
-        // 검정 = C6 + E5 + G5 + C6 (C6 중복)
         if (!noteC6_.isEmpty())
             noteC6_.playOneShot(volume);
         if (!noteE5_.isEmpty())
@@ -1133,7 +1050,7 @@ void InGameScene::playBoxSound(BoxColor color)
         if (!noteG5_.isEmpty())
             noteG5_.playOneShot(volume);
         if (!noteC6_.isEmpty())
-            noteC6_.playOneShot(volume * 0.5);  // 두 번째 C6는 볼륨 절반
+            noteC6_.playOneShot(volume * 0.5);       
         break;
         
     default:
@@ -1146,28 +1063,23 @@ void InGameScene::checkBoxMerge(Point pos)
     ColorBox* box1 = getBoxAt(pos);
     if (!box1) return;
     
-    // 같은 위치에 다른 상자가 있는지 확인 (합성 가능)
     for (auto& box2 : boxes_)
     {
         if (&box2 == box1) continue;
         if (box2.pos != pos) continue;
         
-        // 빨강+초록 = 노란색
         if ((box1->color == BoxColor::Red && box2.color == BoxColor::Green) ||
             (box1->color == BoxColor::Green && box2.color == BoxColor::Red))
         {
-            // 두 상자를 제거하고 노란색 상자 생성
             BoxColor newColor = BoxColor::Yellow;
             Point newPos = pos;
             
-            // 두 상자 제거
             boxes_.remove_if([&](const ColorBox& b) {
                 return b.pos == pos && (b.color == BoxColor::Red || b.color == BoxColor::Green);
             });
             
-            // 노란색 상자 추가
             boxes_.push_back(ColorBox{ newPos, newColor });
-            score_ += 50;  // 합성 보너스
+            score_ += 50;    
             break;
         }
     }
@@ -1191,16 +1103,13 @@ void InGameScene::updateIceSlideTasks_(double dt)
 			{
 				const Point nextPos = box->pos + task.dir;
 
-				// 다음 위치에 다른 박스가 있는지 확인
 				if (ColorBox* targetBox = getBoxAt(nextPos))
 				{
-					// 합성 가능한지 확인
 					const BoxColor currentColor = getEffectiveBoxColor(box->uid);
 					const BoxColor targetColor = getEffectiveBoxColor(targetBox->uid);
 
 					if (Optional<BoxColor> merged = getMergedColor(currentColor, targetColor))
 					{
-						// 합성 처리 (기존 코드 유지)
 						forceMergePaintFXCompletion();
 
 						const uint64 uidA = box->uid;
@@ -1238,7 +1147,6 @@ void InGameScene::updateIceSlideTasks_(double dt)
 						if (tier == ColorTier::Secondary) score_ += 50;
 						else if (tier == ColorTier::Tertiary) score_ += 100;
 
-						// 새로 생성된 박스도 얼음 위라면 계속 미끄러짐
 						if (isIce(nextPos))
 						{
 							if (ColorBox* newBoxPtr = getBoxAt(nextPos))
@@ -1251,23 +1159,18 @@ void InGameScene::updateIceSlideTasks_(double dt)
 					}
 					else
 					{
-						// 합성 불가능하면 정지
 						task.active = false;
 					}
 				}
-				// 다음 위치가 이동 가능한 빈 공간인지 확인
 				else if (!isInsideMap(nextPos) || mapData_[nextPos.y][nextPos.x] == TileType::Wall)
 				{
-					// 벽이나 맵 밖이면 정지
 					task.active = false;
 				}
 				else
 				{
-					// 빈 공간으로 이동
 					box->pos = nextPos;
 					task.cooldown = 0.05;
 
-					// 다음 위치가 얼음이 아니면 미끄러짐 종료
 					if (!isIce(nextPos))
 					{
 						task.active = false;
@@ -1286,7 +1189,6 @@ void InGameScene::updateIceSlideTasks_(double dt)
 
 bool InGameScene::isGameClear() const
 {
-    // 모든 목표 지점에 해당하는 색상의 상자가 있는지 확인
     const Array<BoxColor> allColors = {
         BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
         BoxColor::Orange, BoxColor::Green, BoxColor::Violet, BoxColor::Black
@@ -1296,16 +1198,15 @@ bool InGameScene::isGameClear() const
     {
         const Array<Point>& goals = getGoalPositionsForColor(color);
         
-        // 이 색상의 목표가 있다면
         for (const auto& goal : goals)
         {
             const ColorBox* box = getBoxAt(goal);
             if (!box || box->color != color)
-                return false;  // 목표 지점에 해당 색상 상자가 없으면 실패
+                return false;         
         }
     }
     
-    return true;  // 모든 목표 지점에 해당 색상 상자가 있으면 클리어
+    return true;          
 }
 
 ColorTier InGameScene::getColorTier(BoxColor color) const
@@ -1332,69 +1233,57 @@ ColorTier InGameScene::getColorTier(BoxColor color) const
 
 Optional<BoxColor> InGameScene::getMergedColor(BoxColor color1, BoxColor color2) const
 {
-    // 같은 색은 합성 불가
     if (color1 == color2)
         return none;
     
     ColorTier tier1 = getColorTier(color1);
     ColorTier tier2 = getColorTier(color2);
     
-    // Black끼리는 합성 불가
     if (tier1 == ColorTier::Tertiary || tier2 == ColorTier::Tertiary)
         return none;
     
-    // 1차 + 1차 = 2차
     if (tier1 == ColorTier::Primary && tier2 == ColorTier::Primary)
     {
-        // R + Y = O
         if ((color1 == BoxColor::Red && color2 == BoxColor::Yellow) ||
             (color1 == BoxColor::Yellow && color2 == BoxColor::Red))
             return BoxColor::Orange;
             
-        // Y + B = G
         if ((color1 == BoxColor::Yellow && color2 == BoxColor::Blue) ||
             (color1 == BoxColor::Blue && color2 == BoxColor::Yellow))
             return BoxColor::Green;
             
-        // B + R = V
         if ((color1 == BoxColor::Blue && color2 == BoxColor::Red) ||
             (color1 == BoxColor::Red && color2 == BoxColor::Blue))
             return BoxColor::Violet;
     }
     
-    // 2차 + 2차 = K (무조건)
     if (tier1 == ColorTier::Secondary && tier2 == ColorTier::Secondary)
         return BoxColor::Black;
     
-    // 1차 + 2차 = K (단, 2차 색상의 구성 요소가 아닌 경우만)
     if ((tier1 == ColorTier::Primary && tier2 == ColorTier::Secondary) ||
         (tier1 == ColorTier::Secondary && tier2 == ColorTier::Primary))
     {
         BoxColor primary = (tier1 == ColorTier::Primary) ? color1 : color2;
         BoxColor secondary = (tier1 == ColorTier::Secondary) ? color1 : color2;
         
-        // O(주황=R+Y) + R 또는 Y = 불가능
         if (secondary == BoxColor::Orange)
         {
             if (primary == BoxColor::Red || primary == BoxColor::Yellow)
                 return none;
         }
         
-        // G(초록=Y+B) + Y 또는 B = 불가능
         if (secondary == BoxColor::Green)
         {
             if (primary == BoxColor::Yellow || primary == BoxColor::Blue)
                 return none;
         }
         
-        // V(보라=B+R) + B 또는 R = 불가능
         if (secondary == BoxColor::Violet)
         {
             if (primary == BoxColor::Blue || primary == BoxColor::Red)
                 return none;
         }
         
-        // 구성 요소가 아닌 경우만 Black 생성
         return BoxColor::Black;
     }
     
@@ -1406,19 +1295,19 @@ ColorF InGameScene::getBoxColorF(BoxColor color) const
     switch (color)
     {
     case BoxColor::Red:
-        return ColorF{ 0.66, 0.25, 0.25 };      // 빨강 (채도 낮춤)
+        return ColorF{ 0.66, 0.25, 0.25 };         
     case BoxColor::Yellow:
-        return ColorF{ 1.0, 1.0, 0.5 };      // 노랑 (채도 절반)
+        return ColorF{ 1.0, 1.0, 0.5 };         
     case BoxColor::Blue:
-        return ColorF{ 0.2, 0.4, 0.9 };      // 파랑 (원래값)
+        return ColorF{ 0.2, 0.4, 0.9 };        
     case BoxColor::Orange:
-        return ColorF{ 1.0, 0.5, 0.0 };      // 주황 (원래값)
+        return ColorF{ 1.0, 0.5, 0.0 };        
     case BoxColor::Green:
-        return ColorF{ 0.2, 0.8, 0.3 };      // 초록 (원래값)
+        return ColorF{ 0.2, 0.8, 0.3 };        
     case BoxColor::Violet:
-        return ColorF{ 0.7, 0.2, 0.8 };      // 보라 (원래값)
+        return ColorF{ 0.7, 0.2, 0.8 };        
     case BoxColor::Black:
-        return ColorF{ 0.1, 0.1, 0.1 };      // 검정 (원래값)
+        return ColorF{ 0.1, 0.1, 0.1 };        
     default:
         return ColorF{ 0.1, 0.1, 0.1 };
     }
@@ -1432,10 +1321,9 @@ void InGameScene::updateFinalStageTileOverlay()
 
     if (!overlay.isEmpty())
     {
-        // ★ 6초 간격으로 변경
-        int32 currentPhase = (gameTime_ >= 18.0) ? 3 :  // 18초
-                             (gameTime_ >= 12.0) ? 2 :  // 12초
-                             (gameTime_ >= 6.0) ? 1 : 0;  // 6초
+        int32 currentPhase = (gameTime_ >= 18.0) ? 3 :   
+                             (gameTime_ >= 12.0) ? 2 :   
+                             (gameTime_ >= 6.0) ? 1 : 0;   
 
         if (currentPhase != lastAppliedPhase)
         {
@@ -1460,13 +1348,11 @@ void InGameScene::checkBoxesLavaCollision()
 		}
 	}
 
-	// 용암에 닿은 박스 제거
 	for (uint64 uid : boxesToRemove)
 	{
 		removeBoxByUid(uid);
 	}
 }
-// ★ 추가: 플레이어 용암 충돌 확인
 void InGameScene::checkPlayerLavaCollision()
 {
 	if (isInsideMap(playerPos_) &&
@@ -1476,7 +1362,7 @@ void InGameScene::checkPlayerLavaCollision()
 		{
 			isPlayerDead_ = true;
 			deathAnimTimer_ = 0.0;
-			createDeathEffect(true);  // 주황색 파티클
+			createDeathEffect(true);    
 
 			if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
 			{
@@ -1497,20 +1383,16 @@ void InGameScene::update()
 		isCleared_ = true;
 		score_ += 1000;
 
-		// 게임 데이터에 클리어 반영
 		if (gameData_) {
 			gameData_->clearStage(currentStage_);
 		}
 
-		// 파이널 스테이지는 엔딩으로
 		if (StageData::isFinalStage(currentStage_)) {
 			changeScene(SceneType::Ending);
 		}
-		// 6번 스테이지는 보스 인트로로
 		else if (currentStage_ == 6) {
 			changeScene(SceneType::BossIntro);
 		}
-		// 그 외는 스테이지 선택으로
 		else {
 			changeScene(SceneType::StageSelect);
 		}
@@ -1605,33 +1487,28 @@ void InGameScene::update()
 		}
 	}
 
-	// ★★★ 게임 업데이트 ★★★
 	updateMergePaintFX();
 	updateBombBoxFX_Multi(dt);
 	updateWallBreakFX();
 	applyHoloFromHeldItem_();
 
-	// ★ 보스 공격 업데이트
 	if (StageData::isFinalStage(currentStage_) && !isPlayerDead_ && !isCleared_)
 	{
-		//updateBossAttack(dt);
 		updateBossHitEffect(dt);
 		updateBossAttacks(dt);
 		updateBossProjectiles(dt);
 		updateEnergyBalls(dt);
 	}
-	updateBossExplosions(dt);  // 폭발은 항상 업데이트
+	updateBossExplosions(dt);     
 
 	if (focused && !isCleared_ && !isPlayerDead_)
 	{
 		if (StageData::isFinalStage(currentStage_))
 		{
-			// ★ 보스 스테이지에서는 bossBgm만 재생
 			if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying())
 			{
 				bossBgm_.play();
 			}
-			// ★ HappyOcean.mp3가 재생 중이면 정지
 			if (!bgm_.isEmpty() && bgm_.isPlaying())
 			{
 				bgm_.stop();
@@ -1650,7 +1527,6 @@ void InGameScene::update()
 		changeScene(SceneType::Ending);
 		return;
 	}
-	// ★ R키로 즉시 리트라이 (죽음 중에도 가능)
 	if (!isCleared_ && KeyR.down())
 	{
 		gameTime_ = 0.0;
@@ -1676,24 +1552,20 @@ void InGameScene::update()
 		}
 		if (StageData::isFinalStage(currentStage_))
 		{
-			// 보스 페이즈 시스템 완전 리셋
 			currentBossPhase_ = 1;
 			bossHitCount_ = 0;
 			bossCurrentHP_ = 3;
 			showBossHitEffect_ = false;
 			bossHitEffectTimer_ = 0.0;
 
-			// 보스 공격 시퀀스 리셋
 			isBossAttackSequenceActive_ = false;
 			currentBossAttackPhase_ = BossAttackPhase::None;
 			bossAttackSequenceTimer_ = 0.0;
 			gatheringBoxes_.clear();
 			mergedBoxCreated_ = false;
 
-			// ★ loadStage 대신 loadBossPhase 호출
 			loadBossPhase(1);
 
-			// 보스 관련 시스템 초기화
 			initBossAttacks();
 			initBossWallSystem();
 
@@ -1705,7 +1577,6 @@ void InGameScene::update()
 		}
 		else
 		{
-			// 일반 스테이지만 loadStage 호출
 			loadStage(currentStage_);
 
 			if (!bgm_.isEmpty())
@@ -1752,7 +1623,6 @@ void InGameScene::update()
 		return;
 	}
 
-	// 일반 업데이트
 	gameTime_ += dt;
 
 	updateIceSlideTasks_(dt);
@@ -1807,7 +1677,6 @@ void InGameScene::update()
 }
 
 void InGameScene::bufferInputWhileMoving() {
-	// 이번 프레임 새로 눌린 방향만 큐에 저장 (.down 우선)
 	if (KeyRight.down()) {
 		queuedDir_ = Point{ 1, 0 };
 	}
@@ -1830,7 +1699,6 @@ bool InGameScene::pollMoveDirection(Point& outDir, TacoDirection& outTacoDir, bo
 		return true;
 		};
 
-	// 1) 버퍼 우선 소비
 	if (queuedDir_) {
 		const Point q = *queuedDir_;
 		queuedDir_.reset();
@@ -1840,13 +1708,11 @@ bool InGameScene::pollMoveDirection(Point& outDir, TacoDirection& outTacoDir, bo
 		if (q.y > 0) return set(Point{ 0, 1 }, TacoDirection::Down, isFacingLeft_);
 	}
 
-	// 2) 이번 프레임 .down 우선 (단일 선택, 가로→세로 예시 우선순위)
 	if (KeyRight.down()) return set(Point{ 1, 0 }, TacoDirection::Side, false);
 	if (KeyLeft.down())  return set(Point{ -1, 0 }, TacoDirection::Side, true);
 	if (KeyUp.down())    return set(Point{ 0, -1 }, TacoDirection::Up, isFacingLeft_);
 	if (KeyDown.down())  return set(Point{ 0, 1 }, TacoDirection::Down, isFacingLeft_);
 
-	// 3) 누르고 있는 키(.pressed) — 쿨다운이 없을 때만
 	if (inputCooldown_ <= 0.0) {
 		if (KeyRight.pressed()) return set(Point{ 1, 0 }, TacoDirection::Side, false);
 		if (KeyLeft.pressed())  return set(Point{ -1, 0 }, TacoDirection::Side, true);
@@ -1869,7 +1735,6 @@ void InGameScene::handleInput()
 		return;
 	}
 
-	// 활성화된 얼음 미끄러짐 태스크가 있으면 입력 차단
 	bool hasActiveSlideTasks = false;
 	for (const auto& task : iceSlideTasks_) {
 		if (task.active) {
@@ -1892,7 +1757,6 @@ void InGameScene::handleInput()
 			newFacingLeft = (tdir == TacoDirection::Side) ? faceLeft : isFacingLeft_;
 		}
 		};
-	// 방향키와 WASD 키 모두 지원
 	press(KeyLeft, { -1, 0 }, TacoDirection::Side, true);
 	press(KeyA, { -1, 0 }, TacoDirection::Side, true);
 	press(KeyRight, { 1, 0 }, TacoDirection::Side, false);
@@ -1935,7 +1799,6 @@ void InGameScene::handleInput()
 			return;
 		}
 
-		// 합성 경로(타깃 존재)
 		if (ColorBox* targetPeek = getBoxAt(next)) {
 			bool createsBomb = false;
 			const BoxColor curC = getEffectiveBoxColor(box->uid);
@@ -1943,26 +1806,22 @@ void InGameScene::handleInput()
 			if (Optional<BoxColor> m = getMergedColor(curC, tgtC)) {
 				createsBomb = (*m == BoxColor::Black);
 			}
-			// 실제 합성
 			const BoxColor currentBoxColor = getEffectiveBoxColor(box->uid);
 			const BoxColor targetBoxColor = getEffectiveBoxColor(targetPeek->uid);
 			if (Optional<BoxColor> merged = getMergedColor(currentBoxColor, targetBoxColor)) {
 				forceMergePaintFXCompletion();
 
-				// 두 상자 제거
 				const uint64 uidA = box->uid;
 				const uint64 uidB = targetPeek->uid;
 				boxes_.remove_if([&](const ColorBox& b) {
 					return (b.uid == uidA || b.uid == uidB);
 				});
 
-				// 새 상자 생성
 				ColorBox newBox(next, *merged, 0.0, nextBoxUID_++);
 				if (*merged == BoxColor::Black) {
 					newBox.creationTime = gameTime_;
 					bombExpiryAbs_[newBox.uid] = bombClock_ + kTotal;
 					triggerBombBoxFXForBlack_Multi(newBox.uid, BLACK_BOX_LIFETIME);
-					// 앵커 진행 중이면 UID 수집
 					if (!bombExplosionSound_.isEmpty()) {
 						bombExplosionSound_.stop();
 						bombExplosionSound_.setVolume(0.6);
@@ -1972,7 +1831,6 @@ void InGameScene::handleInput()
 				}
 				boxes_.push_back(newBox);
 
-				// 이펙트/사운드/점수(생략 없이 유지)
 				const Vec2 originUV = impactOriginLocalUVForDir(dir);
 				const ColorF base = getBoxColorF(targetBoxColor);
 				const ColorF result = getBoxColorF(*merged);
@@ -2009,7 +1867,6 @@ void InGameScene::handleInput()
 			}
 		}
 
-		// 일반 밀기
 		pushBox(box, dir);
 		slideBoxOnIce(box, dir);
 		movePlayerTo(newPos);
@@ -2025,7 +1882,6 @@ void InGameScene::handleInput()
 		return;
 	}
 
-	// 아이템/일반 이동
 	if (playerHeldItem_ != ItemType::None) {
 		if (tryChangeBoxColor(newPos, dir)) { playerHeldItem_ = ItemType::None; return; }
 	}
@@ -2103,14 +1959,12 @@ void InGameScene::continueSliding()
 	if (isPlayerMoving_) return;
 	if (!isSliding_) return;
 
-	// ★ 용암 체크
 	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {
 		if (!isPlayerDead_) {
 			isPlayerDead_ = true;
 			deathAnimTimer_ = 0.0;
 			createDeathEffect(false);
 
-			// ★ 보스 스테이지면 bossBgm 저장, 아니면 bgm 저장
 			if (StageData::isFinalStage(currentStage_)) {
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
 					savedMusicPosition_ = bossBgm_.posSec();
@@ -2153,7 +2007,6 @@ void InGameScene::continueSliding()
 	}
 
 	if (ColorBox* box = getBoxAt(next)) {
-		// 밀 수 있는지 확인
 		if (!canPushBox(playerPos_, box->pos, slideDir_)) {
 			isSliding_ = false;
 			return;
@@ -2202,7 +2055,6 @@ void InGameScene::continueSliding()
 					score_ += 100;
 				}
 
-				// 플레이어 이동
 				movePlayerTo(next);
 				moves_ += 1;
 				collectItem(next);
@@ -2249,11 +2101,11 @@ InGameScene::TileType InGameScene::decodeTile_(s3d::uint8 c) noexcept {
 	using T = TileType;
 	
 	constexpr s3d::uint8 kMax =
-		static_cast<s3d::uint8>(T::VioletItem); // 필요 시 실제 마지막 값으로 갱신
+		static_cast<s3d::uint8>(T::VioletItem);       
 	if (c <= kMax) {
 		return static_cast<T>(c);
 	}
-	return T::Empty; // 범위를 벗어나면 안전하게 Empty로
+	return T::Empty;     
 }
 
 Array<Array<s3d::uint8>> InGameScene::exportMapCodes_() const {
@@ -2279,7 +2131,6 @@ void InGameScene::importMapCodes_(const Array<Array<s3d::uint8>>& codes) {
 
 void InGameScene::updatePlayer()
 {
-    // 플레이어 부드러운 이동 처리
     if (isPlayerMoving_)
     {
         const double deltaTime = Scene::DeltaTime();
@@ -2288,14 +2139,12 @@ void InGameScene::updatePlayer()
         
         if (distance <= playerMoveSpeed_ * deltaTime)
         {
-            // 목표 지점에 도달
             playerPixelPos_ = targetPixelPos_;
             isPlayerMoving_ = false;
 			inputCooldown_ = 0.0;
         }
         else
         {
-            // 목표 지점으로 이동
             Vec2 normalizedDirection = direction.normalized();
             playerPixelPos_ += normalizedDirection * playerMoveSpeed_ * deltaTime;
         }
@@ -2379,14 +2228,12 @@ void InGameScene::draw()
 		spotlight.drawFrame(0.0, Max(0.0, outer - radius), ColorF{ 0, 0, 0, 1.0 });
 	}
 
-	// 조작법 도움말 표시
 	if (showHelpScreen_)
 	{
 		drawHelpScreen();
 		return;
 	}
 
-	// 클리어 화면
 	if (isCleared_ && showClearButtons_)
 	{
 		Rect{ 0, 0, Scene::Size().x, Scene::Size().y }.draw(ColorF{ 0, 0, 0, 0.8 });
@@ -2431,7 +2278,6 @@ void InGameScene::draw()
 		);
 	}
 	
-	// 클리어 이펙트 그리기
 	if (showClearEffect_)
 	{
 		drawClearEffect();
@@ -2453,7 +2299,6 @@ void InGameScene::drawBackground()
 
 void InGameScene::drawMap()
 {
-	// 타일 배경
 	for (int32 y = 0; y < getMapHeight(); ++y) {
 		for (int32 x = 0; x < getMapWidth(); ++x) {
 			const Rect tileRect{ x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
@@ -2467,7 +2312,6 @@ void InGameScene::drawMap()
 				tileRect.drawFrame(2, 0, ColorF{ 0.5, 0.5, 0.55 });
 				break;
 			case TileType::Ice:
-				// 얼음 타일: 연한 하늘색
 				tileRect.draw(ColorF{ 0.615, 0.988, 0.976, 0.6 });
 				tileRect.drawFrame(2, 0, ColorF{ 0.8, 1.0, 1.0, 0.8 });
 				break;
@@ -2478,17 +2322,7 @@ void InGameScene::drawMap()
 				tileRect.draw(lavaColor);
 				tileRect.drawFrame(2, 0, ColorF{ 1.0, 0.5, 0.0 });
 			}
-			break;  // ★ break 추가!
-			//case TileType::LavaWarning:  // ★ 새로운 케이스 추가
-			//{
-			//	// 투명한 배경
-			//	tileRect.draw(ColorF{ 0.9, 0.2, 0.2, 0.12 });
-
-			//	// 빠르게 깜빡이는 테두리
-			//	const double flash = 0.4 + 0.6 * Math::Abs(Math::Sin(gameTime_ * 8.0));
-			//	tileRect.drawFrame(4, 0, ColorF{ 1.0, 0.0, 0.0, flash });
-			//}
-			//break;
+			break;     
 			case TileType::RedGoal:
 				tileRect.draw(ColorF{ 0.9, 0.2, 0.2, 0.3 });
 				Circle{ tileRect.center(), 12 }.drawFrame(3, ColorF{ 0.9, 0.2, 0.2 });
@@ -2538,7 +2372,6 @@ void InGameScene::drawMap()
 	drawOverlayWarnings();
 	drawBoxes_RespectBombFX();
 
-	// 아이템
 	for (const auto& item : items_) {
 		const Rect r{ item.pos.x * TILE_SIZE, item.pos.y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
 		const ColorF ic = getItemColorF(item.type);
@@ -2553,7 +2386,6 @@ void InGameScene::drawMap()
 		Quad(top, right, bottom, left).drawFrame(2, ColorF{ ic.r * 1.3, ic.g * 1.3, ic.b * 1.3 });
 	}
 
-	//drawBossAttacks();
 	drawWallMask();
 
 }
@@ -2562,7 +2394,6 @@ void InGameScene::drawMap()
 
 void InGameScene::drawPlayer()
 {
-	/// 죽음 애니메이션
 	if (isPlayerDead_) {
 		drawDeathEffect();
 		return;
@@ -2573,7 +2404,6 @@ void InGameScene::drawPlayer()
         return;
     }
     
-    // 실제 픽셀 위치를 사용하여 플레이어 렌더링
     const Rect playerRect{ 
         static_cast<int32>(playerPixelPos_.x - TILE_SIZE / 2), 
         static_cast<int32>(playerPixelPos_.y - TILE_SIZE / 2), 
@@ -2663,13 +2493,10 @@ void InGameScene::drawUI()
 }
 void InGameScene::drawHelpScreen()
 {
-    // 반투명 배경 오버레이
     Rect{ 0, 0, Scene::Size().x, Scene::Size().y }.draw(ColorF{ 0, 0, 0, 0.8 });
     
-    // 제목 (일본어)
     clearFont_(U"中止").drawAt(Scene::Size().x / 2.0, 100, ColorF{ 1.0, 1.0, 0.5 });
     
-    // 조작법 설명 (일본어로 변경)
     const double centerX = Scene::Size().x / 2.0;
     const double startY = 200;
     const double lineHeight = 50;
@@ -2698,26 +2525,21 @@ void InGameScene::drawHelpScreen()
 		debugFont_(right).drawAt(Vec2{ centerX + (gap + wR * 0.5) - 40.0, y }, textColor);
 	}
     
-    // 스테이지 선택으로 돌아가는 버튼
     const double buttonY = startY + helpTexts.size() * lineHeight + 60;
     const Rect backButton{ static_cast<int32>(centerX - 100), static_cast<int32>(buttonY), 200, 50 };
     
-    // 버튼 배경
     ColorF buttonColor = backButton.mouseOver() ? ColorF{ 0.3, 0.5, 0.7 } : ColorF{ 0.2, 0.4, 0.6 };
     backButton.draw(buttonColor);
     backButton.drawFrame(3, Palette::White);
     
-    // 버튼 텍스트 (일본어)
     ColorF textColor = backButton.mouseOver() ? Palette::Yellow : Palette::White;
     buttonFont_(U"ステージ選択に戻る").drawAt(backButton.center(), textColor);
     
-    // 버튼 클릭 처리
     if (backButton.leftClicked())
     {
         changeScene(SceneType::StageSelect);
     }
     
-    // 포커스 상태에 따라 다른 메시지 표시 (일본어)
     if (!Window::GetState().focused)
     {
         debugFont_(U"クリックして再開").drawAt(centerX, Scene::Size().y - 100, ColorF{ 1.0, 1.0, 0.5 });
@@ -2747,7 +2569,7 @@ Array<Point>& InGameScene::getGoalPositionsForColor(BoxColor color)
     case BoxColor::Black:
         return blackGoalPositions_;
     default:
-        return blackGoalPositions_;  // fallback
+        return blackGoalPositions_;   
     }
 }
 
@@ -2770,79 +2592,31 @@ const Array<Point>& InGameScene::getGoalPositionsForColor(BoxColor color) const
     case BoxColor::Black:
         return blackGoalPositions_;
     default:
-        return blackGoalPositions_;  // fallback
+        return blackGoalPositions_;   
     }
 }
 
 void InGameScene::updateBlackBoxes()
 {
-	//// 처리할 UID를 임시로 저장할 배열
-	//Array<uint64> toTrigger;
-
-	//// 모든 상자를 순회하며 검은 상자를 찾습니다.
-	//for (const auto& box : boxes_)
-	//{
-	//	if (box.color != BoxColor::Black) continue;
-
-	//	// 이미 이 상자에 대한 폭발 효과가 진행 중인지 확인합니다.
-	//	// (중복 트리거 방지)
-	//	bool hasActiveFX = false;
-	//	for (const auto& fx : bombFXs_) {
-	//		if (fx.uid == box.uid) {
-	//			hasActiveFX = true;
-	//			break;
-	//		}
-	//	}
-	//	if (hasActiveFX) continue;
-
-	//	// 생성된 후 3초가 지났는지 확인합니다.
-	//	const double elapsed = gameTime_ - box.creationTime;
-	//	if (elapsed >= 3.0) {
-	//		// 3초가 지났다면, 효과를 발동시킬 목록에 추가합니다.
-	//		toTrigger.push_back(box.uid);
-	//	}
-	//}
-
-	//// 목록에 있는 모든 UID에 대해 폭발 효과를 트리거합니다.
-	//for (const uint64 uid : toTrigger) {
-	//	triggerBombBoxFXForBlack_Multi(uid, BLACK_BOX_LIFETIME);
-	//}
 }
-
-//void InGameScene::updateBossAttack(double dt)
-//{
-//	if (!StageData::isFinalStage(currentStage_)) return;
-//
-//	bossAttackTimer_ += dt;
-//
-//	// 3초마다 공 발사
-//	if (bossAttackTimer_ >= BOSS_ATTACK_INTERVAL)
-//	{
-//		bossAttackTimer_ = 0.0;
-//		spawnBossProjectile();
-//	}
-//}
 
 void InGameScene::spawnBossProjectile()
 {
-	// 보스 이미지 중앙에서 발사
 	const int32 screenW = Scene::Width();
 	const int32 screenH = Scene::Height();
-	const Vec2 bossPos = Vec2(screenW / 2.0, screenH / 4.0);  // 상단 중앙
+	const Vec2 bossPos = Vec2(screenW / 2.0, screenH / 4.0);    
 
-	// 플레이어 픽셀 위치로 변환 (카메라 변환 적용)
 	const Mat3x2 transform = camera().getMat3x2();
 	const Vec2 playerScreenPos = transform.transformPoint(playerPixelPos_);
 
-	// 방향 벡터 계산
 	Vec2 direction = (playerScreenPos - bossPos).normalized();
-	double speed = 400.0;  // 공 속도
+	double speed = 400.0;    
 
 	BossProjectile proj;
 	proj.pos = bossPos;
 	proj.velocity = direction * speed;
-	proj.color = ColorF{ 0.8, 0.2, 0.9, 1.0 };  // 보라색
-	proj.size = 40.0;  // ⬅️ 20.0 → 40.0으로 변경 (2배)
+	proj.color = ColorF{ 0.8, 0.2, 0.9, 1.0 };   
+	proj.size = 40.0;        
 	proj.active = true;
 	proj.exploded = false;
 
@@ -2862,21 +2636,18 @@ void InGameScene::updateBossProjectiles(double dt)
 
 		const double dist = (proj.pos - playerScreenPos).length();
 
-		if (dist < 40.0)  // 충돌 반경
+		if (dist < 40.0)    
 		{
-			// 폭발 생성
 			createBossExplosion(proj.pos, proj.color);
 			proj.active = false;
 			proj.exploded = true;
 
-			// ★ 플레이어 사망 처리 (체력 깎임과 동시에 죽음)
 			if (!isPlayerDead_)
 			{
 				isPlayerDead_ = true;
 				deathAnimTimer_ = 0.0;
 				createDeathEffect(false);
 
-				// 배경음악 정지
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
 				{
 					savedMusicPosition_ = bossBgm_.posSec();
@@ -2885,7 +2656,6 @@ void InGameScene::updateBossProjectiles(double dt)
 			}
 		}
 
-		// 화면 밖으로 나가면 제거
 		if (proj.pos.x < -100 || proj.pos.x > Scene::Width() + 100 ||
 			proj.pos.y < -100 || proj.pos.y > Scene::Height() + 100)
 		{
@@ -2898,21 +2668,20 @@ void InGameScene::updateBossProjectiles(double dt)
 
 void InGameScene::createBossExplosion(Vec2 pos, ColorF color)
 {
-	// 6방향으로 파티클 발사 (육각형 패턴, 중력 없음)
 	const Array<double> angles = {
-		0.0,                    // 우
-		Math::Pi / 3.0,         // 우상
-		2.0 * Math::Pi / 3.0,   // 좌상
-		Math::Pi,               // 좌
-		4.0 * Math::Pi / 3.0,   // 좌하
-		5.0 * Math::Pi / 3.0    // 우하
+		0.0,                     
+		Math::Pi / 3.0,          
+		2.0 * Math::Pi / 3.0,    
+		Math::Pi,                
+		4.0 * Math::Pi / 3.0,    
+		5.0 * Math::Pi / 3.0     
 	};
 
 	const Array<ColorF> explosionColors = {
-		ColorF{1.0, 0.3, 0.9},  // 보라
-		ColorF{1.0, 0.5, 0.9},  // 밝은 보라
-		ColorF{0.8, 0.2, 1.0},  // 진보라
-		ColorF{1.0, 0.7, 0.9},  // 연보라
+		ColorF{1.0, 0.3, 0.9},   
+		ColorF{1.0, 0.5, 0.9},    
+		ColorF{0.8, 0.2, 1.0},   
+		ColorF{1.0, 0.7, 0.9},   
 	};
 
 	for (const auto& angle : angles)
@@ -2937,15 +2706,10 @@ void InGameScene::updateBossExplosions(double dt)
 		particle.pos += particle.velocity * dt;
 		particle.life -= dt;
 
-		// 중력 없음 (등속 직선 운동)
-		// particle.velocity *= 0.98;  // 약간의 감속만 (선택사항)
-
-		// 알파값 조정
 		double alpha = particle.life / particle.maxLife;
 		particle.color.a = alpha;
 	}
 
-	// 수명이 다한 파티클 제거
 	bossExplosionParticles_.remove_if([](const BossExplosionParticle& p) { return p.life <= 0; });
 }
 
@@ -2957,7 +2721,6 @@ void InGameScene::drawBossProjectiles()
 	{
 		if (!proj.active) continue;
 
-		// 공 그리기 (빛나는 효과)
 		Circle{ proj.pos, proj.size }.draw(proj.color);
 		Circle{ proj.pos, proj.size * 0.6 }.draw(ColorF{ 1.0, 1.0, 1.0, 0.8 });
 	}
@@ -3005,7 +2768,7 @@ BoxColor InGameScene::itemTypeToBoxColor(ItemType item) const
     case ItemType::VioletItem:
         return BoxColor::Violet;
     default:
-        return BoxColor::Red;  // fallback
+        return BoxColor::Red;   
     }
 }
 
@@ -3035,17 +2798,17 @@ ColorF InGameScene::getItemColorF(ItemType item) const
     switch (item)
     {
     case ItemType::RedItem:
-        return ColorF{ 0.6, 0.3, 0.3 };      // 빨강 (채도 낮춤)
+        return ColorF{ 0.6, 0.3, 0.3 };         
     case ItemType::OrangeItem:
-        return ColorF{ 1.0, 0.5, 0.0 };      // 주황 (원래값)
+        return ColorF{ 1.0, 0.5, 0.0 };        
     case ItemType::YellowItem:
-        return ColorF{ 1.0, 1.0, 0.5 };      // 노랑 (채도 절반)
+        return ColorF{ 1.0, 1.0, 0.5 };         
     case ItemType::GreenItem:
-        return ColorF{ 0.2, 0.8, 0.3 };      // 초록 (원래값)
+        return ColorF{ 0.2, 0.8, 0.3 };        
     case ItemType::BlueItem:
-        return ColorF{ 0.2, 0.4, 0.9 };      // 파랑 (원래값)
+        return ColorF{ 0.2, 0.4, 0.9 };        
     case ItemType::VioletItem:
-        return ColorF{ 0.7, 0.2, 0.8 };      // 보라 (원래값)
+        return ColorF{ 0.7, 0.2, 0.8 };        
     default:
         return ColorF{ 0.1, 0.1, 0.1 };
     }
@@ -3078,15 +2841,13 @@ void InGameScene::collectItem(Point pos)
     {
         playerHeldItem_ = item->type;
         
-        // 아이템을 맵에서 제거
         items_.remove_if([pos](const GameItem& i) {
             return i.pos == pos;
         });
         
-        // 타일을 빈 공간으로 변경
         mapData_[pos.y][pos.x] = TileType::Empty;
         
-        score_ += 25;  // 아이템 수집 보너스
+        score_ += 25;     
     }
 }
 
@@ -3099,11 +2860,9 @@ bool InGameScene::tryChangeBoxColor(Point pos, Point direction)
 	const BoxColor prevColor = box->color;
 	const BoxColor newColor = itemTypeToBoxColor(playerHeldItem_);
 
-    // 이미 같은 색상이면 변경하지 않음
     if (box->color == newColor)
         return false;
     
-    // 박스 색상 변경
     box->color = newColor;
     score_ += 100;
 
@@ -3124,34 +2883,28 @@ bool InGameScene::tryChangeBoxColor(Point pos, Point direction)
 
     if (direction == Point(0, -1))
     {
-        // 위쪽 방향: 애니메이션 재생 안 함
         return true;
     }
     else if (direction == Point(-1, 0))
     {
-        // 왼쪽 방향: 좌우반전 애니메이션
         startPaintAnimation(true);
     }
     else
     {
-        // 오른쪽 또는 아래: 일반 애니메이션
         startPaintAnimation(false);
     }
 
-	//g_Shaders.holographic().setIntensity(0.0f);
-    
     return true;
 }
 
 void InGameScene::initializeClearButtons()
 {
-    const double buttonSize = 70;  // 버튼 크기
+    const double buttonSize = 70;    
     const double centerX = Scene::Size().x / 2.0;
-    const double centerY = Scene::Size().y / 2.0 + 120; // 버튼을 더 아래로 이동
-    const double buttonMargin = buttonSize / 2.0; // 버튼 크기의 1/2만큼 여백
-    const double totalButtonSpacing = buttonSize + buttonMargin; // 버튼 + 여백
+    const double centerY = Scene::Size().y / 2.0 + 120;     
+    const double buttonMargin = buttonSize / 2.0;     
+    const double totalButtonSpacing = buttonSize + buttonMargin;    
     
-    // 다시하기 버튼 (왼쪽)
     retryButton_.rect = Rect{
         static_cast<int32>(centerX - totalButtonSpacing - buttonSize / 2),
         static_cast<int32>(centerY - buttonSize / 2),
@@ -3161,7 +2914,6 @@ void InGameScene::initializeClearButtons()
     retryButton_.normalColor = ColorF{ 0.6, 0.3, 0.2 };
     retryButton_.hoverColor = ColorF{ 0.7, 0.4, 0.3 };
     
-    // 스테이지 선택으로 돌아가기 버튼 (중앙)
     stageSelectButton_.rect = Rect{
         static_cast<int32>(centerX - buttonSize / 2),
         static_cast<int32>(centerY - buttonSize / 2),
@@ -3171,7 +2923,6 @@ void InGameScene::initializeClearButtons()
     stageSelectButton_.normalColor = ColorF{ 0.2, 0.4, 0.6 };
     stageSelectButton_.hoverColor = ColorF{ 0.3, 0.5, 0.7 };
     
-    // 다음 스테이지 버튼 (오른쪽)
     nextStageButton_.rect = Rect{
         static_cast<int32>(centerX + totalButtonSpacing - buttonSize / 2),
         static_cast<int32>(centerY - buttonSize / 2),
@@ -3207,10 +2958,8 @@ void InGameScene::updateClearButtons()
     updateClearButton(stageSelectButton_);
     updateClearButton(nextStageButton_);
     
-    // 버튼 클릭 처리
     if (retryButton_.rect.leftClicked())
     {
-        // 현재 스테이지 다시 시작
         isCleared_ = false;
         showClearButtons_ = false;
         gameTime_ = 0.0;
@@ -3275,11 +3024,11 @@ void InGameScene::drawClearButton(const ClearButton& button)
 int32 InGameScene::calculateStars(int32 moves) const
 {
     if (moves <= 50)
-        return 3;  // 3개 별
+        return 3;    
     else if (moves <= 100)
-        return 2;  // 2개 별
+        return 2;    
     else
-        return 1;  // 1개 별
+        return 1;    
 }
 
 void InGameScene::drawStars(int32 starCount, Vec2 centerPos) const
@@ -3287,9 +3036,9 @@ void InGameScene::drawStars(int32 starCount, Vec2 centerPos) const
     if (tacoScoreTexture_.isEmpty() || tacoScoreOffTexture_.isEmpty())
         return;
     
-    const double starSize = 160.0;  // 별 크기 (40 * 4)
-    const double spacing = 200.0;   // 별 간격 (50 * 4)
-    const int32 maxStars = 3;       // 최대 별 개수
+    const double starSize = 160.0;       
+    const double spacing = 200.0;        
+    const int32 maxStars = 3;          
     const double totalWidth = (maxStars - 1) * spacing;
     const Vec2 startPos = centerPos - Vec2(totalWidth / 2.0, 0);
     
@@ -3299,12 +3048,10 @@ void InGameScene::drawStars(int32 starCount, Vec2 centerPos) const
         
         if (i < starCount)
         {
-            // 획득한 점수: 온 상태 이미지
             tacoScoreTexture_.resized(starSize, starSize).drawAt(starPos);
         }
         else
         {
-            // 획득하지 못한 점수: 오프 상태 이미지
             tacoScoreOffTexture_.resized(starSize, starSize).drawAt(starPos);
         }
     }
@@ -3312,9 +3059,9 @@ void InGameScene::drawStars(int32 starCount, Vec2 centerPos) const
 bool InGameScene::isPlayerInExplosionRange(Point bombPos) const
 {
 	const Array<Point> directions = {
-		Point{-1, -1}, Point{0, -1}, Point{1, -1},  // 위쪽 3칸
-		Point{-1,  0}, Point{0,  0}, Point{1,  0},  // 좌우 + 중앙
-		Point{-1,  1}, Point{0,  1}, Point{1,  1}   // 아래쪽 3칸
+		Point{-1, -1}, Point{0, -1}, Point{1, -1},    
+		Point{-1,  0}, Point{0,  0}, Point{1,  0},     
+		Point{-1,  1}, Point{0,  1}, Point{1,  1}     
 	};
 
 	for (const auto& dir : directions) {
@@ -3328,54 +3075,49 @@ bool InGameScene::isPlayerInExplosionRange(Point bombPos) const
 void InGameScene::createDeathEffect(bool useWhiteParticles)
 {
 	deathParticles_.clear();
-	isWhiteParticleDeath_ = useWhiteParticles;  // ★ 플래그 저장
+	isWhiteParticleDeath_ = useWhiteParticles;     
 
 	const Vec2 center = playerPixelPos_;
 
-	// 정확히 8방향으로 1개씩 파티클 생성 (총 8개)
 	const Array<Vec2> directions = {
-		Vec2{-1, -1}.normalized(),  // 좌상 (대각선)
-		Vec2{ 0, -1},                // 상
-		Vec2{ 1, -1}.normalized(),  // 우상 (대각선)
-		Vec2{-1,  0},                // 좌
-		Vec2{ 1,  0},                // 우
-		Vec2{-1,  1}.normalized(),  // 좌하 (대각선)
-		Vec2{ 0,  1},                // 하
-		Vec2{ 1,  1}.normalized()   // 우하 (대각선)
+		Vec2{-1, -1}.normalized(),    
+		Vec2{ 0, -1},                 
+		Vec2{ 1, -1}.normalized(),    
+		Vec2{-1,  0},                 
+		Vec2{ 1,  0},                 
+		Vec2{-1,  1}.normalized(),    
+		Vec2{ 0,  1},                 
+		Vec2{ 1,  1}.normalized()     
 	};
 
-	// ★ 폭탄 폭발용 흰색 팔레트와 용암용 색상 팔레트 분리
 	const Array<ColorF> whiteColors = {
-		ColorF{1.0, 1.0, 1.0},      // 순백
-		ColorF{0.95, 0.95, 1.0},    // 약간 푸른 흰색
-		ColorF{1.0, 0.95, 0.85},    // 약간 노란 흰색
-		ColorF{0.9, 0.9, 0.9},      // 밝은 회색
+		ColorF{1.0, 1.0, 1.0},       
+		ColorF{0.95, 0.95, 1.0},       
+		ColorF{1.0, 0.95, 0.85},       
+		ColorF{0.9, 0.9, 0.9},        
 	};
 
 	const Array<ColorF> lavaColors = {
-		ColorF{1.0, 0.3, 0.0},  // 주황
-		ColorF{1.0, 0.5, 0.0},  // 밝은 주황
-		ColorF{1.0, 0.8, 0.0},  // 노랑
-		ColorF{0.9, 0.2, 0.0},  // 진한 빨강
+		ColorF{1.0, 0.3, 0.0},   
+		ColorF{1.0, 0.5, 0.0},    
+		ColorF{1.0, 0.8, 0.0},   
+		ColorF{0.9, 0.2, 0.0},    
 	};
 
-	// ★ 사용할 색상 팔레트 선택
 	const Array<ColorF>& colorPalette = useWhiteParticles ? whiteColors : lavaColors;
 
-	// 각 방향마다 정확히 1개의 파티클 생성
 	for (const auto& dir : directions)
 	{
 		DeathParticle particle;
 
-		const double speed = Random(200.0, 350.0);  // 속도 범위
+		const double speed = Random(200.0, 350.0);    
 
 		particle.pos = center;
-		particle.velocity = dir * speed;  // 정확한 방향으로 발사
+		particle.velocity = dir * speed;     
 
-		// ★ 색상 팔레트에서 선택
 		particle.color = colorPalette[Random(0, (int32)colorPalette.size() - 1)];
-		particle.life = particle.maxLife = Random(0.7, 1.3);  // 수명
-		particle.size = Random(6.0, 12.0);  // 크기
+		particle.life = particle.maxLife = Random(0.7, 1.3);   
+		particle.size = Random(6.0, 12.0);   
 
 		deathParticles_.push_back(particle);
 	}
@@ -3384,10 +3126,8 @@ void InGameScene::createClearEffect()
 {
     clearParticles_.clear();
     
-    // 화면 중앙에서 폭죽 효과 생성
     const Vec2 centerPos = Vec2(Scene::Size().x / 2.0, Scene::Size().y / 2.0);
     
-    // 여러 개의 폭죽을 다른 위치에서 생성
     Array<Vec2> fireworkPositions = {
         centerPos + Vec2(-200, -100),
         centerPos + Vec2(200, -100),
@@ -3398,29 +3138,26 @@ void InGameScene::createClearEffect()
     
     for (const auto& pos : fireworkPositions)
     {
-        // 각 폭죽당 30~50개의 파티클 생성
         int32 particleCount = Random(30, 50);
         
         for (int32 i = 0; i < particleCount; i++)
         {
             ClearParticle particle;
             
-            // 방사형으로 퍼지도록 각도 설정
             double angle = Random(0.0, 2 * Math::Pi);
             double speed = Random(100.0, 400.0);
             
             particle.pos = pos;
             particle.velocity = Vec2(Math::Cos(angle) * speed, Math::Sin(angle) * speed);
             
-            // 다채로운 색상 (황금, 빨강, 파랑, 초록, 보라)
             Array<ColorF> colors = {
-                ColorF{1.0, 0.8, 0.2},  // 황금
-                ColorF{1.0, 0.3, 0.3},  // 빨강
-                ColorF{0.3, 0.5, 1.0},  // 파랑
-                ColorF{0.3, 1.0, 0.3},  // 초록
-                ColorF{0.8, 0.3, 1.0},  // 보라
-                ColorF{1.0, 0.5, 0.0},  // 주황
-                ColorF{1.0, 1.0, 0.3}   // 노랑
+                ColorF{1.0, 0.8, 0.2},   
+                ColorF{1.0, 0.3, 0.3},   
+                ColorF{0.3, 0.5, 1.0},   
+                ColorF{0.3, 1.0, 0.3},   
+                ColorF{0.8, 0.3, 1.0},   
+                ColorF{1.0, 0.5, 0.0},   
+                ColorF{1.0, 1.0, 0.3}    
             };
             
             particle.color = colors[Random(0, (int32)colors.size() - 1)];
@@ -3441,11 +3178,10 @@ void InGameScene::updateDeathEffect()
 	{
 		particle.pos += particle.velocity * deltaTime;
 		particle.life -= deltaTime;
-		particle.velocity *= 0.95;  // 천천히 감속
+		particle.velocity *= 0.95;    
 		double alpha = particle.life / particle.maxLife;
 		particle.color.a = alpha;
 	}
-	// 수명이 다한 파티클 제거
 	deathParticles_.remove_if([](const DeathParticle& p) { return p.life <= 0; });
 }
 void InGameScene::updateClearEffect()
@@ -3453,7 +3189,6 @@ void InGameScene::updateClearEffect()
     const double deltaTime = Scene::DeltaTime();
     clearEffectTimer_ += deltaTime;
     
-    // 5초 후 이펙트 종료
     if (clearEffectTimer_ > 5.0)
     {
         showClearEffect_ = false;
@@ -3461,10 +3196,8 @@ void InGameScene::updateClearEffect()
         return;
     }
     
-    // 2초마다 새로운 폭죽 추가
     if (clearEffectTimer_ > 1.0 && (int)(clearEffectTimer_ * 2) % 2 == 0 && clearParticles_.size() < 300)
     {
-        // 추가 폭죽 생성
         Vec2 randomPos = Vec2(Random(100, (int)Scene::Size().x - 100), Random(100, 400));
         
         for (int32 i = 0; i < 20; i++)
@@ -3486,30 +3219,24 @@ void InGameScene::updateClearEffect()
         }
     }
     
-    // 파티클 업데이트
     for (auto& particle : clearParticles_)
     {
         particle.pos += particle.velocity * deltaTime;
         particle.life -= deltaTime;
         particle.rotation += particle.rotationSpeed * deltaTime;
         
-        // 중력 효과
         particle.velocity.y += 200.0 * deltaTime;
         
-        // 공기 저항
         particle.velocity *= 0.98;
         
-        // 알파값 조정 (생명이 줄어들수록 투명해짐)
         double alpha = particle.life / particle.maxLife;
         particle.color.a = alpha;
     }
     
-    // 수명이 다한 파티클 제거
     clearParticles_.remove_if([](const ClearParticle& p) { return p.life <= 0; });
 }
 void InGameScene::drawDeathEffect()
 {
-	// Additive 블렌드로 빛나는 효과
 	ScopedRenderStates2D blend{ BlendState::Additive };
 
 	for (const auto& particle : deathParticles_)
@@ -3519,24 +3246,19 @@ void InGameScene::drawDeathEffect()
 }
 void InGameScene::drawClearEffect()
 {
-    // Additive 블렌드 상태로 설정하여 빛나는 효과
     ScopedRenderStates2D blend{ BlendState::Additive };
     
     for (const auto& particle : clearParticles_)
     {
-        // 파티클 크기와 색상 적용
         if (particle.size < 2.0)
         {
-            // 작은 파티클은 점으로 표시
             Circle{particle.pos, particle.size}.draw(particle.color);
         }
         else
         {
-            // 큰 파티클은 회전하는 별 모양
             const double halfSize = particle.size * 0.5;
             const Vec2 center = particle.pos;
             
-            // 별 모양 그리기 (5개 점)
             Array<Vec2> starPoints;
             for (int i = 0; i < 10; i++)
             {
@@ -3545,7 +3267,6 @@ void InGameScene::drawClearEffect()
                 starPoints.push_back(center + Vec2(Math::Cos(angle) * radius, Math::Sin(angle) * radius));
             }
             
-            // 별 모양 폴리곤 그리기
             if (starPoints.size() >= 3)
             {
                 Polygon{starPoints}.draw(particle.color);
@@ -3555,25 +3276,20 @@ void InGameScene::drawClearEffect()
 }
 void InGameScene::drawFailedScreen()
 {
-	// 배경 오버레이 표시
 	Rect{ 0, 0, Scene::Size().x, Scene::Size().y }.draw(ColorF{ 0, 0, 0, 0.8 });
 
-	// "STAGE FAILED!" 텍스트 (빨간색)
 	clearFont_(U"STAGE FAILED!")
 		.drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0 - 200, ColorF{ 1.0, 0.3, 0.3 });
 
-	// Move 횟수 표시
 	gameFont_(U"Moves: {}"_fmt(moves_))
 		.drawAt(Scene::Size().x / 2.0, Scene::Size().y / 2.0, ColorF{ 0.8, 0.8, 0.8 });
 
-	// 버튼 영역
 	const double centerX = Scene::Size().x / 2.0;
 	const double centerY = Scene::Size().y / 2.0 + 120;
 	const double buttonWidth = 200;
 	const double buttonHeight = 50;
 	const double buttonMargin = 20;
 
-	// Retry 버튼 (왼쪽)
 	Rect retryButtonRect{
 		static_cast<int32>(centerX - buttonWidth - buttonMargin / 2),
 		static_cast<int32>(centerY - buttonHeight / 2),
@@ -3588,7 +3304,6 @@ void InGameScene::drawFailedScreen()
 	ColorF retryTextColor = retryButtonRect.mouseOver() ? Palette::Yellow : Palette::White;
 	buttonFont_(U"やり直す").drawAt(retryButtonRect.center(), retryTextColor);
 
-	// Stage Select 버튼 (오른쪽)
 	Rect stageSelectButtonRect{
 		static_cast<int32>(centerX + buttonMargin / 2),
 		static_cast<int32>(centerY - buttonHeight / 2),
@@ -3603,15 +3318,13 @@ void InGameScene::drawFailedScreen()
 	ColorF stageSelectTextColor = stageSelectButtonRect.mouseOver() ? Palette::Yellow : Palette::White;
 	buttonFont_(U"ステージ選択").drawAt(stageSelectButtonRect.center(), stageSelectTextColor);
 
-	// 버튼 클릭 처리
 	if (retryButtonRect.leftClicked())
 	{
-		// 현재 스테이지 다시 시작
 		isFailed_ = false;
 		showFailedButtons_ = false;
-		isPlayerDead_ = false;  // ★ 추가
-		deathAnimTimer_ = 0.0;   // ★ 추가
-		deathParticles_.clear(); // ★ 추가
+		isPlayerDead_ = false;    
+		deathAnimTimer_ = 0.0;     
+		deathParticles_.clear();   
 		gameTime_ = 0.0;
 		moves_ = 0;
 		score_ = 0;
@@ -3619,7 +3332,6 @@ void InGameScene::drawFailedScreen()
 
 		loadStage(currentStage_);
 
-		// ★ 배경음악 재생 (Final Stage 구분) ★
 		if (StageData::isFinalStage(currentStage_))
 		{
 			startBossBgmFadeIn_();
@@ -3658,7 +3370,6 @@ void InGameScene::updatePaintAnimation()
     const double deltaTime = Scene::DeltaTime();
     paintAnimTimer_ += deltaTime;
     
-    // 각 프레임당 표시 시간 계산 (1초 / 5프레임 = 0.2초)
     const double frameDuration = PAINT_ANIM_DURATION / PAINT_ANIM_FRAME_COUNT;
     
     if (paintAnimTimer_ >= frameDuration)
@@ -3666,7 +3377,6 @@ void InGameScene::updatePaintAnimation()
         paintAnimTimer_ -= frameDuration;
         paintAnimFrame_++;
         
-        // 모든 프레임 재생 완료
         if (paintAnimFrame_ >= PAINT_ANIM_FRAME_COUNT)
         {
             isPlayingPaintAnimation_ = false;
@@ -3681,7 +3391,6 @@ void InGameScene::drawPaintAnimation()
     if (!isPlayingPaintAnimation_ || tacoPaintFrames_.isEmpty())
         return;
     
-    // 현재 프레임 인덱스가 유효한지 확인
     if (paintAnimFrame_ < 0 || paintAnimFrame_ >= static_cast<int32>(tacoPaintFrames_.size()))
         return;
     
@@ -3689,7 +3398,6 @@ void InGameScene::drawPaintAnimation()
     if (currentFrame.isEmpty())
         return;
     
-    // 플레이어 위치에 페인트 애니메이션 그리기
     const Rect animRect{
         static_cast<int32>(playerPixelPos_.x - TILE_SIZE / 2),
         static_cast<int32>(playerPixelPos_.y - TILE_SIZE / 2),
@@ -3697,7 +3405,6 @@ void InGameScene::drawPaintAnimation()
         TILE_SIZE
     };
     
-    // 좌우 반전 여부에 따라 그리기
     if (isPaintAnimMirrored_)
     {
         currentFrame.resized(TILE_SIZE, TILE_SIZE).mirrored().draw(animRect.pos);
@@ -3728,18 +3435,15 @@ int32 InGameScene::getMapHeight() const {
 	return 0;
 }
 
-// 2) 스테이지 인덱스로 로드 (가변 파서 경로 사용)
 void InGameScene::loadStageByIndex(int32 stageNumber)
 {
 	currentStage_ = stageNumber;
 	const Array<String> mapText = StageData::getStageMap(stageNumber);
-	loadStageFromText_VarSize(mapText); // 가변 파서 호출
+	loadStageFromText_VarSize(mapText);    
 }
 
-// 3) 가변 맵 파서 (텍스트 길이로 크기 산출 → 리사이즈 → 전체 범위 파싱)
 void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 {
-	// 크기 산출
 	const int32 H = static_cast<int32>(mapText.size());
 	int32 W = 0;
 	for (const auto& line : mapText) {
@@ -3748,14 +3452,12 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 	const int32 width = Max(1, W);
 	const int32 height = Max(1, H);
 
-	// mapData_ 리사이즈 및 초기화
 	mapData_.clear();
 	mapData_.resize(height);
 	for (auto& row : mapData_) {
 		row.assign(width, TileType::Empty);
 	}
 
-	// 엔티티/목표 초기화
 	boxes_.clear();
 	items_.clear();
 	redGoalPositions_.clear();
@@ -3766,7 +3468,6 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 	violetGoalPositions_.clear();
 	blackGoalPositions_.clear();
 
-	// 전체 범위 파싱 (기존 로직 유지, addBox 없이 push_back 사용)
 	for (int32 y = 0; y < height; ++y) {
 		const String line = (y < mapText.size() ? mapText[y] : U"");
 		for (int32 x = 0; x < width; ++x) {
@@ -3786,7 +3487,6 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 				isPlayerMoving_ = false;
 				break;
 
-				// 박스(대문자)
 			case U'R': boxes_.push_back(ColorBox{ pos, BoxColor::Red,    0.0, nextBoxUID_++ }); break;
 			case U'Y': boxes_.push_back(ColorBox{ pos, BoxColor::Yellow, 0.0, nextBoxUID_++ }); break;
 			case U'B': boxes_.push_back(ColorBox{ pos, BoxColor::Blue,   0.0, nextBoxUID_++ }); break;
@@ -3795,7 +3495,6 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 			case U'V': boxes_.push_back(ColorBox{ pos, BoxColor::Violet, 0.0, nextBoxUID_++ }); break;
 			case U'K': boxes_.push_back(ColorBox{ pos, BoxColor::Black,  0.0, nextBoxUID_++ }); break;
 
-				// 목표(소문자)
 			case U'r': mapData_[y][x] = TileType::RedGoal;    redGoalPositions_.push_back(pos);    break;
 			case U'y': mapData_[y][x] = TileType::YellowGoal; yellowGoalPositions_.push_back(pos); break;
 			case U'b': mapData_[y][x] = TileType::BlueGoal;   blueGoalPositions_.push_back(pos);   break;
@@ -3804,7 +3503,6 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 			case U'v': mapData_[y][x] = TileType::VioletGoal; violetGoalPositions_.push_back(pos); break;
 			case U'k': mapData_[y][x] = TileType::BlackGoal;  blackGoalPositions_.push_back(pos);  break;
 
-				// 아이템(숫자)
 			case U'2': items_.push_back(GameItem{ pos, ItemType::RedItem }); mapData_[y][x] = TileType::RedItem;    break;
 			case U'4': items_.push_back(GameItem{ pos, ItemType::OrangeItem }); mapData_[y][x] = TileType::OrangeItem; break;
 			case U'6': items_.push_back(GameItem{ pos, ItemType::YellowItem }); mapData_[y][x] = TileType::YellowItem; break;
@@ -3812,7 +3510,6 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 			case U'8': items_.push_back(GameItem{ pos, ItemType::BlueItem }); mapData_[y][x] = TileType::BlueItem;   break;
 			case U'9': items_.push_back(GameItem{ pos, ItemType::VioletItem }); mapData_[y][x] = TileType::VioletItem; break;
 
-				// 빈 공간
 			case U'.':
 			case U' ':
 			default:
@@ -3822,12 +3519,10 @@ void InGameScene::loadStageFromText_VarSize(const Array<String>& mapText)
 		}
 	}
 
-	// 픽셀 좌표 및 고정 카메라 정렬
 	playerPixelPos_ = tileToPixel(playerPos_);
-	onStageLoaded_FixedCamera(); // 맵 크기에 맞게 스케일/센터 고정
+	onStageLoaded_FixedCamera();      
 }
 
-// 4) 경계/이동 체크 (동적 크기 기반)
 bool InGameScene::isInsideMap(Point pos) const {
 	return (pos.x >= 0 && pos.y >= 0
 		 && pos.x < getMapWidth()
@@ -3920,18 +3615,15 @@ void InGameScene::updateFixedCameraZoomByWheelInput() {
 void InGameScene::onStageLoaded_FixedCamera() {
 	playerPixelPos_ = tileToPixel(playerPos_);
 	
-    // Final stage (보스 스테이지)는 플레이 영역을 화면 하단에 배치
     if (StageData::isFinalStage(currentStage_)) {
 		const double vw = static_cast<double>(Scene::Width());
 		const double vh = static_cast<double>(Scene::Height());
 		const double worldW = static_cast<double>(getMapWidth()) * TILE_SIZE;
 		const double worldH = static_cast<double>(getMapHeight()) * TILE_SIZE;
 		
-		// 플레이 영역(10x5)을 화면에 맞게 스케일 계산
-		double s = Min(vw / worldW, (vh * 0.5) / worldH) * 0.9;  // 화면 하단 절반 영역에 맞춤
+		double s = Min(vw / worldW, (vh * 0.5) / worldH) * 0.9;       
 		s = Clamp(s, 0.25, 5.0);
 		
-		// 플레이 영역 중심을 화면 하단에 배치 (상단 절반은 보스용)
 		const Vec2 center(
 			worldW * 0.5,
 			worldH * 0.5
@@ -3940,10 +3632,9 @@ void InGameScene::onStageLoaded_FixedCamera() {
 		auto& cam = camera();
 		cam.jumpToScale(s);
 		
-        // 카메라를 위로 이동 (화면 하단에 플레이 영역 표시)
 		const Vec2 offsetCenter = Vec2(
 			center.x,
-            center.y - (vh / s) * 0.25  // 화면 하단으로 이동
+            center.y - (vh / s) * 0.25     
 		);
 		cam.jumpToPos(offsetCenter);
 	}
@@ -4199,15 +3890,12 @@ bool InGameScene::isGoalTile(TileType t) {
 }
 
 void InGameScene::drawGoalMarkersTop() {
-	// 바닥 타일 스위치에서 사용한 파라미터와 동일
 	constexpr double ringRadius = 12.0;
 	constexpr int ringThickness = 3;
 
 	auto shouldOverlay = [&](Point p) -> bool {
 		if (p.x < 0 || p.x >= getMapWidth() || p.y < 0 || p.y >= getMapHeight()) return false;
-		// 이미 바닥 타일로 Goal이 그려질 상황이면 상단에서 중복 그리지 않음
 		if (isGoalTile(mapData_[p.y][p.x])) return false;
-		// 그 외(용암/얼음/벽/마스크 등으로 가려진 경우)는 상단에서 그려서 보이게 함
 		return true;
 		};
 
@@ -4218,7 +3906,6 @@ void InGameScene::drawGoalMarkersTop() {
 		Circle{ r.center(), ringRadius }.drawFrame(ringThickness, cRing);
 		};
 
-	// 바닥 타일과 동일 색상으로 최상단 오버레이
 	for (const auto& p : redGoalPositions_)
 		drawGoalTop(p, ColorF{ 0.9, 0.2, 0.2, 0.3 }, ColorF{ 0.9, 0.2, 0.2 });
 	for (const auto& p : yellowGoalPositions_)
@@ -4274,7 +3961,6 @@ bool InGameScene::chooseRandomSpawnTile(Point& out) {
 ColorF InGameScene::randomSixColor() const {
 	static const BoxColor pool[] = {
 		BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
-		//BoxColor::Orange, BoxColor::Green, BoxColor::Violet
 	};
 
 	switch (pool[Random(0,2)])
@@ -4282,45 +3968,20 @@ ColorF InGameScene::randomSixColor() const {
 		case BoxColor::Red:    return Palette::Red;
 		case BoxColor::Yellow: return Palette::Yellow;
 		case BoxColor::Blue:   return Palette::Blue;
-		//case BoxColor::Orange: return Palette::Orange;
-		//case BoxColor::Green:  return Palette::Green;
-		//case BoxColor::Violet: return Palette::Violet;
 		default:               return Palette::White;
 	}
 
 }
 
-//void InGameScene::spawnColorAttack() {
-//	Point tile;
-//	if (!chooseRandomSpawnTile(tile)) return;
-//
-//	
-//	ColorBox box;
-//	box.pos = tile;
-//	box.color = randomSixColor();
-//	box.uid = nextBoxUID_++;
-//	box.creationTime = gameTime_;
-//	boxes_ << box;
-//
-//	
-//	spawnWallBreakFXAtTile(tile);
-//	camera().shake(0.12, 10.0 / Max(0.001, camera().getScale()));
-//
-//	lastAttackTile_ = tile;
-//}
-
-// InGameScene.cpp
 void InGameScene::updateBossAttacks(double dt)
 {
 	if (!StageData::isFinalStage(currentStage_)) return;
 
-	// 주기적으로 다음 공격 예약
 	if (gameTime_ >= nextAttackTime_)
 	{
-		scheduleNextBossAttack();           // nextAttackTime은 함수 내부에서 갱신
+		scheduleNextBossAttack();               
 	}
 
-	// 이하 기존 텔레그래프 처리/발사 처리 유지
 	for (auto& p : pendingAttacks_)
 	{
 		if (p.phase != AttackPhase::Telegraph) continue;
@@ -4365,7 +4026,6 @@ void InGameScene::spawnBlackHomingAttack() {
 
 void InGameScene::drawBossAttacks()
 {
-	// 텔레그래프 마커 그리기 (기존 코드)
 	for (const auto& p : pendingAttacks_)
 	{
 		if (p.phase != AttackPhase::Telegraph) continue;
@@ -4375,7 +4035,6 @@ void InGameScene::drawBossAttacks()
 
 		if (p.type == BossAttackType::ColorSpawn)
 		{
-			// 타겟 타일 마커
 			drawTelegraphMarker(p.targetTile, p.telegraphColor, t, pulse);
 
 			const Vec2 bossPos = getBossStartUIPos();
@@ -4384,7 +4043,6 @@ void InGameScene::drawBossAttacks()
 				p.targetTile.y * TILE_SIZE + TILE_SIZE * 0.5
 			);
 
-			// 보스 -> 타겟 라인 (예고 빔)
 			const double beamAlpha = 0.35 + 0.15 * pulse;
 			Line(bossPos, targetPos).draw(5, ColorF(
 				p.telegraphColor.r,
@@ -4393,8 +4051,7 @@ void InGameScene::drawBossAttacks()
 				beamAlpha
 			));
 
-			// 보스 위치에 발사 준비 표시
-			const double chargePulse = 1.0 - (p.telegraphTime / 2.0); // 준비 진행도
+			const double chargePulse = 1.0 - (p.telegraphTime / 2.0);   
 			const double chargeSize = 15.0 + 10.0 * chargePulse;
 
 			Circle(bossPos, chargeSize * pulse)
@@ -4402,9 +4059,8 @@ void InGameScene::drawBossAttacks()
 			Circle(bossPos, chargeSize)
 				.drawFrame(3, ColorF(p.telegraphColor.r, p.telegraphColor.g, p.telegraphColor.b, 0.8 * pulse));
 		}
-		else // BossAttackType::BlackHoming
+		else  
 		{
-			// 소스 타일 마커
 			drawTelegraphMarker(p.sourceTile, ColorF(0.0, 0.0, 0.0, 1.0), t, pulse);
 
 			const Vec2 bossPos = getBossStartUIPos();
@@ -4472,7 +4128,6 @@ void InGameScene::scheduleNextBossAttack()
 
 	static const BoxColor pool[6] = {
 		BoxColor::Red, BoxColor::Yellow, BoxColor::Blue,
-		//BoxColor::Orange, BoxColor::Green, BoxColor::Violet
 	};
 	const BoxColor bc = pool[Random(0, 2)];
 	p.boxColor = bc;
@@ -4483,12 +4138,11 @@ void InGameScene::scheduleNextBossAttack()
 
 	pendingAttacks_ << p;
 
-	// 다음 예약 시간 갱신(기존 간격 사용)
 	nextAttackTime_ = gameTime_ + attackInterval_;
 }
 void InGameScene::fireColorAttack(const PendingAttack& p)
 {
-	setBossState(BossAnimState::Attack, false, 0.12);  // ★ 0.08 → 0.12로 변경
+	setBossState(BossAnimState::Attack, false, 0.12);       
 	const Vec2 bossScreenPos = getBossStartUIPos();
 	createEnergyBallEffect(bossScreenPos, p.targetTile, p.telegraphColor, 1.2, true, p.boxColor);
 }
@@ -4555,14 +4209,12 @@ void InGameScene::updateEnergyBalls(double dt)
 
 		b.currentPosScreen = Math::Lerp(b.startPosScreen, targetScreen, eased);
 
-		// 도착 처리: 한 번만 실행
 		if (!b.arrivalHandled && b.progress >= 1.0)
 		{
 			b.arrivalHandled = true;
 
 			if (b.spawnBoxOnArrive)
 			{
-				// 박스 생성 지연 실행
 				ColorBox box;
 				box.pos = b.targetTile;
 				box.color = b.spawnBoxColor;
@@ -4586,7 +4238,6 @@ void InGameScene::drawEnergyBalls()
 {
 	if (energyBalls.isEmpty()) return;
 
-	// Additive 블렌딩으로 발광 효과
 	ScopedRenderStates2D blend(BlendState::Additive);
 
 	for (const auto& ball : energyBalls)
@@ -4628,14 +4279,13 @@ void InGameScene::drawEnergyBalls()
 	}
 }
 
-// InGameScene.cpp - 새 함수 추가
 void InGameScene::drawHomingBullets()
 {
 }
 
 void InGameScene::drawBossChargeAtStart(const ColorF& col, double remain, double total)
 {
-	const Vec2 center = getBossStartUIPos();      // 화면 좌표(보스 시작점)
+	const Vec2 center = getBossStartUIPos();         
 	const double t01 = Saturate(1.0 - remain / Max(0.001, total));
 	const double pulse = 0.5 + 0.5 * Math::Sin(gameTime_ * 10.0);
 	const double base = 18.0 + 10.0 * t01;
@@ -4913,12 +4563,6 @@ void InGameScene::loadRandomPattern()
 	case 3: currentWallPattern_ = BossWallPatternData::getCrossPattern(); break;
 	case 4: currentWallPattern_ = BossWallPatternData::getDiagonalXPattern(); break;
 	case 5: currentWallPattern_ = BossWallPatternData::getSpikePattern(); break;
-	//case 6: currentWallPattern_ = BossWallPatternData::getAlternatingPattern(); break;
-	/*case 7: currentWallPattern_ = BossWallPatternData::getMazePattern(); break;
-	case 8: currentWallPattern_ = BossWallPatternData::getCheckerboardPattern(); break;
-	case 9: currentWallPattern_ = BossWallPatternData::getRandomBulletPattern(); break;
-	case 10: currentWallPattern_ = BossWallPatternData::getRotatingPattern(); break;
-	case 11: currentWallPattern_ = BossWallPatternData::getBoxShrinkPattern(); break;*/
 	default: currentWallPattern_ = BossWallPatternData::getVerticalFillPattern(); break;
 	}
 }
@@ -4940,7 +4584,7 @@ void InGameScene::loadBossPhase(int32 phase)
 	const Array<String> phaseMap = StageData::getFinalStageMapForPhase(phase);
 
 	boxes_.clear();
-	items_.clear(); // ★ items_ 초기화
+	items_.clear();    
 	redGoalPositions_.clear();
 	yellowGoalPositions_.clear();
 	blueGoalPositions_.clear();
@@ -5033,27 +4677,27 @@ void InGameScene::loadBossPhase(int32 phase)
 				mapData_[y][x] = TileType::VioletGoal;
 				violetGoalPositions_.push_back(pos);
 				break;
-			case U'2': // 빨강 아이템
+			case U'2':   
 				items_.push_back(GameItem{ pos, ItemType::RedItem });
 				mapData_[y][x] = TileType::RedItem;
 				break;
-			case U'4': // 주황 아이템
+			case U'4':   
 				items_.push_back(GameItem{ pos, ItemType::OrangeItem });
 				mapData_[y][x] = TileType::OrangeItem;
 				break;
-			case U'6': // 노랑 아이템
+			case U'6':   
 				items_.push_back(GameItem{ pos, ItemType::YellowItem });
 				mapData_[y][x] = TileType::YellowItem;
 				break;
-			case U'7': // 초록 아이템
+			case U'7':   
 				items_.push_back(GameItem{ pos, ItemType::GreenItem });
 				mapData_[y][x] = TileType::GreenItem;
 				break;
-			case U'8': // 파랑 아이템
+			case U'8':   
 				items_.push_back(GameItem{ pos, ItemType::BlueItem });
 				mapData_[y][x] = TileType::BlueItem;
 				break;
-			case U'9': // 보라 아이템
+			case U'9':   
 				items_.push_back(GameItem{ pos, ItemType::VioletItem });
 				mapData_[y][x] = TileType::VioletItem;
 				break;
@@ -5356,7 +5000,7 @@ void InGameScene::updateBossAttackSequence(double dt)
 				if (gameData_)
 				{
 					gameData_->clearStage(currentStage_);
-					gameData_->finalStageCleared = true;  // ★ 추가
+					gameData_->finalStageCleared = true;    
 				}
 
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying())
@@ -5547,7 +5191,7 @@ void InGameScene::setBossState(BossAnimState s, bool loop, double frameDuration)
 	if (frameDuration > 0.0) bossFrameDuration_ = frameDuration;
 	switch (s) {
 	case BossAnimState::Idle: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.30; break;
-	case BossAnimState::Attack: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.12; break;  // ★ 0.08 → 0.12로 변경
+	case BossAnimState::Attack: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.12; break;       
 	case BossAnimState::Summon: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.09; break;
 	case BossAnimState::Cloak: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.10; break;
 	case BossAnimState::Confused: if (bossFrameDuration_ <= 0.0) bossFrameDuration_ = 0.12; break;

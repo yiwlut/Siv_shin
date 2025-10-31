@@ -12,16 +12,12 @@ layout(std140) uniform ShapeInfo { vec4  u_shapeRect;  vec2 u_viewSize; vec2 _pa
 
 vec2 globalScreenUV()
 {
-    // gl_FragCoord는 하단 원점 → top-left로 변환
     vec2 scrTopLeft = vec2(gl_FragCoord.x, u_viewSize.y - gl_FragCoord.y);
     return clamp(scrTopLeft / u_viewSize, 0.0, 1.0);
 }
 
-// Texture/Shape 경로 통합 - 모두 전역 화면 UV 사용
 vec2 useUV(vec2 texUV)
 {
-    // Paint Spread는 전역 originPoint를 사용하므로
-    // Texture든 Shape든 전역 화면 좌표계를 사용해야 함
     return globalScreenUV();
 }
 

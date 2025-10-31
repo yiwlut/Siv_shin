@@ -1,5 +1,4 @@
-﻿// HolographicShader.cpp
-#include "HolographicShader.hpp"
+﻿#include "HolographicShader.hpp"
 
 HolographicShader::HolographicShader()
 {

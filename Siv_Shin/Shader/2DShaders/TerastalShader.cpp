@@ -1,5 +1,4 @@
-﻿// TerastalShader.cpp
-#include "TerastalShader.hpp"
+﻿#include "TerastalShader.hpp"
 
 TerastalShader::TerastalShader()
 {

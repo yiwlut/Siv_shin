@@ -1,15 +1,14 @@
 #version 410
 layout(location = 0) out vec4 FragColor;
 
-// 조절 가능한 파편(선) 개수
-#define MAX_LINES 5  // 배열 상한(권장 16 이내), 실제 사용 개수는 sd.w로 런타임 제어
+#define MAX_LINES 5
 
 layout(std140) uniform BombParams {
-    vec4 rt;  // rt.xy=resolution, rt.z=time, rt.w=explodeT
-    vec4 ch;  // ch.xy=center(TL), ch.zw=halfSize
-    vec4 pp;  // pp.x=pulseAmp, pp.y=pulseSpeed, pp.z=spread, pp.w=unused
-    vec4 sd;  // sd.x=seed, sd.y=minThickness, sd.z=tintMode(0=bomb,1=wall), sd.w=lineCount(float)
-    vec4 col; // col.rgb = tintColor (벽 색), col.a=unused
+    vec4 rt;
+    vec4 ch;
+    vec4 pp;
+    vec4 sd;
+    vec4 col;
 };
 
 float hash11(float n){ return fract(sin(n) * 43758.5453123); }
@@ -51,14 +50,11 @@ void main(){
     vec2 p = gl_FragCoord.xy;
     vec2 pos = p - centerTL;
 
-    // 런타임 파편 개수(안전 clamp)
     int lineCount = int(sd.w + 0.5);
-    lineCount = clamp(lineCount, 2, MAX_LINES); // 최소 2, 최대 MAX_LINES
+    lineCount = clamp(lineCount, 2, MAX_LINES);
 
-    // 프리(점등) 진행률
     float preExplodeProgress = saturate(time / 3.0);
 
-    // 박동
     float freqMultiplier = 1.0 + 2.0 * preExplodeProgress * preExplodeProgress;
     float pulse    = 1.0 + pp.x * sin(time * pp.y * freqMultiplier);
 
@@ -67,7 +63,6 @@ void main(){
     float aaPre = fwidth(halfPre.x + halfPre.y) * 0.25 + 1.0;
     float aaExp = fwidth(halfFix.x + halfFix.y) * 0.25 + 1.0;
 
-    // 색상 램프
     float env = smoothstep(0.0, 3.0, time);
     vec3 nearBlack = vec3(0.18, 0.06, 0.06);
     vec3 redDeep   = vec3(0.22, 0.05, 0.05);
@@ -77,7 +72,6 @@ void main(){
     vec3 redWarm = mix(redDeep, redBright, saturate(0.35 + 0.65 * warm));
     vec3 preFillCol = mix(nearBlack, redWarm, env);
 
-    // 폭발 직전 글로우
     float glowAmount = pow(preExplodeProgress, 4.0);
     vec3 glowColor = vec3(1.0, 0.35, 0.1);
     vec3 finalFillCol = preFillCol + glowColor * glowAmount;
@@ -102,7 +96,6 @@ void main(){
 
     vec3  fillCol  = finalFillCol * (1.0 - 0.10 * (1.0 - edgeMask)) + 0.08 * dirHL * edgeMask;
 
-    // 프리 단계
     if (explodeT <= 1e-6){
         float a = clamp(aFrame + aFill, 0.0, 1.0);
         if (a < 1e-3) discard;
@@ -111,11 +104,9 @@ void main(){
         return;
     }
 
-    // 폭발 분기: 보수적 경계 early-out(파편 소실 방지용 여유)
     float Rmax = length(halfFix) * 3.1 + (pp.z * 1.25) + 12.0;
     if (dot(pos, pos) > Rmax * Rmax) discard;
 
-    // 라인 집합 생성(개수: lineCount)
     vec2  N[MAX_LINES]; float D[MAX_LINES];
     for (int i = 0; i < lineCount; ++i){
         float ang = hash11(sd.x * 113.0 + float(i) * 17.0) * 6.2831853;

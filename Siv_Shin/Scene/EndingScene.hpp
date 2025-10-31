@@ -2,7 +2,7 @@
 #include "SceneManager.hpp"
 
 class EndingScene : public GameScene {
-	friend class GameSceneManager;  // ★ 추가
+	friend class GameSceneManager;    
 
 public:
 	EndingScene();
@@ -13,7 +13,7 @@ public:
 	void onExit() override;
 
 private:
-	GameData* gameData_ = nullptr;  // ★ 추가 (가장 아래에)
+	GameData* gameData_ = nullptr;      
 
 	struct RubyText {
 		String baseText, rubyText;

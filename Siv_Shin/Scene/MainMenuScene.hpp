@@ -3,21 +3,19 @@
 
 class MainMenuScene : public GameScene
 {
-	friend class GameSceneManager;  // ★ 이 줄 추가
+	friend class GameSceneManager;      
 private:
     Font titleFont_;
     Font buttonFont_;
-    Font infoFont_;  // W100 경고 해결: 멤버변수로 이동
+    Font infoFont_;       
     
-    // 배경음악
     Audio bgm_;
 
 	Array<Texture> cornerTL_, cornerTR_, cornerBL_, cornerBR_;
-	GameData* gameData_ = nullptr;  // ★ 추가
+	GameData* gameData_ = nullptr;    
 	int32 cornerFrame_ = 0;
 	double cornerTimer_ = 0.0;
 	constexpr static double CORNER_ANIM_SPEED = 0.5;
-    // 버튼 상태 관리
     struct Button
     {
         Rect rect;
@@ -41,19 +39,16 @@ private:
 	double animationFrameTimer_ = 0.0;
 	const double animationFrameDuration_ = 0.15;
 
-    // 애니메이션 효과
     double titleAnimTimer_ = 0.0;
     ColorF backgroundColor_;
-    bool wasFocused_ = true;  // 포커스 상태 추적
+    bool wasFocused_ = true;     
     
-    // 페이드 효과
     double fadeTimer_ = 0.0;
-    double fadeDuration_ = 1.0;  // 1초 페이드인
+    double fadeDuration_ = 1.0;    
     
-    // 페이드아웃 효과
     bool isFadingOut_ = false;
     double fadeOutTimer_ = 0.0;
-    double fadeOutDuration_ = 1.0;  // 1초 페이드아웃
+    double fadeOutDuration_ = 1.0;    
     SceneType nextScene_ = SceneType::MainMenu;
 
 public:

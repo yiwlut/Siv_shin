@@ -2,13 +2,12 @@
 #include <Siv3D.hpp>
 #include <memory>
 
-// 씬 타입 열거형
 enum class SceneType
 {
-    Logo,         // 로고 씬 추가
+    Logo,            
     MainMenu,
-    Opening,      // 오프닝 씬 추가
-    StageSelect,  // 스테이지 선택 씬 추가
+    Opening,         
+    StageSelect,      
     InGame,
     Settings,
     GameOver,
@@ -19,8 +18,8 @@ enum class SceneType
 
 struct GameData
 {
-	Array<bool> stageUnlocked = { true, false, false, false, false, false, false, false, false, false };  // 1~10번 스테이지
-	bool finalStageUnlocked = false;  // ★ 파이널 스테이지 별도 플래그
+	Array<bool> stageUnlocked = { true, false, false, false, false, false, false, false, false, false };    
+	bool finalStageUnlocked = false;       
 	int32 currentStage = 1;
 	int32 totalScore = 0;
 	bool finalStageCleared = false;
@@ -28,7 +27,7 @@ struct GameData
 
 	void unlockStage(int32 stageNumber)
 	{
-		if (stageNumber == 11)  // ★ 파이널 스테이지
+		if (stageNumber == 11)     
 		{
 			finalStageUnlocked = true;
 		}
@@ -40,7 +39,7 @@ struct GameData
 
 	bool isStageUnlocked(int32 stageNumber) const
 	{
-		if (stageNumber == 11)  // ★ 파이널 스테이지
+		if (stageNumber == 11)     
 		{
 			return finalStageUnlocked;
 		}
@@ -53,25 +52,25 @@ struct GameData
 
 	void clearStage(int32 stageNumber)
 	{
-		unlockStage(stageNumber);  // 현재 스테이지 해금
+		unlockStage(stageNumber);     
 
-		if (stageNumber == 6)  // ★ 6번 클리어 시 파이널 스테이지 해금
+		if (stageNumber == 6)         
 		{
 			finalStageUnlocked = true;
 		}
-		else if (stageNumber == 11)  // ★ 파이널 클리어 시
+		else if (stageNumber == 11)      
 		{
 			finalStageCleared = true;
-			finalStageUnlocked = true;  // 재플레이 가능하도록
-			unlockStage(7);  // 7번 스테이지 해금
+			finalStageUnlocked = true;    
+			unlockStage(7);     
 		}
-		else if (stageNumber < 10)  // 일반 스테이지
+		else if (stageNumber < 10)    
 		{
 			unlockStage(stageNumber + 1);
 		}
 	}
 
-	void unlockAllStages()  // ★ 디버그용: 모든 스테이지 해금
+	void unlockAllStages()       
 	{
 		for (int32 i = 0; i < stageUnlocked.size(); ++i)
 		{
@@ -83,24 +82,23 @@ struct GameData
 
 	void initializeForStageCount(int32 totalStages)
 	{
-		stageUnlocked.assign(10, false);  // 항상 10개 (1~10번)
-		stageUnlocked[0] = true;  // 1번만 해금
+		stageUnlocked.assign(10, false);     
+		stageUnlocked[0] = true;    
 		finalStageUnlocked = false;
 		finalStageCleared = false;
 	}
 };
 
-// 게임 씬 기본 인터페이스
 class GameScene
 {
 public:
     virtual ~GameScene() = default;
     virtual void update() = 0;
     virtual void draw() = 0;
-    virtual SceneType getNextScene() const { return nextScene_; }  // 수정: nextScene_ 반환
+    virtual SceneType getNextScene() const { return nextScene_; }     
     virtual bool shouldChangeScene() const { return shouldChange_; }
-    virtual void onEnter() {}  // 씬 시작시 호출
-    virtual void onExit() {}   // 씬 종료시 호출
+    virtual void onEnter() {}     
+    virtual void onExit() {}      
 
 protected:
     SceneType currentScene_;
@@ -114,14 +112,13 @@ protected:
     }
 };
 
-// 게임 씬 매니저 클래스
 class GameSceneManager
 {
 private:
     std::unique_ptr<GameScene> currentScene_;
     SceneType currentSceneType_;
     bool initialized_ = false;
-    GameData gameData_;  // 전역 게임 데이터
+    GameData gameData_;     
 
 public:
     GameSceneManager();

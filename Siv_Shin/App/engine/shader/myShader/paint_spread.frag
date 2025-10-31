@@ -154,7 +154,6 @@ void main()
     float edgeDistance = abs(dist - adjustedRadius);
     float edgeWave = exp(-edgeDistance * 15.0) * wavePattern * 0.4;
 
-    // 추가 물결 (여러 링)
     for (int i = 0; i < 3; i++)
     {
         float waveOffset = float(i) * 0.15;
@@ -162,32 +161,23 @@ void main()
         edgeWave += exp(-waveDist * 20.0) * wavePattern * (0.3 - float(i) * 0.1);
     }
 
-    // 최종 마스크
-    // 최종 마스크
     paintMask = clamp(paintMask + edgeWave, 0.0, 1.0);
 
-    // 액체 깊이감 (살짝 어둡게)
     float depthEffect = paintMask * 0.95;
     vec3 darkPaint = u_paintColor * depthEffect;
 
-    // [변경] 도형 경로에서만 베이스에 색 틴트 적용
     vec3 baseRGB = base.rgb;
     float outAlpha = base.a;
     if (u_hasTexture < 0.5) {
-        baseRGB *= Color.rgb;      // 도형의 지정 색은 베이스에만 반영
-        outAlpha *= Color.a;       // 도형 알파도 필요 시 반영
+        baseRGB *= Color.rgb;
+        outAlpha *= Color.a;
     }
 
-    // base(베이스) ↔ paint(페인트) 보간
     vec3 finalColor = mix(baseRGB, darkPaint, paintMask);
 
-    // 표면 하이라이트
     finalColor += vec3(edgeWave * 0.3);
 
-    // [수정] 최종 출력: 아웃라인(프레임)은 항상 Color.rgb를 유지
-    // paintMask가 적용되지 않은 영역(프레임)은 원본 색상 유지
     if (u_hasTexture < 0.5 && paintMask < 0.99) {
-        // 프레임 영역: 원본 색상 유지 (밝게)
         finalColor = mix(Color.rgb * baseRGB, finalColor, paintMask);
     }
     

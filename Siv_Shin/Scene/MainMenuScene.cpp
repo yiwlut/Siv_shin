@@ -37,8 +37,8 @@ MainMenuScene::MainMenuScene()
 void MainMenuScene::onEnter()
 {
     titleAnimTimer_ = 0.0;
-    fadeTimer_ = 0.0;  // 페이드 타이머 초기화
-    isFadingOut_ = false;  // 페이드아웃 상태 초기화
+    fadeTimer_ = 0.0;     
+    isFadingOut_ = false;     
     fadeOutTimer_ = 0.0;
     
     if (!bgm_.isEmpty())
@@ -61,15 +61,13 @@ void MainMenuScene::onExit()
 
 void MainMenuScene::initializeButtons()
 {
-    const double centerX = Scene::Size().x / 2.0; // 동적 중앙 계산
-    const double centerY = Scene::Size().y / 2.0; // 동적 중앙 계산
+    const double centerX = Scene::Size().x / 2.0;    
+    const double centerY = Scene::Size().y / 2.0;    
     
-    // Start Game 버튼 (879:566 비율 유지, 0.7배 크기)
-    const double startButtonWidth = 300.0 * 0.7;  // 210
-    const double startButtonHeight = startButtonWidth * (566.0 / 879.0);  // 약 135.2
+    const double startButtonWidth = 300.0 * 0.7;   
+    const double startButtonHeight = startButtonWidth * (566.0 / 879.0);    
     
-    // 버튼 간격 (버튼 높이 + 추가 여백)
-    const double buttonGap = 30; // 버튼 사이의 추가 공백
+    const double buttonGap = 30;     
     const double totalSpacing = startButtonHeight + buttonGap;
     
     startButton_.rect = Rect{
@@ -83,9 +81,8 @@ void MainMenuScene::initializeButtons()
     startButton_.textColor = ColorF{ 0.0, 0.0, 0.0 };
     startButton_.hoverTextColor = ColorF{ 0.0, 0.0, 0.0 };
     
-    // Exit 버튼 (879:566 비율 유지, 0.7배 크기)
-    const double exitButtonWidth = 300.0 * 0.7;  // 210
-    const double exitButtonHeight = exitButtonWidth * (566.0 / 879.0);  // 약 135.2
+    const double exitButtonWidth = 300.0 * 0.7;   
+    const double exitButtonHeight = exitButtonWidth * (566.0 / 879.0);    
     
     exitButton_.rect = Rect{
         static_cast<int32>(centerX - exitButtonWidth / 2), 
@@ -135,7 +132,7 @@ void MainMenuScene::update()
 	animationFrameTimer_ += deltaTime;
 	if (animationFrameTimer_ >= animationFrameDuration_) {
 		animationFrameTimer_ -= animationFrameDuration_;
-		animationFrameIndex_ = (animationFrameIndex_ + 1) % 3; // 3프레임 순환
+		animationFrameIndex_ = (animationFrameIndex_ + 1) % 3;   
 	}
 
     updateButton(startButton_);
@@ -171,13 +168,12 @@ void MainMenuScene::draw()
     const double centerY = Scene::Size().y / 2.0;
     
     const double titlePulse = 0.9 + 0.1 * Math::Sin(titleAnimTimer_ * 2.0);
-    const double titleY = centerY - 150;  // 버튼 위로 위치
+    const double titleY = centerY - 150;     
     
     titleFont_(U"タコの伝説")  
-        .drawAt(centerX, titleY, ColorF(1.0, 1.0, 1.0, fadeAlpha));  // 페이드 효과 적용
+        .drawAt(centerX, titleY, ColorF(1.0, 1.0, 1.0, fadeAlpha));     
 
 	initializeButtons();
-    // 버튼들 그리기 (페이드 효과 적용)
 	drawButton(startButton_);
 	drawButton(exitButton_);
 

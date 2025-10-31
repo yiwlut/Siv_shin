@@ -6,7 +6,7 @@ cbuffer PSConstants2D : register(b0)
 {
     float4 g_BaseColor;
     float4 g_ScreenSize;
-    float4 g_Time; // 시간 값
+    float4 g_Time;
 };
 
 struct PSInput
@@ -36,13 +36,11 @@ float4 PS(PSInput input) : SV_TARGET
 {
     float4 col = g_texture0.Sample(g_sampler0, input.uv);
 
-    // 시간과 위치에 따라 색상 왜곡
     float t = g_Time.x * 0.5f;
     float wave = sin(input.position.x * 0.04f + t) * 0.5f + 0.5f;
     float hue = frac(input.position.y * 0.004f + wave + t);
     float3 rainbow = hsv2rgb(hue, 1, 1);
 
-    // 원본과 효과 티처 분명하게 하려면 한쪽으로 완전히 치우쳐도 OK
     float3 final = lerp(col.rgb, rainbow, 0.8f);
     return float4(final, col.a) * input.color;
 }

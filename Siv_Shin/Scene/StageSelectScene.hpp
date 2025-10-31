@@ -8,12 +8,10 @@ Font titleFont_;
 Font stageFont_;
 Font infoFont_;
 Font stageNumberFont_;
-Font stageTitleFont_;  // ★ 스테이지 이름용 큰 폰트 추가
+Font stageTitleFont_;        
     
-// 배경음악
 Audio bgm_;
     
-// 스테이지 버튼 구조체
     struct StageButton
     {
         Rect rect;
@@ -26,25 +24,21 @@ Audio bgm_;
         String stageName;
         String description;
     };
-	// ★ 텍스처 관련 멤버 추가
-	Array<Array<Texture>> stageTextures_;  // [스테이지][프레임]
+	Array<Array<Texture>> stageTextures_;   
 	int32 animationFrameIndex_ = 0;
 	double animationFrameTimer_ = 0.0;
-	double animationFrameDuration_ = 0.33;  // 약 3fps
+	double animationFrameDuration_ = 0.33;    
 
-	// ★ 보스 스테이지 전용 애니메이션 추가
 	int32 bossAnimationFrameIndex_ = 0;
 	double bossAnimationFrameTimer_ = 0.0;
-	double bossAnimationFrameDuration_ = 0.1;  // 페이드 효과 속도
-	bool bossAnimationReverse_ = false;  // 역재생 플래그
+	double bossAnimationFrameDuration_ = 0.1;     
+	bool bossAnimationReverse_ = false;    
 
-	// ★ 함수 선언 추가
 	void loadStageTextures();
     Array<StageButton> stageButtons_;
     Rect backButton_;
     bool backHovered_ = false;
     
-    // 스크롤 시스템
     double scrollOffset_ = 0.0;
     double targetScrollOffset_ = 0.0;
     bool isDragging_ = false;
@@ -56,12 +50,10 @@ Audio bgm_;
     static constexpr int32 STAGE_HEIGHT = 256;
     static constexpr int32 STAGE_SPACING = 100;
     
-    // 애니메이션
     double animTimer_ = 0.0;
     int32 selectedStage_ = -1;
     bool wasFocused_ = true;
     
-    // 게임 데이터 참조
     GameData* gameData_ = nullptr;
 
 public:

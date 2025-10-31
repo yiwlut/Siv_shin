@@ -43,25 +43,20 @@ bool BombBoxEffect::exploded() const {
 	return m_finished;
 }
 
-// BombBoxEffect.cpp
 bool BombBoxEffect::isExploding() const
 {
-	// pulse 종료 후 폭발 시작 ~ 종료(finished 전)까지
 	return m_inExplode && !m_finished;
 }
 
 bool BombBoxEffect::isPulsing() const
 {
-	// 트리거 전 ~ pulse 진행 중
 	return (!m_inExplode) && (!m_finished);
 }
 
 
 
-// BombBoxEffect.cpp
 void BombBoxEffect::draw(const RectF& boxScreenTL, const Params& p)
 {
-	// 타임라인 업데이트
 	if (!m_inExplode) {
 		if (m_pulseT >= p.pulseDuration) {
 			m_pulseT = 0.0;
@@ -81,7 +76,6 @@ void BombBoxEffect::draw(const RectF& boxScreenTL, const Params& p)
 
 	const Size sceneSize = Scene::Size();
 
-	// 화면(TL) 좌표계에서의 중심/반폭
 	const Vec2 centerTL = boxScreenTL.center();
 	const Vec2 halfSize = boxScreenTL.size * 0.5;
 
@@ -92,7 +86,6 @@ void BombBoxEffect::draw(const RectF& boxScreenTL, const Params& p)
 		static_cast<float>(m_time),
 		m_inExplode ? static_cast<float>(m_explodeT / p.explodeTime) : 0.0f
 	};
-	// TL 그대로 전달 (BL 변환 금지)
 	u.ch = Float4{
 		static_cast<float>(centerTL.x),
 		static_cast<float>(centerTL.y),
@@ -115,7 +108,6 @@ void BombBoxEffect::draw(const RectF& boxScreenTL, const Params& p)
 	const ScopedCustomShader2D shader{ m_ps };
 	Graphics2D::SetPSConstantBuffer(1, m_cb);
 
-	// 카메라 변환 무시: 화면 전체에 패스
 	const Transformer2D identity{ Mat3x2::Identity(), TransformCursor::Yes };
 	Rect{ Scene::Rect() }.draw(ColorF{ 0.0, 0.0 });
 }
@@ -174,7 +166,6 @@ void BombBoxEffect::drawBatched(
 	const ScopedCustomShader2D shader{ ps };
 	const Transformer2D identity{ Mat3x2::Identity(), TransformCursor::Yes };
 
-	// 각 이펙트를 순회하며 UBO 설정 후 렌더
 	for (size_t i = 0; i < screenRects.size(); ++i)
 	{
 		const RectF& rect = screenRects[i];
@@ -217,13 +208,11 @@ void BombBoxEffect::drawBatched(
 		ConstantBuffer<UBO> cb = u;
 		Graphics2D::SetPSConstantBuffer(1, cb);
 
-		// 화면 전체 렌더 (셰이더 내부에서 좌표 필터링)
 		rect.draw(ColorF{ 0.0, 0.0 });
 	}
 }
 
 
-// BombBoxEffect.cpp
 void BombBoxEffect::drawBatchedExpanded(
 	const PixelShader& ps,
 	const Array<RectF>& logicRects,
@@ -248,7 +237,6 @@ void BombBoxEffect::drawBatchedExpanded(
 
 
 
-		// 셰이더의 논리 기준(폭발 분해용)은 'logic'으로 고정
 		const Vec2 logicCenter = logic.center();
 		const Vec2 logicHalf = logic.size * 0.5;
 		u.ch = Float4{ (float)logicCenter.x, (float)logicCenter.y,
@@ -260,13 +248,11 @@ void BombBoxEffect::drawBatchedExpanded(
 		u.col = Float4{ (float)p.wallColor.r, (float)p.wallColor.g,
 						(float)p.wallColor.b, 0.0f };
 
-		// sd: (seed, minThickness, tintMode, lineCount)
 		u.sd = Float4{ p.seed, 0.0f, tintMode, (float)Clamp(p.lineCount, 2, 8) };
 
 		ConstantBuffer cb = u;
 		Graphics2D::SetPSConstantBuffer(1, cb);
 
-		// 실제 프래그먼트 생성 AABB는 'drawR'(확장)로 렌더
 		drawR.draw(ColorF{ 0.0, 0.0 });
 	}
 }

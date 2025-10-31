@@ -6,7 +6,7 @@ namespace StageData
 
 	struct TileModification {
 		int32 x, y;
-		char tileChar;  // 'i' = Ice, 'l' = Lava
+		char tileChar;        
 	};
 	inline const Array<String> STAGE_1 = {
 		U"###g###",
@@ -123,7 +123,6 @@ namespace StageData
 
 	};
 
-	// 20초 경과 시 타일 오버레이 (용암 두 번째 상승)
 	inline const Array<String> FINAL_STAGE_P2_TILES = {
 		U"LLLL!ii!!LLLLL",
 		U"LLLLL!ii!!LLLL",
@@ -133,7 +132,6 @@ namespace StageData
 		U"LLLLL! !!LLLLL",
 	};
 
-	// 30초 경과 시 타일 오버레이 (용암 세 번째 상승)
 	inline const Array<String> FINAL_STAGE_P3_TILES = {
 		U"LLLLL!!LLLLLLL",
 		U"LLLLLL!!LLLLLL",
@@ -270,23 +268,23 @@ namespace StageData
 	{
 		
 
-		if (elapsedTime >= getNextPhaseTime(4))  // ★ 18초 (6초 * 3)
+		if (elapsedTime >= getNextPhaseTime(4))       
 		{
 			return FINAL_STAGE_P4_TILES;
 		}
-		else if (elapsedTime >= getNextPhaseTime(3))  // ★ 12초 (6초 * 2)
+		else if (elapsedTime >= getNextPhaseTime(3))       
 		{
 			return FINAL_STAGE_P3_TILES;
 		}
-		else if (elapsedTime >= getNextPhaseTime(2))  // ★ 12초 (6초 * 2)
+		else if (elapsedTime >= getNextPhaseTime(2))       
 		{
 			return FINAL_STAGE_P2_TILES;
 		}
-		else if (elapsedTime >= getNextPhaseTime(1))  // ★ 6초 (6초 * 1)
+		else if (elapsedTime >= getNextPhaseTime(1))       
 		{
 			return FINAL_STAGE_P1_TILES;
 		}
-		else if (elapsedTime >= 0.0)  // 0초 (시작)
+		else if (elapsedTime >= 0.0)    
 		{
 			return FINAL_STAGE_P0_TILES;
 		}
@@ -307,8 +305,8 @@ namespace StageData
         case 8: return STAGE_8;
         case 9: return STAGE_9;
         case 10: return STAGE_10;
-        case 11: return FINALSTAGE_PHASE1; // Final Boss Stage
-        default: return STAGE_1; // 기본값: 스테이지 1
+        case 11: return FINALSTAGE_PHASE1;    
+        default: return STAGE_1;    
         }
     }
 
@@ -322,7 +320,7 @@ namespace StageData
 
     inline constexpr int32 getTotalStageCount()
     {
-        return 11;  // 10 normal stages + 1 final stage
+        return 11;         
     }
 
     inline Array<String> getFinalStageMap()

@@ -1,7 +1,5 @@
-﻿// PaintSpreadShader.cpp
-#include "PaintSpreadShader.hpp"
+﻿#include "PaintSpreadShader.hpp"
 
-// 효과 파라미터 UBO
 struct PaintParams1CB
 {
 	float time;
@@ -20,13 +18,11 @@ struct PaintParams2CB
 
 PaintSpreadShader::PaintSpreadShader()
 {
-	// VS/PS 로드
 	m_vs = VertexShader{ GLSL{
 		Resource(U"engine/shader/myShader/paint_spread.vert"),
 		{ { U"VSConstants2D", 0 } }
 	} };
 
-	// PS 바인딩: 0=PSConstants2D, 1=PaintParams1, 2=PaintParams2, 3=DrawMode, 4=ShapeInfo
 	m_ps = PixelShader{ GLSL{
 		Resource(U"engine/shader/myShader/paint_spread.frag"),
 		{ { U"PSConstants2D", 0 }, { U"PaintParams1", 1 }, { U"PaintParams2", 2 }, { U"DrawMode", 3 }, { U"ShapeInfo", 4 } }
@@ -35,13 +31,12 @@ PaintSpreadShader::PaintSpreadShader()
 
 void PaintSpreadShader::updateEffectCBs() const
 {
-	// 스레드 로컬 상수 버퍼 (필요 시 재사용)
 	static thread_local ConstantBuffer<PaintParams1CB> cb1;
 	static thread_local ConstantBuffer<PaintParams2CB> cb2;
 
 	PaintParams1CB p1{};
 	p1.time = m_time;
-	p1.progress = m_time;       // 동일 의미로 사용 (0~1)
+	p1.progress = m_time;           
 	p1.spreadSpeed = m_spreadSpeed;
 	p1.noiseScale = m_noiseScale;
 
@@ -64,8 +59,6 @@ void PaintSpreadShader::updateEffectCBs() const
 	Graphics2D::SetPSConstantBuffer(1, cb1);
 	Graphics2D::SetPSConstantBuffer(2, cb2);
 }
-
-// ============== 색 지정 도형 경로(추가 오버로드) ==============
 
 void PaintSpreadShader::draw(const RectF& s, const ColorF& color) const
 {

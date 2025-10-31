@@ -7,7 +7,6 @@ struct BossWallPatternFrame
 	double duration = 1.0;
 };
 
-// 전체 패턴 시퀀스
 struct BossWallPattern
 {
 	Array<BossWallPatternFrame> frames;
@@ -22,7 +21,6 @@ namespace BossWallPatternData
 		BossWallPattern pattern;
 		pattern.looping = true;
 
-		// 프레임 0: 양 끝 경고
 		BossWallPatternFrame frame0;
 		frame0.pattern = {
 			U"!.........!",
@@ -34,7 +32,6 @@ namespace BossWallPatternData
 		frame0.duration = 1.0;
 		pattern.frames.push_back(frame0);
 
-		// 프레임 1: 양 끝 벽 생성
 		BossWallPatternFrame frame1;
 		frame1.pattern = {
 			U"W.........W",
@@ -46,7 +43,6 @@ namespace BossWallPatternData
 		frame1.duration = 1.0;
 		pattern.frames.push_back(frame1);
 
-		// 프레임 2: 한 칸 더 안쪽 경고
 		BossWallPatternFrame frame2;
 		frame2.pattern = {
 			U"W!.......!W",
@@ -58,7 +54,6 @@ namespace BossWallPatternData
 		frame2.duration = 1.0;
 		pattern.frames.push_back(frame2);
 
-		// 프레임 3: 벽 추가 생성
 		BossWallPatternFrame frame3;
 		frame3.pattern = {
 			U"WW.......WW",
@@ -70,7 +65,6 @@ namespace BossWallPatternData
 		frame3.duration = 1.0;
 		pattern.frames.push_back(frame3);
 
-		// 프레임 4: 모든 벽 파괴
 		BossWallPatternFrame frame4;
 		frame4.pattern = {
 			U"XX.......XX",
@@ -85,13 +79,11 @@ namespace BossWallPatternData
 		return pattern;
 	}
 
-	// 예시: 랜덤 벽 생성 패턴
 	inline BossWallPattern getRandomWallPattern()
 	{
 		BossWallPattern pattern;
 		pattern.looping = true;
 
-		// 프레임 0: 랜덤 위치 경고
 		BossWallPatternFrame frame0;
 		frame0.pattern = {
 			U"..!...!....",
@@ -103,7 +95,6 @@ namespace BossWallPatternData
 		frame0.duration = 1.0;
 		pattern.frames.push_back(frame0);
 
-		// 프레임 1: 경고 위치에 벽 생성
 		BossWallPatternFrame frame1;
 		frame1.pattern = {
 			U"..W...W....",
@@ -115,7 +106,6 @@ namespace BossWallPatternData
 		frame1.duration = 2.0;
 		pattern.frames.push_back(frame1);
 
-		// 프레임 2: 벽 파괴
 		BossWallPatternFrame frame2;
 		frame2.pattern = {
 			U"..X...X....",
@@ -130,13 +120,11 @@ namespace BossWallPatternData
 		return pattern;
 	}
 
-	// 예시: 가로줄 이동 패턴
 	inline BossWallPattern getHorizontalWavePattern()
 	{
 		BossWallPattern pattern;
 		pattern.looping = true;
 
-		// 위에서 아래로 벽이 이동
 		for (int32 row = 0; row < 5; ++row)
 		{
 			BossWallPatternFrame warning;

@@ -2,11 +2,11 @@
 #include "StageData.hpp"
 
 StageSelectScene::StageSelectScene()
-	: titleFont_(FontMethod::MSDF, 48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
-	, stageFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
-	, infoFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))   // ★ 일본어 폰트로 변경
-	, stageNumberFont_(48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))              // ★ 일본어 폰트로 변경
-	, stageTitleFont_(FontMethod::MSDF, 32, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 큰 폰트 (28 + 4 = 32)
+	: titleFont_(FontMethod::MSDF, 48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))      
+	, stageFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))      
+	, infoFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))       
+	, stageNumberFont_(48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))                  
+	, stageTitleFont_(FontMethod::MSDF, 32, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))          
 	, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)
 {
 	currentScene_ = SceneType::StageSelect;
@@ -15,11 +15,11 @@ StageSelectScene::StageSelectScene()
 }
 
 StageSelectScene::StageSelectScene(GameData* gameData)
-	: titleFont_(FontMethod::MSDF, 48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
-	, stageFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 일본어 폰트로 변경
-	, infoFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))   // ★ 일본어 폰트로 변경
-	, stageNumberFont_(48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))              // ★ 일본어 폰트로 변경
-	, stageTitleFont_(FontMethod::MSDF, 32, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))  // ★ 큰 폰트 (28 + 4 = 32)
+	: titleFont_(FontMethod::MSDF, 48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))      
+	, stageFont_(FontMethod::MSDF, 24, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))      
+	, infoFont_(FontMethod::MSDF, 16, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))       
+	, stageNumberFont_(48, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))                  
+	, stageTitleFont_(FontMethod::MSDF, 32, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))          
 	, bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)
 	, gameData_(gameData)
 {
@@ -49,7 +49,6 @@ void StageSelectScene::onEnter() {
 
 void StageSelectScene::onExit()
 {
-	// 배경음악 정지
 	if (!bgm_.isEmpty() && bgm_.isPlaying())
 	{
 		bgm_.stop();
@@ -102,20 +101,17 @@ void StageSelectScene::initializeStages()
 
 void StageSelectScene::loadStageTextures()
 {
-	// 스테이지 텍스처 배열 초기화
 	stageTextures_.clear();
 	const int32 totalStages = StageData::getTotalStageCount();
 	stageTextures_.resize(totalStages);
 
 
-	// 각 스테이지별로 애니메이션 프레임 로드
 	for (int32 stageIndex = 0; stageIndex < totalStages; stageIndex++)
 	{
 		const int32 stageNumber = stageIndex + 1;
 
 		if (stageNumber == 11)
 		{
-			// 보스 스테이지 (11번): 11개의 프레임 (0~10)
 			for (int32 frameIndex = 0; frameIndex <= 10; frameIndex++)
 			{
 				const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_boss-{}.png"_fmt(frameIndex));
@@ -134,7 +130,6 @@ void StageSelectScene::loadStageTextures()
 		}
 		else
 		{
-			// 일반 스테이지 (1~10번): 각 2개의 프레임 (0~1)
 			for (int32 frameIndex = 0; frameIndex < 2; frameIndex++)
 			{
 				const String texturePath = Resource(U"ArtResources/Texture2D/stage/stage_{}-{}.png"_fmt(stageNumber, frameIndex));
@@ -219,11 +214,9 @@ void StageSelectScene::updateStageButtons()
 }
 void StageSelectScene::draw()
 {
-	// ★ 논리적 해상도
 	constexpr int32 LOGICAL_WIDTH = 880;
 	constexpr int32 LOGICAL_HEIGHT = 880;
 
-	// 실제 화면 크기 대비 논리적 크기의 오프셋 계산
 	const Vec2 screenCenter = Scene::CenterF();
 	const Vec2 logicalCenter = Vec2(LOGICAL_WIDTH / 2.0, LOGICAL_HEIGHT / 2.0);
 	const Vec2 offset = screenCenter - logicalCenter;
@@ -236,7 +229,6 @@ void StageSelectScene::draw()
 
 	if (selectedStage_ > 0)
 	{
-		// drawStageInfo();
 	}
 }
 
@@ -291,19 +283,16 @@ void StageSelectScene::drawStageButtons()
 			}
 		}
 
-		// ★ 텍스처 위에 텍스트 렌더링 (스테이지 1~10만 표시, 11번은 제외)
 		if (!button.isLocked && button.stageNumber != 11)
 		{
 			const Vec2 center = drawRect.center();
-			const double offsetY = drawRect.h * 0.25 - 5.0;  // 중앙에서 아래로 1/4, 위로 5px 이동
+			const double offsetY = drawRect.h * 0.25 - 5.0;        
 			const Vec2 textPos = center.movedBy(0, offsetY);
 
-			// 텍스트에 외곽선 추가하여 가독성 향상 (28px 폰트 사용)
-			stageTitleFont_(button.stageName).drawAt(textPos.movedBy(2, 2), ColorF(0.0, 0.0, 0.0, 0.7));  // 그림자
-			stageTitleFont_(button.stageName).drawAt(textPos, Palette::White);  // 본문
+			stageTitleFont_(button.stageName).drawAt(textPos.movedBy(2, 2), ColorF(0.0, 0.0, 0.0, 0.7));   
+			stageTitleFont_(button.stageName).drawAt(textPos, Palette::White);   
 		}
 
-		// 잠금 아이콘
 		if (button.isLocked)
 		{
 			const Vec2 center = drawRect.center();
@@ -313,7 +302,6 @@ void StageSelectScene::drawStageButtons()
 		}
 	}
 
-	// 스크롤 인디케이터
 	const int32 totalStages = StageData::getTotalStageCount();
 	const double totalWidth = (STAGE_WIDTH + STAGE_SPACING) * totalStages - STAGE_SPACING;
 	const double firstStageX = (LOGICAL_WIDTH - totalWidth) / 2;
@@ -323,7 +311,6 @@ void StageSelectScene::drawStageButtons()
 
 	if (totalScrollRange > 0)
 	{
-		// 현재 스크롤 위치를 0~1 범위로 정규화
 		const double scrollProgress = (scrollOffset_ + maxLeftScroll) / totalScrollRange;
 
 		const double centerX = screenCenter.x;
@@ -343,7 +330,7 @@ void StageSelectScene::drawStageButtons()
 
 void StageSelectScene::drawStageInfo()
 {
-	const Rect infoPanel{ 200, 700, 624, 60 };  // 패널 크기와 위치 조정
+	const Rect infoPanel{ 200, 700, 624, 60 };      
 	infoPanel.draw(ColorF{ 0, 0, 0, 0.7 });
 	infoPanel.drawFrame(2, ColorF{ 0.5, 0.8, 1.0 });
 
@@ -385,11 +372,9 @@ void StageSelectScene::updateScrolling()
 
 	if (!isDragging_)
 	{
-		// 부드러운 스크롤 애니메이션
 		const double lerpSpeed = 8.0;
 		scrollOffset_ = Math::Lerp(scrollOffset_, targetScrollOffset_, lerpSpeed * deltaTime);
 
-		// 목표에 가까워지면 정확히 맞춤
 		if (Math::Abs(scrollOffset_ - targetScrollOffset_) < 0.1)
 		{
 			scrollOffset_ = targetScrollOffset_;
@@ -399,19 +384,15 @@ void StageSelectScene::updateScrolling()
 
 double StageSelectScene::getMaxScrollOffset() const
 {
-	// ★ 고정 해상도 사용
 	constexpr int32 LOGICAL_WIDTH = 880;
 
 	const int32 totalStages = StageData::getTotalStageCount();
 
-	// 전체 스테이지 너비 계산
 	const double totalWidth = (STAGE_WIDTH + STAGE_SPACING) * totalStages - STAGE_SPACING;
 
-	// 화면 중앙 배치를 고려한 최대 오프셋 계산
 	const double startX = (LOGICAL_WIDTH - totalWidth) / 2;
 	const double lastStageEndX = startX + totalWidth;
 
-	// 마지막 스테이지가 화면 중앙에 오도록 하는 데 필요한 오프셋
 	const double maxOffset = lastStageEndX - (LOGICAL_WIDTH + STAGE_WIDTH) / 2.0;
 
 	return Math::Max(0.0, maxOffset);
@@ -424,12 +405,9 @@ void StageSelectScene::clampScrollOffset()
 	const double totalWidth = (STAGE_WIDTH + STAGE_SPACING) * totalStages - STAGE_SPACING;
 	const double firstStageX = (LOGICAL_WIDTH - totalWidth) / 2;
 
-	// 첫 번째 스테이지가 화면 중앙에 오도록 하는 최대 오른쪽 스크롤
 	const double maxRightScroll = Math::Max(0.0, -firstStageX + (LOGICAL_WIDTH - STAGE_WIDTH) / 2.0);
 
-	// 마지막 스테이지가 화면 중앙에 오도록 하는 최대 왼쪽 스크롤
 	const double maxLeftScroll = getMaxScrollOffset();
 
-	// 스크롤 범위: maxRightScroll(양수) ~ -maxLeftScroll(음수)
 	targetScrollOffset_ = Math::Clamp(targetScrollOffset_, -maxLeftScroll, maxRightScroll);
 }

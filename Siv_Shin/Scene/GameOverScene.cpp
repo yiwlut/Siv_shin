@@ -6,7 +6,7 @@ GameOverScene::GameOverScene()
     , buttonFont_(24)
     , statFont_(20)
     , helpFont_(16)
-    , bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)  // 배경음악을 DeepSea1.mp3로 변경
+    , bgm_(Resource(U"ArtResources/BGM/DeepSea1.mp3"), Loop::Yes)     
 {
     currentScene_ = SceneType::GameOver;
     initializeUI();
@@ -24,25 +24,21 @@ void GameOverScene::onEnter()
         createParticles();
     }
     
-    // 배경음악 재생
     if (!bgm_.isEmpty())
     {
-        bgm_.setVolume(0.2);  // 볼륨 설정 (0.05 * 4 = 0.2)
+        bgm_.setVolume(0.2);         
         bgm_.play();
     }
     
-    // Print << U"게임오버 화면 진입";
 }
 
 void GameOverScene::onExit()
 {
-    // 배경음악 정지
     if (!bgm_.isEmpty() && bgm_.isPlaying())
     {
         bgm_.stop();
     }
     
-    // Print << U"게임오버 화면 종료";
 }
 
 void GameOverScene::setGameResult(int32 score, double time, int32 moves)
