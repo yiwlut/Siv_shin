@@ -2336,21 +2336,20 @@ void InGameScene::draw()
 	}
 	{
 		const auto _t = camera().createTransformer();
-
 		drawMap();
-		drawPlayer();
-
 		if (isBossAttackSequenceActive_ &&
 			currentBossAttackPhase_ != BossAttackPhase::LaunchTowardsBoss &&
-			currentBossAttackPhase_ != BossAttackPhase::BossHit)
-		{
+			currentBossAttackPhase_ != BossAttackPhase::BossHit) {
 			drawBossAttackSequence();
 		}
-
 	}
 
 	drawBombBoxFX_Multi();
 	drawWallBreakFX();
+	{
+		const auto _tp = camera().createTransformer();
+		drawPlayer();
+	}
 	drawUI();
 	drawBossProjectiles();
 	drawBossExplosions();
@@ -2531,7 +2530,8 @@ void InGameScene::drawMap()
 		}
 	}
 
-	// 상자
+	drawGoalMarkersTop();
+	drawOverlayWarnings();
 	drawBoxes_RespectBombFX();
 
 	// 아이템
@@ -2551,8 +2551,7 @@ void InGameScene::drawMap()
 
 	//drawBossAttacks();
 	drawWallMask();
-	drawGoalMarkersTop();
-	drawOverlayWarnings();
+
 }
 
 
@@ -2671,12 +2670,13 @@ void InGameScene::drawHelpScreen()
     const double startY = 200;
     const double lineHeight = 50;
     
-    Array<String> helpTexts = {
-        U"↑ ↓ ← → : 移動 / ブロックを押す",
-        U"R : ステージをやり直す",
-        U"Space / Enter : 次のステージへ (クリア時)",
-        U"ESC : 再開 / このメニューを表示"
-    };
+	Array<String> helpTexts = {
+	  U"↑ ↓ ← → : 移動 / ブロックを押す",
+	  U"R : ステージをやり直す",
+	  U"Space / Enter : 次のステージへ (クリア時)",
+	  U"ESC : 再開 / このメニューを表示",
+      U"F11 : 全画面/ウィンドウモード切替"
+	};
     
     for (size_t i = 0; i < helpTexts.size(); i++)
     {

@@ -41,7 +41,7 @@ void OpeningScene::onEnter()
 	visibleCharCount_ = 0;
 	if (!openingBgm_.isEmpty())
 	{
-		openingBgm_.setLoop(false);
+		openingBgm_.setLoop(true);
 		openingBgm_.setVolume(0.3);
 		openingBgm_.play();
 	}
@@ -171,6 +171,8 @@ void OpeningScene::drawSkipUI()
 
 	const Vec2 spaceTextPos = Vec2{ gameWidth - 60, gameHeight - 40 };
 	skipFont_(U"SPACE").drawAt(spaceTextPos, ColorF{ 1.0, 1.0, 1.0, 0.85 });
+	const Vec2 holdTextPos = spaceTextPos + Vec2{ 2, 16 };
+	skipFont_(U"hold").drawAt(holdTextPos, ColorF{ 1.0, 1.0, 1.0, 0.85 });
 }
 Array<OpeningScene::RubyText> OpeningScene::parseRubyText(const String& text) const
 {
