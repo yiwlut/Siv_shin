@@ -2,10 +2,10 @@
 
 OpeningScene::OpeningScene()
 	: elapsedTime_(0.0)
-	, slideFadeInDuration_(0.7)
-	, slideDisplayDuration_(6.5)
-	, slideFadeOutDuration_(0.8)
-	, slideInterval_(8.0)
+	, slideFadeInDuration_(1.0)
+	, slideDisplayDuration_(9.0)
+	, slideFadeOutDuration_(1.0)
+	, slideInterval_(11.0)
 	, textFont_(FontMethod::MSDF, 28, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, rubyFont_(FontMethod::MSDF, 14, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
 	, skipFont_(FontMethod::MSDF, 20, Resource(U"ArtResources/Fonts/TetsubinGothic.otf"))
@@ -79,7 +79,7 @@ void OpeningScene::update()
 
 	if (currentSlideIndex_ < slides_.size()) {
 		textTypingTime_ += dt;
-		const double charsPerSecond = 12.5;
+		const double charsPerSecond = 10.0;
 		visibleCharCount_ = static_cast<size_t>(textTypingTime_ * charsPerSecond);
 	}
 

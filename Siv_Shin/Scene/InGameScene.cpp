@@ -1580,11 +1580,10 @@ void InGameScene::update()
 		if (!isPlayerDead_) {
 			isPlayerDead_ = true;
 			deathAnimTimer_ = 0.0;
-			createDeathEffect(true);  // ★ true = 흰색 파티클 사용
-			const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
-			if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay,StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly: OverlayApplyMode::WriteToMap); }
-
+			createDeathEffect(true);
 			if (StageData::isFinalStage(currentStage_)) {
+				const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
+				if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay, OverlayApplyMode::OverlayOnly); }
 				if (!bossBgm_.isEmpty() && bossBgm_.isPlaying()) {
 					savedMusicPosition_ = bossBgm_.posSec();
 					bossBgm_.stop();
@@ -1666,14 +1665,10 @@ void InGameScene::update()
 		bossAttackTimer_ = 0.0;
 
 		const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
-		if (!initialOverlay.isEmpty())
-		{
-			applyTileOverlay(initialOverlay,
-							 StageData::isFinalStage(currentStage_) ? OverlayApplyMode::OverlayOnly
-																	 : OverlayApplyMode::WriteToMap);
+		if (StageData::isFinalStage(currentStage_)) {
+			const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
+			if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay, OverlayApplyMode::OverlayOnly); }
 		}
-
-		// ★ 보스 스테이지 전용 초기화 (loadStage 호출 전에)
 		if (StageData::isFinalStage(currentStage_))
 		{
 			// 보스 페이즈 시스템 완전 리셋
