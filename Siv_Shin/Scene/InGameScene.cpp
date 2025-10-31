@@ -1723,14 +1723,13 @@ void InGameScene::update()
 		if (!showClearButtons_) {
 			showClearButtons_ = true;
 		}
-		gameTime_ += dt;
 
 		if (KeySpace.down() || KeyEnter.down()) {
 			if (currentStage_ == 6) {
-				changeScene(SceneType::BossIntro);  // ★ 11번 대신 BossIntro 호출
+				changeScene(SceneType::BossIntro);
 				return;
 			}
-			else if (currentStage_ < StageData::getTotalStageCount()) {
+			else if (currentStage_ < StageData::getTotalStageCount() && !StageData::isFinalStage(currentStage_ + 1)) {
 				currentStage_++;
 				loadStage(currentStage_);
 				isCleared_ = false;
@@ -2676,18 +2675,28 @@ void InGameScene::drawHelpScreen()
     const double lineHeight = 50;
     
 	Array<String> helpTexts = {
-	  U"↑ ↓ ← → : 移動 / ブロックを押す",
+	  U"↑ ↓ ← → ・wasd : 移動 / ブロックを押す",
 	  U"R : ステージをやり直す",
 	  U"Space / Enter : 次のステージへ (クリア時)",
 	  U"ESC : 再開 / このメニューを表示",
-      U"F11 : 全画面/ウィンドウモード切替"
+	  U"F11 : 全画面/ウィンドウモード切替"
 	};
-    
-    for (size_t i = 0; i < helpTexts.size(); i++)
-    {
-        ColorF textColor = ColorF{ 0.9, 0.9, 0.9 };
-        debugFont_(helpTexts[i]).drawAt(centerX, startY + i * lineHeight, textColor);
-    }
+
+	for (size_t i = 0; i < helpTexts.size(); ++i) {
+		const String& s = helpTexts[i];
+		size_t idx = 0; bool found = false;
+		for (size_t k = 0; k < s.size(); ++k) { if (s[k] == U':') { idx = k; found = true; break; } }
+		String left = s, right = U"";
+		if (found) { left = s.substr(0, idx).trimmed(); right = s.substr(idx + 1).trimmed(); }
+		const double y = startY + i * lineHeight;
+		const double gap = debugFont_.spaceWidth() * 2.0;
+		const double wL = debugFont_(left).region().w;
+		const double wR = debugFont_(right).region().w;
+		ColorF textColor = ColorF{ 0.9, 0.9, 0.9 };
+		debugFont_(left).drawAt(Vec2{ centerX - (gap + wL * 0.5) - 40.0, y }, textColor);
+		debugFont_(U":").drawAt(Vec2{ centerX - 40.0, y }, textColor);
+		debugFont_(right).drawAt(Vec2{ centerX + (gap + wR * 0.5) - 40.0, y }, textColor);
+	}
     
     // 스테이지 선택으로 돌아가는 버튼
     const double buttonY = startY + helpTexts.size() * lineHeight + 60;
@@ -3223,19 +3232,9 @@ void InGameScene::updateClearButtons()
 	{
 		if (currentStage_ == 6)
 		{
-			currentStage_ = 11;
-			loadStage(currentStage_);
-			isCleared_ = false;
-			showClearButtons_ = false;
-			gameTime_ = 0.0;
-			moves_ = 0;
-			if (StageData::isFinalStage(currentStage_)) {
-				initBossAttacks();
-				initBossWallSystem();
-				startBossBgmFadeIn_();
-			}
+			changeScene(SceneType::BossIntro);
 		}
-		else if (currentStage_ < StageData::getTotalStageCount())
+		else if (currentStage_ < StageData::getTotalStageCount() && !StageData::isFinalStage(currentStage_ + 1))
 		{
 			currentStage_++;
 			loadStage(currentStage_);
