@@ -1046,6 +1046,11 @@ const ColorBox* InGameScene::getBoxAt(Point pos) const
 }
 
 bool InGameScene::canPushBox(Point playerPos, Point boxPos, Point dir) const {
+	if (!wallMask_.isEmpty() && wallMask_[boxPos.y][boxPos.x])
+	{
+		return false;
+	}
+
 	const Point next = boxPos + dir;
 
 	if (!isInsideMap(next)) return false;
