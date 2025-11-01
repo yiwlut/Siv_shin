@@ -15,7 +15,7 @@ void Main()
 
 	if (!g_Shaders.initialize())
 	{
-		Console << U"쉐이더 초기화 실패!";
+		Console << U"shader not init!";
 		return;
 	}
 
