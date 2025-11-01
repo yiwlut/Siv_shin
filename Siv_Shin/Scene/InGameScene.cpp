@@ -1379,25 +1379,6 @@ void InGameScene::update()
 	camera().update();
 	if (StageData::isFinalStage(currentStage_)) updateBossBgmFade_(dt);
 	const bool focused = Window::GetState().focused;
-	if (KeyF2.down()) {
-		isCleared_ = true;
-		score_ += 1000;
-
-		if (gameData_) {
-			gameData_->clearStage(currentStage_);
-		}
-
-		if (StageData::isFinalStage(currentStage_)) {
-			changeScene(SceneType::Ending);
-		}
-		else if (currentStage_ == 6) {
-			changeScene(SceneType::BossIntro);
-		}
-		else {
-			changeScene(SceneType::StageSelect);
-		}
-		return;
-	}
 	if (isFading_) {
 		fadeTimer_ += dt;
 		if (fadeTimer_ >= fadeDuration_) {
@@ -1408,7 +1389,6 @@ void InGameScene::update()
 		deathAnimTimer_ += dt;
 		updateDeathEffect();
 	}
-
 	if (!focused && !showHelpScreen_ && !isCleared_) {
 		showHelpScreen_ = true;
 		if (!bgm_.isEmpty() && bgm_.isPlaying()) bgm_.pause();
@@ -1438,7 +1418,6 @@ void InGameScene::update()
 		updateMergePaintFX();
 		return;
 	}
-
 	if (StageData::isFinalStage(currentStage_)) {
 		if (isCleared_ && isFading_) {
 			fadeTimer_ += dt;
@@ -1460,9 +1439,7 @@ void InGameScene::update()
 			updateBossWallPattern(dt);
 		}
 	}
-
 	bombClock_ += dt;
-
 	if (isInsideMap(playerPos_) && mapData_[playerPos_.y][playerPos_.x] == TileType::Lava) {
 		if (!isPlayerDead_) {
 			isPlayerDead_ = true;
@@ -1486,49 +1463,33 @@ void InGameScene::update()
 			}
 		}
 	}
-
 	updateMergePaintFX();
 	updateBombBoxFX_Multi(dt);
 	updateWallBreakFX();
 	applyHoloFromHeldItem_();
-
-	if (StageData::isFinalStage(currentStage_) && !isPlayerDead_ && !isCleared_)
-	{
+	if (StageData::isFinalStage(currentStage_) && !isPlayerDead_ && !isCleared_) {
 		updateBossHitEffect(dt);
 		updateBossAttacks(dt);
 		updateBossProjectiles(dt);
 		updateEnergyBalls(dt);
 	}
-	updateBossExplosions(dt);     
-
-	if (focused && !isCleared_ && !isPlayerDead_)
-	{
-		if (StageData::isFinalStage(currentStage_))
-		{
-			if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying())
-			{
+	updateBossExplosions(dt);
+	if (focused && !isCleared_ && !isPlayerDead_) {
+		if (StageData::isFinalStage(currentStage_)) {
+			if (!bossBgm_.isEmpty() && !bossBgm_.isPlaying()) {
 				bossBgm_.play();
 			}
-			if (!bgm_.isEmpty() && bgm_.isPlaying())
-			{
+			if (!bgm_.isEmpty() && bgm_.isPlaying()) {
 				bgm_.stop();
 			}
 		}
-		else
-		{
-			if (!bgm_.isEmpty() && !bgm_.isPlaying())
-			{
+		else {
+			if (!bgm_.isEmpty() && !bgm_.isPlaying()) {
 				bgm_.play();
 			}
 		}
 	}
-	if (StageData::isFinalStage(currentStage_) && KeyF2.down()) {
-		isCleared_ = true;
-		changeScene(SceneType::Ending);
-		return;
-	}
-	if (!isCleared_ && KeyR.down())
-	{
+	if (!isCleared_ && KeyR.down()) {
 		gameTime_ = 0.0;
 		moves_ = 0;
 		score_ = 0;
@@ -1544,57 +1505,44 @@ void InGameScene::update()
 		bossProjectiles_.clear();
 		bossExplosionParticles_.clear();
 		bossAttackTimer_ = 0.0;
-
 		const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
 		if (StageData::isFinalStage(currentStage_)) {
 			const auto initialOverlay = StageData::getFinalStageTileOverlay(0.0);
 			if (!initialOverlay.isEmpty()) { applyTileOverlay(initialOverlay, OverlayApplyMode::OverlayOnly); }
 		}
-		if (StageData::isFinalStage(currentStage_))
-		{
+		if (StageData::isFinalStage(currentStage_)) {
 			currentBossPhase_ = 1;
 			bossHitCount_ = 0;
 			bossCurrentHP_ = 3;
 			showBossHitEffect_ = false;
 			bossHitEffectTimer_ = 0.0;
-
 			isBossAttackSequenceActive_ = false;
 			currentBossAttackPhase_ = BossAttackPhase::None;
 			bossAttackSequenceTimer_ = 0.0;
 			gatheringBoxes_.clear();
 			mergedBoxCreated_ = false;
-
 			loadBossPhase(1);
-
 			initBossAttacks();
 			initBossWallSystem();
-
-			if (!bossBgm_.isEmpty())
-			{
+			if (!bossBgm_.isEmpty()) {
 				bossBgm_.setVolume(bossBgmTargetVolume_);
 				bossBgm_.play();
 			}
 		}
-		else
-		{
+		else {
 			loadStage(currentStage_);
-
-			if (!bgm_.isEmpty())
-			{
+			if (!bgm_.isEmpty()) {
 				bgm_.setVolume(0.33);
 				bgm_.play();
 			}
 		}
-
 		updateMergePaintFX();
 		return;
 	}
-
 	if (isCleared_) {
 		if (!showClearButtons_) {
 			showClearButtons_ = true;
 		}
-
 		if (KeySpace.down() || KeyEnter.down()) {
 			if (currentStage_ == 6) {
 				changeScene(SceneType::BossIntro);
@@ -1614,19 +1562,14 @@ void InGameScene::update()
 				changeScene(SceneType::StageSelect);
 			}
 		}
-
 		if (showClearEffect_) {
 			updateClearEffect();
 		}
-
 		updateMergePaintFX();
 		return;
 	}
-
 	gameTime_ += dt;
-
 	updateIceSlideTasks_(dt);
-
 	if (isSliding_) {
 		continueSliding();
 		updatePlayer();
@@ -1649,14 +1592,12 @@ void InGameScene::update()
 		}
 		return;
 	}
-
 	handleInput();
 	updatePlayer();
 	updateAnimations();
 	updatePaintAnimation();
 	updateMergePaintFX();
 	updateBlackBoxes();
-
 	if (!isCleared_ && isGameClear() && !StageData::isFinalStage(currentStage_)) {
 		isCleared_ = true;
 		score_ += 1000;
@@ -1670,7 +1611,6 @@ void InGameScene::update()
 			gameData_->clearStage(currentStage_);
 		}
 	}
-
 	if (showClearEffect_ && !isCleared_) {
 		updateClearEffect();
 	}
