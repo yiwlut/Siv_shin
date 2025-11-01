@@ -20,8 +20,6 @@ void SettingsScene::onEnter()
         bgm_.setVolume(0.2);         
         bgm_.play();
     }
-    
-    Print << U"설정 메뉴 진입";
 }
 
 void SettingsScene::onExit()
@@ -30,8 +28,6 @@ void SettingsScene::onExit()
     {
         bgm_.stop();
     }
-    
-    Print << U"설정 메뉴 종료";
 }
 
 void SettingsScene::initializeUI()
@@ -170,7 +166,6 @@ void SettingsScene::drawSliders()
 
 void SettingsScene::applySettings()
 {
-    Print << U"설정 적용됨";
 }
 
 void SettingsScene::resetSettings()
@@ -189,5 +184,4 @@ void SettingsScene::loadSettings()
 
 void SettingsScene::saveSettings()
 {
-    Print << U"설정 저장됨";
 }

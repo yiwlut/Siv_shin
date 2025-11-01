@@ -117,7 +117,7 @@ void main()
     combinedNoise = combinedNoise * 0.7 + angleNoise * 0.3;
 
     float wavePattern = sin((dist - u_progress * 2.0) * 15.0 + combinedNoise * 5.0) * 0.5 + 0.5;
-    wavePattern = pow(wavePattern, 2.0); // 대비 강화
+    wavePattern = pow(wavePattern, 2.0); 
 
     float spreadRadius = u_progress * 1.5;
     float noiseOffset  = (combinedNoise - 0.5) * u_waveStrength;
