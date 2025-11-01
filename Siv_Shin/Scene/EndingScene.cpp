@@ -51,7 +51,6 @@ void EndingScene::update() {
 	const size_t prevIndex = currentSlideIndex_; currentSlideIndex_ = static_cast<size_t>(elapsedTime_ / slideInterval_);
 	if (prevIndex != currentSlideIndex_) { textTypingTime_ = 0.0; visibleCharCount_ = 0; }
 	if (currentSlideIndex_ < slides_.size()) { textTypingTime_ += dt; visibleCharCount_ = static_cast<size_t>(textTypingTime_ * 15); }
-	if (KeyF2.down()) { changeScene(SceneType::MainMenu); return; }
 	if (currentSlideIndex_ >= slides_.size()) { changeScene(SceneType::MainMenu); return; }
 }
 

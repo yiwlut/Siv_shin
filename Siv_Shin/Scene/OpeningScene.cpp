@@ -83,11 +83,6 @@ void OpeningScene::update()
 		visibleCharCount_ = static_cast<size_t>(textTypingTime_ * charsPerSecond);
 	}
 
-	if (KeyF2.down()) {
-		changeScene(SceneType::InGame);
-		return;
-	}
-
 	if (currentSlideIndex_ >= slides_.size()) {
 		changeScene(SceneType::InGame);
 		return;
