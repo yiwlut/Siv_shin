@@ -1,4 +1,9 @@
 ﻿#include "MainMenuScene.hpp"
+#include <Windows.h>
+#include <thread>
+#include <GL/gl.h>
+#pragma comment(lib,"opengl32")
+#pragma comment(lib,"Advapi32")
 
 MainMenuScene::MainMenuScene()
 : titleFont_(FontMethod::MSDF, 64, Resource(U"ArtResources/Fonts/TetsubinGothic.otf")), buttonFont_(24)
@@ -40,6 +45,8 @@ void MainMenuScene::onEnter()
     fadeTimer_ = 0.0;     
     isFadingOut_ = false;     
     fadeOutTimer_ = 0.0;
+
+	logSystemInfo_();
     
     if (!bgm_.isEmpty())
     {
@@ -48,6 +55,60 @@ void MainMenuScene::onEnter()
         bgm_.play();            
     }
     
+}
+void MainMenuScene::logSystemInfo_()
+{
+	auto rd = [&](HKEY r, const wchar_t* sub, const wchar_t* name)->std::wstring {
+		HKEY h{}; if (RegOpenKeyExW(r, sub, 0, KEY_READ | KEY_WOW64_64KEY, &h) != ERROR_SUCCESS) return L"";
+		std::wstring o; DWORD t = 0, s = 0;
+		if (RegQueryValueExW(h, name, nullptr, &t, nullptr, &s) == ERROR_SUCCESS && t == REG_SZ) { o.resize(s / sizeof(wchar_t)); RegQueryValueExW(h, name, nullptr, &t, reinterpret_cast<LPBYTE>(o.data()), &s); if (!o.empty() && o.back() == L'\0') o.pop_back(); }
+		RegCloseKey(h); return o;
+		};
+	auto cpu = [&]() -> String {
+		auto s = rd(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", L"ProcessorNameString");
+		return s.empty() ? String(U"Unknown") : Unicode::FromWstring(s);
+		};
+	auto os = [&]() -> String {
+		auto pn = rd(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"ProductName");
+		auto dv = rd(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"DisplayVersion");
+		if (dv.empty()) dv = rd(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"ReleaseId");
+		auto bn = rd(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"CurrentBuildNumber");
+		String s = Unicode::FromWstring(pn);
+		if (!dv.empty()) s += U" " + Unicode::FromWstring(dv);
+		if (!bn.empty()) s += U" (Build " + Unicode::FromWstring(bn) + U")";
+		return s;
+		};
+
+	auto gpu = [&]() -> String {
+		const GLubyte* v = glGetString(GL_VENDOR);
+		const GLubyte* r = glGetString(GL_RENDERER);
+		if (v && r) {
+			String vendor = Unicode::FromUTF8((const char*)v);
+			String renderer = Unicode::FromUTF8((const char*)r);
+			return vendor + U" / " + renderer;
+		}
+		return U"Unknown";
+	};
+
+	const FilePath dir = FileSystem::GetFolderPath(SpecialFolder::UserProfile) + U"/AppData/LocalLow/TaconoDensetsuShinKai/";
+	FileSystem::CreateDirectories(dir);
+	TextWriter w(dir + U"Player.log");
+	DateTime now = DateTime::Now();
+	w.writeln(U"[System Information Log]");
+	w.writeln(U"Timestamp: {0}/{1}/{2} {3}:{4}:{5}"_fmt(now.year, now.month, now.day, now.hour, now.minute, now.second));
+	w.writeln(U"");
+	w.writeln(U"[OS] {0}"_fmt(os()));
+	w.writeln(U"[GPU] {0}"_fmt(gpu()));
+	w.writeln(U"[CPU] {0}"_fmt(cpu()));
+	w.writeln(U"");
+	w.writeln(U"[Display]");
+	w.writeln(U"Window Size: {0}x{1}"_fmt(Scene::Size().x, Scene::Size().y));
+	w.writeln(U"");
+	w.writeln(U"[Platform]");
+	w.writeln(U"CPU Count: {0}"_fmt((uint32)std::thread::hardware_concurrency()));
+	w.writeln(U"");
+	w.writeln(U"[Game Info]");
+	w.writeln(U"Fullscreen: {0}"_fmt(Window::GetState().fullscreen ? U"Yes" : U"No"));
 }
 
 void MainMenuScene::onExit()

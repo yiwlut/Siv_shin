@@ -61,6 +61,7 @@ public:
     void onExit() override;
 
 private:
+	void logSystemInfo_();
     void initializeButtons();
     void updateButton(Button& button);
     void drawButton(const Button& button);
