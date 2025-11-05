@@ -58,6 +58,11 @@ void OpeningScene::update()
 	double dt = Scene::DeltaTime();
 	isFullscreen_ = Window::GetState().fullscreen;
 
+	if (KeyF2.down()) {
+		changeScene(SceneType::InGame);
+		return;
+	}
+
 	if (KeySpace.pressed()) {
 		isFastForward_ = true;
 		ffwdAnimTime_ += dt;

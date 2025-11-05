@@ -2334,63 +2334,62 @@ void InGameScene::drawMap()
 
 void InGameScene::drawPlayer()
 {
+
 	if (isPlayerDead_) {
 		drawDeathEffect();
 		return;
 	}
-    if (isPlayingPaintAnimation_)
-    {
-        drawPaintAnimation();
-        return;
-    }
-    
-    const Rect playerRect{ 
-        static_cast<int32>(playerPixelPos_.x - TILE_SIZE / 2), 
-        static_cast<int32>(playerPixelPos_.y - TILE_SIZE / 2), 
-        TILE_SIZE, 
-        TILE_SIZE 
-    };
-    
-    const Array<Texture>* currentFrames = nullptr;
-    
-    switch (tacoDirection_)
-    {
-    case TacoDirection::Down:
-        if (tacoDownFrames_.size() > 0)
-            currentFrames = &tacoDownFrames_;
-        break;
-    case TacoDirection::Side:
-        if (tacoSideFrames_.size() > 0)
-            currentFrames = &tacoSideFrames_;
-        break;
-    case TacoDirection::Up:
-        if (tacoUpFrames_.size() > 0)
-            currentFrames = &tacoUpFrames_;
-        break;
-    }
-    
-    if (currentFrames && tacoAnimFrame_ < currentFrames->size())
-    {
-        const Texture& frame = (*currentFrames)[tacoAnimFrame_];
-        if (!frame.isEmpty())
-        {
-			const auto scope = g_Shaders.holographic().scopedTexture(frame);
+	if (isPlayingPaintAnimation_)
+	{
+		drawPaintAnimation();
+		return;
+	}
 
-            if (tacoDirection_ == TacoDirection::Side && isFacingLeft_)
-            {
-                frame.resized(TILE_SIZE, TILE_SIZE).mirrored().draw(playerRect.pos);
-            }
-            else
-            {
-                frame.resized(TILE_SIZE, TILE_SIZE).draw(playerRect.pos);
-            }
-            return;
-        }
-    }
-    
-    Circle{ playerPixelPos_, TILE_SIZE / 2 - 8 }.draw(playerColor_);
-    Circle{ playerPixelPos_, TILE_SIZE / 2 - 8 }.drawFrame(3, 0, ColorF{ 1.0, 1.0, 1.0, 0.9 });
-    Circle{ playerPixelPos_, 8 }.draw(ColorF{ 1.0, 1.0, 1.0, 0.8 });
+	const Rect playerRect{
+		static_cast<int32>(playerPixelPos_.x - TILE_SIZE / 2),
+		static_cast<int32>(playerPixelPos_.y - TILE_SIZE / 2),
+		TILE_SIZE,
+		TILE_SIZE
+	};
+
+	const Array<Texture>* currentFrames = nullptr;
+
+	switch (tacoDirection_)
+	{
+	case TacoDirection::Down:
+		if (tacoDownFrames_.size() > 0)
+			currentFrames = &tacoDownFrames_;
+		break;
+	case TacoDirection::Side:
+		if (tacoSideFrames_.size() > 0)
+			currentFrames = &tacoSideFrames_;
+		break;
+	case TacoDirection::Up:
+		if (tacoUpFrames_.size() > 0)
+			currentFrames = &tacoUpFrames_;
+		break;
+	}
+
+	if (currentFrames && tacoAnimFrame_ < currentFrames->size())
+	{
+		const Texture& frame = (*currentFrames)[tacoAnimFrame_];
+		if (!frame.isEmpty())
+		{
+			if (tacoDirection_ == TacoDirection::Side && isFacingLeft_)
+			{
+				frame.resized(TILE_SIZE, TILE_SIZE).mirrored().draw(playerRect.pos);
+			}
+			else
+			{
+				frame.resized(TILE_SIZE, TILE_SIZE).draw(playerRect.pos);
+			}
+			return;
+		}
+	}
+
+	Circle{ playerPixelPos_, TILE_SIZE / 2 - 8 }.draw(playerColor_);
+	Circle{ playerPixelPos_, TILE_SIZE / 2 - 8 }.drawFrame(3, 0, ColorF{ 1.0, 1.0, 1.0, 0.9 });
+	Circle{ playerPixelPos_, 8 }.draw(ColorF{ 1.0, 1.0, 1.0, 0.8 });
 }
 
 void InGameScene::drawUI()

@@ -93,13 +93,13 @@ vec2 globalScreenUV()
 
 vec2 useUV(vec2 texUV)
 {
-    return globalScreenUV();
+    return texUV;
 }
 
 void main()
 {
     vec4 base = (u_hasTexture > 0.5) ? texture(Texture0, UV) : vec4(1.0);
-    if (u_hasTexture > 0.5 && base.a < 0.01) { discard; }
+    if (u_hasTexture > 0.5 && base.a < 0.01) { base = vec4(0.0); }
 
     vec2 U = useUV(UV);
 
